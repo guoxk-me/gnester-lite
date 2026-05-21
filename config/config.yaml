@@ -1,0 +1,5 @@
+app:
+  name: gnester-lite
+
+cache:
+  ttl: 60000
