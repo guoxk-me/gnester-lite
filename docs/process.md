@@ -1,0 +1,3 @@
+- [x] config
+- [ ] database
+- [ ] validation
