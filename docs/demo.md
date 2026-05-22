@@ -56,7 +56,11 @@ Files / 文件：
 - `src/features/demo-database/demo-database.controller.ts`
 - `src/features/demo-database/demo-database.service.ts`
 - `src/features/demo-database/entities/demo.entity.ts`
+- `src/features/demo-database/dto/bulk-create-demo.dto.ts`
 - `src/features/demo-database/dto/create-demo.dto.ts`
+- `src/features/demo-database/dto/demo-mapped-types.dto.ts`
+- `src/features/demo-database/dto/find-demo-params.dto.ts`
+- `src/features/demo-database/dto/list-demo-query.dto.ts`
 - `src/features/demo-database/dto/update-demo.dto.ts`
 
 Entity / 实体：
@@ -105,6 +109,46 @@ Content-Type: application/json
 ]
 ```
 
+Create with audit metadata / 使用审计元数据创建：
+
+```http
+POST /demo-database/with-audit
+Content-Type: application/json
+
+{
+  "name": "hello",
+  "description": "first demo",
+  "requestId": "req-001"
+}
+```
+
+Name-only mapped DTO / 仅名称 mapped DTO：
+
+```http
+POST /demo-database/name-only
+Content-Type: application/json
+
+{
+  "name": "hello"
+}
+```
+
+Create many with a wrapped DTO / 使用包裹 DTO 批量创建：
+
+```http
+POST /demo-database/many/wrapped
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "name": "first",
+      "description": "first demo"
+    }
+  ]
+}
+```
+
 Find all / 查询全部：
 
 ```http
@@ -114,7 +158,7 @@ GET /demo-database
 Find page / 分页查询：
 
 ```http
-GET /demo-database/page?page=1&limit=10
+GET /demo-database/page?page=1&limit=10&order=ASC
 ```
 
 Find by ids / 按 ID 批量查询：
@@ -135,6 +179,18 @@ Count rows / 统计行数：
 GET /demo-database/count
 ```
 
+Parse boolean query / 解析布尔查询参数：
+
+```http
+GET /demo-database/flags?enabled=true
+```
+
+Parse UUID path param / 解析 UUID 路径参数：
+
+```http
+GET /demo-database/uuid/3f2e1012-0f36-4d48-88f9-3db407e1942b
+```
+
 Find one / 查询一条：
 
 ```http
@@ -145,6 +201,17 @@ Update / 更新：
 
 ```http
 PATCH /demo-database/1
+Content-Type: application/json
+
+{
+  "description": "updated demo"
+}
+```
+
+Update description only / 仅更新描述：
+
+```http
+PATCH /demo-database/1/description
 Content-Type: application/json
 
 {
@@ -168,10 +235,20 @@ DELETE /demo-database/1
   `DemoDatabaseService` 使用 repository 完成创建、查询、更新和删除。
 - `createMany()` uses a `QueryRunner` transaction.
   `createMany()` 使用 `QueryRunner` 事务。
-- `findPage()` uses `findAndCount()` for paginated reads.
-  `findPage()` 使用 `findAndCount()` 做分页查询。
+- `BulkCreateDemoDto` demonstrates nested DTO validation with `@ValidateNested()` and `@Type()`.
+  `BulkCreateDemoDto` 演示使用 `@ValidateNested()` 与 `@Type()` 做嵌套 DTO 校验。
+- `FindDemoParamsDto` demonstrates validating `@Param()` as a DTO with `@IsNumberString()`.
+  `FindDemoParamsDto` 演示使用 `@IsNumberString()` 校验 `@Param()` DTO。
+- `ListDemoQueryDto` demonstrates transformed query DTOs, integer ranges, defaults, and enum validation.
+  `ListDemoQueryDto` 演示 query DTO 转换、整数范围、默认值和枚举校验。
+- `demo-mapped-types.dto.ts` demonstrates `PickType()`, `OmitType()`, and `IntersectionType()`.
+  `demo-mapped-types.dto.ts` 演示 `PickType()`、`OmitType()` 和 `IntersectionType()`。
+- `findPage()` uses `findAndCount()` for paginated reads and supports `ASC` / `DESC` ordering.
+  `findPage()` 使用 `findAndCount()` 做分页查询，并支持 `ASC` / `DESC` 排序。
 - `findManyByIds()` uses `In()` for ID-list queries.
   `findManyByIds()` 使用 `In()` 做 ID 集合查询。
+- `ParseIntPipe`, `ParseBoolPipe`, `ParseArrayPipe`, and `ParseUUIDPipe` demonstrate explicit primitive parsing.
+  `ParseIntPipe`、`ParseBoolPipe`、`ParseArrayPipe` 和 `ParseUUIDPipe` 演示显式基础类型解析。
 - `searchByName()` uses a query builder for custom SQL conditions.
   `searchByName()` 使用 query builder 编写自定义查询条件。
 - `count()` uses repository counting for aggregate reads.

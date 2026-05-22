@@ -3,6 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, In } from 'typeorm';
 import { CreateDemoDto } from './dto/create-demo.dto';
+import { DemoSortOrder } from './dto/list-demo-query.dto';
 import { UpdateDemoDto } from './dto/update-demo.dto';
 import { DemoDatabaseService } from './demo-database.service';
 import { Demo } from './entities/demo.entity';
@@ -118,9 +119,23 @@ describe('DemoDatabaseService', () => {
       limit: 5,
     });
     expect(repository.findAndCount).toHaveBeenCalledWith({
-      order: { id: 'ASC' },
+      order: { id: DemoSortOrder.Asc },
       skip: 5,
       take: 5,
+    });
+  });
+
+  it('returns paginated demo records with descending order', async () => {
+    await expect(service.findPage(1, 10, DemoSortOrder.Desc)).resolves.toEqual({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 10,
+    });
+    expect(repository.findAndCount).toHaveBeenCalledWith({
+      order: { id: DemoSortOrder.Desc },
+      skip: 0,
+      take: 10,
     });
   });
 

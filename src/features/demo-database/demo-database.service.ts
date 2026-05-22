@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { CreateDemoDto } from './dto/create-demo.dto';
+import { DemoSortOrder } from './dto/list-demo-query.dto';
 import { UpdateDemoDto } from './dto/update-demo.dto';
 import { Demo } from './entities/demo.entity';
 
@@ -46,9 +47,13 @@ export class DemoDatabaseService {
     return this.demoRepository.find();
   }
 
-  async findPage(page: number, limit: number): Promise<DemoPage> {
+  async findPage(
+    page: number,
+    limit: number,
+    order: DemoSortOrder = DemoSortOrder.Asc,
+  ): Promise<DemoPage> {
     const [data, total] = await this.demoRepository.findAndCount({
-      order: { id: 'ASC' },
+      order: { id: order },
       skip: (page - 1) * limit,
       take: limit,
     });

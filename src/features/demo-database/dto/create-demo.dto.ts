@@ -8,5 +8,6 @@ export class CreateDemoDto {
 
   @IsNotEmpty()
   @IsString()
+  @MaxLength(255)
   readonly description: string;
 }

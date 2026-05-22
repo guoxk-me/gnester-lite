@@ -1,8 +1,10 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
-import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
+import { Logger, VersioningType } from '@nestjs/common';
+
 import { Environment } from 'config/config.types';
+import { createValidationPipe } from './common/validation/validation.pipe';
+import { AppModule } from './app.module';
 
 const logger = new Logger('Bootstrap');
 
@@ -15,15 +17,7 @@ async function bootstrap(): Promise<void> {
     Environment.Development,
   );
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      disableErrorMessages: nodeEnv === Environment.Production,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      // Automatically transform payloads to DTO class instances. 自动将请求载荷转换为 DTO 类实例。
-      transform: true,
-    }),
-  );
+  app.useGlobalPipes(createValidationPipe(nodeEnv));
   app.enableVersioning({
     type: VersioningType.URI,
     prefix: 'v',
