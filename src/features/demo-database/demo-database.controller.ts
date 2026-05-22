@@ -7,22 +7,17 @@ import {
   Param,
   Delete,
   ParseIntPipe,
-  ParseArrayPipe,
   Query,
-  UseInterceptors,
-  SerializeOptions,
-  ClassSerializerInterceptor,
-  Version,
+  ParseArrayPipe,
+  DefaultValuePipe,
   VERSION_NEUTRAL,
 } from '@nestjs/common';
 import { CreateDemoDto } from './dto/create-demo.dto';
 import { UpdateDemoDto } from './dto/update-demo.dto';
-import { DemoDatabaseService } from './demo-database.service';
+import { DemoDatabaseService, DemoPage } from './demo-database.service';
 import { Demo } from './entities/demo.entity';
 
 @Controller({
-  // version: '1',
-  // cancel versioning for this controller
   version: VERSION_NEUTRAL,
   path: 'demo-database',
 })
@@ -34,10 +29,25 @@ export class DemoDatabaseController {
     return this.demoDatabaseService.create(createDemoDto);
   }
 
-  @Version('2')
+  @Post('many')
+  createMany(
+    @Body(new ParseArrayPipe({ items: CreateDemoDto }))
+    createDemoDtos: CreateDemoDto[],
+  ): Promise<Demo[]> {
+    return this.demoDatabaseService.createMany(createDemoDtos);
+  }
+
   @Get()
   findAll(): Promise<Demo[]> {
     return this.demoDatabaseService.findAll();
+  }
+
+  @Get('page')
+  findPage(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ): Promise<DemoPage> {
+    return this.demoDatabaseService.findPage(page, limit);
   }
 
   @Get('by-ids')
@@ -48,25 +58,18 @@ export class DemoDatabaseController {
     return this.demoDatabaseService.findManyByIds(ids);
   }
 
-  @Post('many')
-  createMany(
-    // Use ParseArrayPipe to validate an array of CreateDemoDto. 使用 ParseArrayPipe 校验 CreateDemoDto 数组。
-    @Body(new ParseArrayPipe({ items: CreateDemoDto }))
-    createDemoDtos: CreateDemoDto[],
-  ): Promise<Demo[]> {
-    return this.demoDatabaseService.createMany(createDemoDtos);
+  @Get('search')
+  searchByName(@Query('keyword') keyword: string): Promise<Demo[]> {
+    return this.demoDatabaseService.searchByName(keyword);
   }
 
-  // Use SerializeOptions to exclude properties with specified prefixes. 使用 SerializeOptions 排除指定前缀的属性。
-  @SerializeOptions({
-    // Exclude properties with prefix '_'. 排除带有 '_' 前缀的属性。
-    excludePrefixes: ['_'],
-    // Use type Demo to specify the class for serialization. 使用 Demo 类型指定序列化类。
-    type: Demo,
-  })
-  // Use ClassSerializerInterceptor to enable class-transformer decorators. 使用 ClassSerializerInterceptor 启用 class-transformer 装饰器。
-  @UseInterceptors(ClassSerializerInterceptor)
-  // Transform id to number using ParseIntPipe. 使用 ParseIntPipe 将 id 转为数字。
+  @Get('count')
+  async count(): Promise<{ readonly count: number }> {
+    const count = await this.demoDatabaseService.count();
+
+    return { count };
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number): Promise<Demo> {
     return this.demoDatabaseService.findOne(id);
