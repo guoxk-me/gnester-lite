@@ -9,6 +9,8 @@ import { databaseConfig } from 'config/database.config';
 import { validate } from 'config/validation';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { CommonCacheModule } from './common/cache/cache.module';
+import { DemoCacheModule } from './features/demo-cache/demo-cache.module';
 import { DemoConfigModule } from './features/demo-config/demo-config.module';
 import { DemoDatabaseModule } from './features/demo-database/demo-database.module';
 
@@ -27,10 +29,12 @@ import { DemoDatabaseModule } from './features/demo-database/demo-database.modul
       isGlobal: true,
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        ttl: configService.get<number>('cache.ttl', 60000),
+        ttl: configService.getOrThrow<number>('cache.ttl'),
         stores: [new KeyvRedis(configService.getOrThrow<string>('REDIS_URL'))],
       }),
     }),
+    CommonCacheModule,
+    DemoCacheModule,
     DemoConfigModule,
     DemoDatabaseModule,
     ScheduleModule.forRoot(),
