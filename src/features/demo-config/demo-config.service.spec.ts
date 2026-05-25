@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DemoConfigService } from './demo-config.service';
 
 describe('DemoConfigService', () => {
-  const configService = {
+  const configService: jest.Mocked<Pick<ConfigService, 'getOrThrow'>> = {
     getOrThrow: jest.fn(),
   };
   let service: DemoConfigService;
@@ -22,7 +22,7 @@ describe('DemoConfigService', () => {
       ],
     }).compile();
 
-    service = module.get(DemoConfigService);
+    service = module.get<DemoConfigService>(DemoConfigService);
   });
 
   it('reads app configuration through ConfigService', () => {

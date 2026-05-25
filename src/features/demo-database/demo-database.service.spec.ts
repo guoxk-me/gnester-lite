@@ -9,13 +9,46 @@ import { DemoDatabaseService } from './demo-database.service';
 import { Demo } from './entities/demo.entity';
 
 describe('DemoDatabaseService', () => {
+  type QueryBuilderMock = {
+    where: jest.Mock;
+    orderBy: jest.Mock;
+    getMany: jest.Mock;
+  };
+
+  type RepositoryMock = {
+    save: jest.Mock;
+    find: jest.Mock;
+    findAndCount: jest.Mock;
+    findOneBy: jest.Mock;
+    findBy: jest.Mock;
+    merge: jest.Mock;
+    delete: jest.Mock;
+    count: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
+
+  type QueryRunnerMock = {
+    connect: jest.Mock;
+    startTransaction: jest.Mock;
+    manager: {
+      save: jest.Mock;
+    };
+    commitTransaction: jest.Mock;
+    rollbackTransaction: jest.Mock;
+    release: jest.Mock;
+  };
+
+  type DataSourceMock = {
+    createQueryRunner: jest.Mock;
+  };
+
   let service: DemoDatabaseService;
-  const queryBuilder = {
+  const queryBuilder: QueryBuilderMock = {
     where: jest.fn(),
     orderBy: jest.fn(),
     getMany: jest.fn(),
   };
-  const repository = {
+  const repository: RepositoryMock = {
     save: jest.fn(),
     find: jest.fn(),
     findAndCount: jest.fn(),
@@ -26,7 +59,7 @@ describe('DemoDatabaseService', () => {
     count: jest.fn(),
     createQueryBuilder: jest.fn(),
   };
-  const queryRunner = {
+  const queryRunner: QueryRunnerMock = {
     connect: jest.fn(),
     startTransaction: jest.fn(),
     manager: {
@@ -36,7 +69,7 @@ describe('DemoDatabaseService', () => {
     rollbackTransaction: jest.fn(),
     release: jest.fn(),
   };
-  const dataSource = {
+  const dataSource: DataSourceMock = {
     createQueryRunner: jest.fn(),
   };
 
@@ -99,6 +132,30 @@ describe('DemoDatabaseService', () => {
       id: 1,
       name: 'first demo',
       description: 'database example',
+    });
+  });
+
+  it('creates audited demo records without persisting audit metadata', async () => {
+    const result = await service.createWithAudit({
+      name: 'first demo',
+      description: 'database example',
+      requestId: 'req-001',
+    });
+
+    expect(repository.save).toHaveBeenCalledWith({
+      name: 'first demo',
+      description: 'database example',
+    });
+    expect(result).toEqual({
+      id: 1,
+      name: 'first demo',
+      description: 'database example',
+    });
+  });
+
+  it('returns name-only DTO examples unchanged', () => {
+    expect(service.createNameOnly({ name: 'first demo' })).toEqual({
+      name: 'first demo',
     });
   });
 
@@ -172,6 +229,22 @@ describe('DemoDatabaseService', () => {
 
     await expect(service.count()).resolves.toBe(3);
     expect(repository.count).toHaveBeenCalled();
+  });
+
+  it('returns a count summary response', async () => {
+    repository.count.mockResolvedValueOnce(3);
+
+    await expect(service.countSummary()).resolves.toEqual({ count: 3 });
+  });
+
+  it('returns explicitly parsed boolean flag responses', () => {
+    expect(service.parseFlag(true)).toEqual({ enabled: true });
+  });
+
+  it('returns explicitly parsed UUID responses', () => {
+    const id = '3f2e1012-0f36-4d48-88f9-3db407e1942b';
+
+    expect(service.parseUuid(id)).toEqual({ id });
   });
 
   it('throws NotFoundException when finding a missing demo record', async () => {

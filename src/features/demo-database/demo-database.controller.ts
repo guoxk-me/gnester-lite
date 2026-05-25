@@ -15,15 +15,18 @@ import {
 } from '@nestjs/common';
 import { BulkCreateDemoDto } from './dto/bulk-create-demo.dto';
 import { CreateDemoDto } from './dto/create-demo.dto';
+import { DemoCountDto } from './dto/demo-count.dto';
+import { DemoFlagDto } from './dto/demo-flag.dto';
 import {
   CreateDemoWithAuditDto,
   DemoNameOnlyDto,
   UpdateDemoDescriptionDto,
 } from './dto/demo-mapped-types.dto';
-import { FindDemoParamsDto } from './dto/find-demo-params.dto';
+import { DemoPageDto } from './dto/demo-page.dto';
+import { DemoUuidDto } from './dto/demo-uuid.dto';
 import { ListDemoQueryDto } from './dto/list-demo-query.dto';
 import { UpdateDemoDto } from './dto/update-demo.dto';
-import { DemoDatabaseService, DemoPage } from './demo-database.service';
+import { DemoDatabaseService } from './demo-database.service';
 import { Demo } from './entities/demo.entity';
 
 @Controller({
@@ -42,15 +45,12 @@ export class DemoDatabaseController {
   createWithAudit(
     @Body() createDemoDto: CreateDemoWithAuditDto,
   ): Promise<Demo> {
-    return this.demoDatabaseService.create({
-      name: createDemoDto.name,
-      description: createDemoDto.description,
-    });
+    return this.demoDatabaseService.createWithAudit(createDemoDto);
   }
 
   @Post('name-only')
   createNameOnly(@Body() demoNameOnlyDto: DemoNameOnlyDto): DemoNameOnlyDto {
-    return demoNameOnlyDto;
+    return this.demoDatabaseService.createNameOnly(demoNameOnlyDto);
   }
 
   @Post('many')
@@ -74,7 +74,7 @@ export class DemoDatabaseController {
   }
 
   @Get('page')
-  findPage(@Query() query: ListDemoQueryDto): Promise<DemoPage> {
+  findPage(@Query() query: ListDemoQueryDto): Promise<DemoPageDto> {
     return this.demoDatabaseService.findPage(
       query.page,
       query.limit,
@@ -96,27 +96,23 @@ export class DemoDatabaseController {
   }
 
   @Get('count')
-  async count(): Promise<{ readonly count: number }> {
-    const count = await this.demoDatabaseService.count();
-
-    return { count };
+  count(): Promise<DemoCountDto> {
+    return this.demoDatabaseService.countSummary();
   }
 
   @Get('flags')
-  parseFlag(@Query('enabled', ParseBoolPipe) enabled: boolean): {
-    readonly enabled: boolean;
-  } {
-    return { enabled };
+  parseFlag(@Query('enabled', ParseBoolPipe) enabled: boolean): DemoFlagDto {
+    return this.demoDatabaseService.parseFlag(enabled);
   }
 
   @Get('uuid/:id')
-  parseUuid(@Param('id', ParseUUIDPipe) id: string): { readonly id: string } {
-    return { id };
+  parseUuid(@Param('id', ParseUUIDPipe) id: string): DemoUuidDto {
+    return this.demoDatabaseService.parseUuid(id);
   }
 
   @Get(':id')
-  findOne(@Param() params: FindDemoParamsDto): Promise<Demo> {
-    return this.demoDatabaseService.findOne(Number(params.id));
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<Demo> {
+    return this.demoDatabaseService.findOne(id);
   }
 
   @Patch(':id/description')

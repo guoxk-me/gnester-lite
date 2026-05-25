@@ -1,15 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-
-interface DemoConfigurationExample {
-  readonly appName: string;
-}
+import { DemoConfigurationExampleDto } from './dto/demo-configuration-example.dto';
 
 @Injectable()
 export class DemoConfigService {
   constructor(private readonly configService: ConfigService) {}
 
-  getConfigurationExample(): DemoConfigurationExample {
+  getConfigurationExample(): DemoConfigurationExampleDto {
     return {
       appName: this.configService.getOrThrow<string>('app.name'),
     };

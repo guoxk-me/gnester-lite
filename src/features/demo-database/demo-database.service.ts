@@ -2,16 +2,17 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { CreateDemoDto } from './dto/create-demo.dto';
+import { DemoCountDto } from './dto/demo-count.dto';
+import { DemoFlagDto } from './dto/demo-flag.dto';
+import {
+  CreateDemoWithAuditDto,
+  DemoNameOnlyDto,
+} from './dto/demo-mapped-types.dto';
+import { DemoPageDto } from './dto/demo-page.dto';
+import { DemoUuidDto } from './dto/demo-uuid.dto';
 import { DemoSortOrder } from './dto/list-demo-query.dto';
 import { UpdateDemoDto } from './dto/update-demo.dto';
 import { Demo } from './entities/demo.entity';
-
-export interface DemoPage {
-  readonly data: Demo[];
-  readonly total: number;
-  readonly page: number;
-  readonly limit: number;
-}
 
 @Injectable()
 export class DemoDatabaseService {
@@ -23,6 +24,17 @@ export class DemoDatabaseService {
 
   async create(createDemoDto: CreateDemoDto): Promise<Demo> {
     return this.demoRepository.save(createDemoDto);
+  }
+
+  async createWithAudit(createDemoDto: CreateDemoWithAuditDto): Promise<Demo> {
+    return this.create({
+      name: createDemoDto.name,
+      description: createDemoDto.description,
+    });
+  }
+
+  createNameOnly(demoNameOnlyDto: DemoNameOnlyDto): DemoNameOnlyDto {
+    return demoNameOnlyDto;
   }
 
   async createMany(createDemoDtos: CreateDemoDto[]): Promise<Demo[]> {
@@ -51,7 +63,7 @@ export class DemoDatabaseService {
     page: number,
     limit: number,
     order: DemoSortOrder = DemoSortOrder.Asc,
-  ): Promise<DemoPage> {
+  ): Promise<DemoPageDto> {
     const [data, total] = await this.demoRepository.findAndCount({
       order: { id: order },
       skip: (page - 1) * limit,
@@ -89,6 +101,20 @@ export class DemoDatabaseService {
 
   async count(): Promise<number> {
     return this.demoRepository.count();
+  }
+
+  async countSummary(): Promise<DemoCountDto> {
+    const count = await this.count();
+
+    return { count };
+  }
+
+  parseFlag(enabled: boolean): DemoFlagDto {
+    return { enabled };
+  }
+
+  parseUuid(id: string): DemoUuidDto {
+    return { id };
   }
 
   async update(id: number, updateDemoDto: UpdateDemoDto): Promise<Demo> {

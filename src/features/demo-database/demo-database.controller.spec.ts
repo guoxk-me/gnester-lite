@@ -5,14 +5,36 @@ import { DemoSortOrder } from './dto/list-demo-query.dto';
 
 describe('DemoDatabaseController', () => {
   let controller: DemoDatabaseController;
-  const service = {
+  const service: jest.Mocked<
+    Pick<
+      DemoDatabaseService,
+      | 'create'
+      | 'createWithAudit'
+      | 'createNameOnly'
+      | 'createMany'
+      | 'findAll'
+      | 'findPage'
+      | 'findManyByIds'
+      | 'searchByName'
+      | 'countSummary'
+      | 'parseFlag'
+      | 'parseUuid'
+      | 'findOne'
+      | 'update'
+      | 'remove'
+    >
+  > = {
     create: jest.fn(),
+    createWithAudit: jest.fn(),
+    createNameOnly: jest.fn(),
     createMany: jest.fn(),
     findAll: jest.fn(),
     findPage: jest.fn(),
     findManyByIds: jest.fn(),
     searchByName: jest.fn(),
-    count: jest.fn(),
+    countSummary: jest.fn(),
+    parseFlag: jest.fn(),
+    parseUuid: jest.fn(),
     findOne: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
@@ -47,7 +69,7 @@ describe('DemoDatabaseController', () => {
   });
 
   it('delegates audited creation without persisting audit metadata', async () => {
-    service.create.mockResolvedValueOnce({
+    service.createWithAudit.mockResolvedValueOnce({
       id: 1,
       name: 'first',
       description: 'first demo',
@@ -64,16 +86,20 @@ describe('DemoDatabaseController', () => {
       name: 'first',
       description: 'first demo',
     });
-    expect(service.create).toHaveBeenCalledWith({
+    expect(service.createWithAudit).toHaveBeenCalledWith({
       name: 'first',
       description: 'first demo',
+      requestId: 'req-001',
     });
   });
 
-  it('returns the mapped name-only DTO payload', () => {
+  it('delegates name-only DTO examples to the service', () => {
+    service.createNameOnly.mockReturnValueOnce({ name: 'first' });
+
     expect(controller.createNameOnly({ name: 'first' })).toEqual({
       name: 'first',
     });
+    expect(service.createNameOnly).toHaveBeenCalledWith({ name: 'first' });
   });
 
   it('delegates wrapped bulk creation to the service', async () => {
@@ -87,7 +113,12 @@ describe('DemoDatabaseController', () => {
   });
 
   it('delegates paginated reads to the service', async () => {
-    service.findPage.mockResolvedValueOnce({ data: [], total: 0 });
+    service.findPage.mockResolvedValueOnce({
+      data: [],
+      total: 0,
+      page: 2,
+      limit: 10,
+    });
 
     await expect(
       controller.findPage({
@@ -98,6 +129,8 @@ describe('DemoDatabaseController', () => {
     ).resolves.toEqual({
       data: [],
       total: 0,
+      page: 2,
+      limit: 10,
     });
     expect(service.findPage).toHaveBeenCalledWith(2, 10, DemoSortOrder.Desc);
   });
@@ -117,27 +150,32 @@ describe('DemoDatabaseController', () => {
   });
 
   it('delegates row counting to the service', async () => {
-    service.count.mockResolvedValueOnce(3);
+    service.countSummary.mockResolvedValueOnce({ count: 3 });
 
     await expect(controller.count()).resolves.toEqual({ count: 3 });
-    expect(service.count).toHaveBeenCalled();
+    expect(service.countSummary).toHaveBeenCalled();
   });
 
-  it('returns explicitly parsed boolean flags', () => {
+  it('delegates explicitly parsed boolean flags to the service', () => {
+    service.parseFlag.mockReturnValueOnce({ enabled: true });
+
     expect(controller.parseFlag(true)).toEqual({ enabled: true });
+    expect(service.parseFlag).toHaveBeenCalledWith(true);
   });
 
-  it('returns explicitly parsed UUID params', () => {
+  it('delegates explicitly parsed UUID params to the service', () => {
     const id = '3f2e1012-0f36-4d48-88f9-3db407e1942b';
+    service.parseUuid.mockReturnValueOnce({ id });
 
     expect(controller.parseUuid(id)).toEqual({ id });
+    expect(service.parseUuid).toHaveBeenCalledWith(id);
   });
 
-  it('delegates param DTO reads to the service', async () => {
+  it('delegates parsed id reads to the service', async () => {
     const demo = { id: 1, name: 'demo', description: 'database example' };
     service.findOne.mockResolvedValueOnce(demo);
 
-    await expect(controller.findOne({ id: '1' })).resolves.toEqual(demo);
+    await expect(controller.findOne(1)).resolves.toEqual(demo);
     expect(service.findOne).toHaveBeenCalledWith(1);
   });
 
