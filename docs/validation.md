@@ -1,72 +1,122 @@
 # Validation Guide / 校验指南
 
-This template enables request validation globally in `src/main.ts`.
+This document is for AI agents and developers who need to change request validation safely.
 
-本模板在 `src/main.ts` 全局启用请求校验。
+本文档面向需要安全修改请求校验的 AI agent 和开发者。
 
-## Global Pipe / 全局管道
+## Mental Model / 校验模型
 
-The shared validation setup lives in `src/common/validation/validation.pipe.ts`.
+- Global `ValidationPipe` defines default validation behavior.
+  全局 `ValidationPipe` 定义默认校验行为。
+- DTO classes define accepted request shapes.
+  DTO class 定义允许接收的数据结构。
+- Built-in parse pipes handle simple primitive params.
+  内置 parse pipe 处理简单基础类型参数。
 
-通用校验配置位于 `src/common/validation/validation.pipe.ts`。
+Rule / 判断规则：
 
-Defaults / 默认配置：
+```text
+Body/query object? -> DTO class
+body/query 对象？-> DTO class
 
-- `whitelist: true`: strips properties without validation decorators.
-  删除没有校验装饰器的字段。
-- `forbidNonWhitelisted: true`: rejects unknown properties instead of silently ignoring them.
-  遇到未知字段直接拒绝请求，而不是静默忽略。
-- `forbidUnknownValues: true`: rejects unknown objects instead of attempting unsafe validation.
-  拒绝未知对象，避免对不明确的输入执行不安全校验。
-- `transform: true`: transforms plain request payloads into DTO instances.
-  将普通请求对象转换为 DTO 实例。
-- `stopAtFirstError: true`: returns concise field errors.
-  每个字段遇到第一个错误就停止，错误更简洁。
-- `validationError.target: false` and `validationError.value: false`: avoids leaking raw request values in validation responses.
-  避免在校验响应中泄露原始请求对象和值。
-- `disableErrorMessages` is enabled in production.
-  生产环境隐藏详细校验错误。
+Single primitive param? -> Parse*Pipe
+单个基础参数？-> Parse*Pipe
 
-## DTO Patterns / DTO 模式
+Reuse another DTO? -> mapped types
+复用已有 DTO？-> mapped types
+```
 
-Use concrete classes for DTOs. Do not rely on interfaces or type-only imports for request validation, because runtime metadata is required.
+## Load Flow / 加载流程
 
-DTO 请使用具体 class。不要依赖 interface 或 type-only import 做请求校验，因为校验依赖运行时元数据。
+`src/main.ts` wires validation:
 
-Common examples / 常见示例：
+`src/main.ts` 接入校验：
 
-- `CreateDemoDto`: body validation with string, required, and max-length decorators.
-  使用字符串、必填和最大长度装饰器校验 body。
-- `UpdateDemoDto`: update DTO derived from `PartialType(CreateDemoDto)`.
-  使用 `PartialType(CreateDemoDto)` 派生更新 DTO。
-- `UpdateDemoDescriptionDto`: field-specific DTO derived from `PickType(CreateDemoDto, ['description'])`.
-  使用 `PickType(CreateDemoDto, ['description'])` 派生只允许更新描述的 DTO。
-- `DemoNameOnlyDto`: reduced DTO derived from `OmitType(CreateDemoDto, ['description'])`.
-  使用 `OmitType(CreateDemoDto, ['description'])` 派生只保留名称的 DTO。
-- `CreateDemoWithAuditDto`: composed DTO derived from `IntersectionType(CreateDemoDto, DemoAuditDto)`.
-  使用 `IntersectionType(CreateDemoDto, DemoAuditDto)` 组合创建字段与审计字段。
-- `ListDemoQueryDto`: query DTO with numeric transform, ranges, defaults, and enum validation.
-  query DTO 中演示数字转换、范围、默认值和枚举校验。
-- `BulkCreateDemoDto`: nested array validation with `@ValidateNested()` and `@Type()`.
-  使用 `@ValidateNested()` 和 `@Type()` 做嵌套数组校验。
-- `FindDemoParamsDto`: path param DTO validation with `@IsNumberString()`.
-  使用 `@IsNumberString()` 演示路径参数 DTO 校验。
+```ts
+app.useGlobalPipes(createValidationPipe(nodeEnv));
+```
 
-## Explicit Parsing / 显式解析
+`src/common/validation/validation.pipe.ts` owns the shared defaults:
 
-Use Nest built-in pipes when a route only needs primitive parsing:
+`src/common/validation/validation.pipe.ts` 维护通用默认值：
 
-当路由只需要解析基础类型时，使用 Nest 内置 pipe：
+```ts
+whitelist: true
+forbidNonWhitelisted: true
+forbidUnknownValues: true
+transform: true
+stopAtFirstError: true
+```
 
-- `ParseIntPipe` for numeric params.
-  数字参数。
-- `ParseBoolPipe` for boolean query values.
-  布尔 query 值。
-- `ParseArrayPipe` for comma-separated arrays or array body payloads.
-  逗号分隔数组或数组 body。
-- `ParseUUIDPipe` for UUID path params.
-  UUID 路径参数。
+Validation error shape / 校验错误格式：
 
-See `src/features/demo-database/demo-database.controller.ts` for working examples.
+```json
+{
+  "code": 400,
+  "message": "Validation failed",
+  "errors": [{ "field": "name", "reason": "name should not be empty" }]
+}
+```
 
-可参考 `src/features/demo-database/demo-database.controller.ts` 中的完整示例。
+Note: only validation errors use this shape. Other HTTP errors still use Nest defaults unless a global exception filter is added.
+
+注意：当前只有校验错误使用该格式。其他 HTTP 异常仍使用 Nest 默认格式，除非新增全局异常过滤器。
+
+## Key Files / 关键文件
+
+- `src/common/validation/validation.pipe.ts`: global pipe and error formatting. 全局 pipe 与错误格式。
+- `src/common/validation/validation.pipe.spec.ts`: validation helper tests. 校验工具测试。
+- `src/features/demo-database/dto/*.dto.ts`: DTO examples. DTO 示例。
+- `src/features/demo-database/demo-database.controller.ts`: DTO and pipe usage. DTO 与 pipe 用法。
+- `docs/demo.md`: demo API examples. demo 接口示例。
+
+## Current Patterns / 当前模式
+
+- Body DTO: `CreateDemoDto`.
+- Update DTO: `PartialType(CreateDemoDto)`.
+- Mapped types: `PickType()`, `OmitType()`, `IntersectionType()` in `demo-mapped-types.dto.ts`.
+- Query DTO: `ListDemoQueryDto` with `@Type(() => Number)`.
+- Nested array DTO: `BulkCreateDemoDto` with `@ValidateNested()` and `@Type()`.
+- Param DTO: `FindDemoParamsDto` with `@IsNumberString()`.
+- Primitive pipes: `ParseIntPipe`, `ParseBoolPipe`, `ParseArrayPipe`, `ParseUUIDPipe`.
+
+## How To Change / 如何修改
+
+Add body/query validation / 新增 body/query 校验：
+
+1. Create or update a DTO under the feature `dto/` folder.
+   在 feature 的 `dto/` 目录新增或修改 DTO。
+2. Add `class-validator` decorators to every accepted property.
+   给每个允许字段添加 `class-validator` 装饰器。
+3. Use the DTO in `@Body()` or `@Query()`.
+   在 `@Body()` 或 `@Query()` 中使用该 DTO。
+
+Add numeric query fields / 新增数字 query 字段：
+
+1. Add `@Type(() => Number)` before `@IsInt()`, `@Min()`, or `@Max()`.
+   在 `@IsInt()`、`@Min()` 或 `@Max()` 前添加 `@Type(() => Number)`。
+
+Add nested DTOs / 新增嵌套 DTO：
+
+1. Add `@ValidateNested()` or `@ValidateNested({ each: true })`.
+   添加 `@ValidateNested()` 或 `@ValidateNested({ each: true })`。
+2. Add `@Type(() => ChildDto)`.
+   添加 `@Type(() => ChildDto)`。
+
+Change global behavior / 修改全局行为：
+
+1. Edit `src/common/validation/validation.pipe.ts`.
+   修改 `src/common/validation/validation.pipe.ts`。
+2. Update `validation.pipe.spec.ts` if error formatting changes.
+   如果错误格式变化，同步更新 `validation.pipe.spec.ts`。
+3. Do not loosen `whitelist` or `forbidNonWhitelisted` unless required by the API contract.
+   除非接口契约需要，不要放宽 `whitelist` 或 `forbidNonWhitelisted`。
+
+## Verify / 验证
+
+```bash
+pnpm run format
+pnpm run lint
+pnpm run test
+pnpm run build
+```
