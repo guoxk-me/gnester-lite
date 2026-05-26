@@ -14,6 +14,7 @@ import { DemoCacheModule } from './features/demo-cache/demo-cache.module';
 import { DemoConfigModule } from './features/demo-config/demo-config.module';
 import { DemoDatabaseModule } from './features/demo-database/demo-database.module';
 import { DemoSerializationModule } from './features/demo-serialization/demo-serialization.module';
+import { DemoVersioningModule } from './features/demo-versioning/demo-versioning.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { DemoSerializationModule } from './features/demo-serialization/demo-seri
     DemoConfigModule,
     DemoDatabaseModule,
     DemoSerializationModule,
+    DemoVersioningModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
