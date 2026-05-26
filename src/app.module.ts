@@ -13,6 +13,7 @@ import { CommonCacheModule } from './common/cache/cache.module';
 import { DemoCacheModule } from './features/demo-cache/demo-cache.module';
 import { DemoConfigModule } from './features/demo-config/demo-config.module';
 import { DemoDatabaseModule } from './features/demo-database/demo-database.module';
+import { DemoSerializationModule } from './features/demo-serialization/demo-serialization.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { DemoDatabaseModule } from './features/demo-database/demo-database.modul
     DemoCacheModule,
     DemoConfigModule,
     DemoDatabaseModule,
+    DemoSerializationModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
