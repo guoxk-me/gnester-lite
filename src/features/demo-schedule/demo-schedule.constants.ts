@@ -1,4 +1,11 @@
+// CN: 常量文件，集中 demo-schedule 的稳定标识；EN: Constants file centralizes stable identifiers for demo-schedule.
 export const DEMO_DECLARATIVE_CRON_JOB = 'demo-schedule:declarative-cron';
+export const DEMO_CRON_PATTERN_JOB = 'demo-schedule:cron-pattern';
+export const DEMO_ONE_TIME_CRON_JOB = 'demo-schedule:one-time-cron';
+export const DEMO_TIME_ZONE_CRON_JOB = 'demo-schedule:time-zone-cron';
+export const DEMO_UTC_OFFSET_CRON_JOB = 'demo-schedule:utc-offset-cron';
 export const DEMO_DYNAMIC_CRON_JOB = 'demo-schedule:dynamic-cron';
+export const DEMO_DYNAMIC_INTERVAL_JOB = 'demo-schedule:dynamic-interval';
+export const DEMO_DYNAMIC_TIMEOUT_JOB = 'demo-schedule:dynamic-timeout';
 export const DEMO_INTERVAL_JOB = 'demo-schedule:interval';
 export const DEMO_TIMEOUT_JOB = 'demo-schedule:timeout';

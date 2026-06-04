@@ -1,5 +1,7 @@
 # Schedule Guide / 定时任务指南
 
+> CN: 文档文件，说明 schedule 的用途；EN: Documentation file explains the purpose of schedule.
+
 This document is for AI agents and developers who need to add or change
 scheduled jobs safely.
 
@@ -51,21 +53,47 @@ Do not use `UTC+8` or `Beijing`; validation rejects non-IANA values.
 GET /demo-schedule/jobs
 POST /demo-schedule/jobs/declarative-cron/run
 POST /demo-schedule/jobs/dynamic-cron/register
+POST /demo-schedule/jobs/dynamic-cron/start
+POST /demo-schedule/jobs/dynamic-cron/stop
+POST /demo-schedule/jobs/dynamic-cron/reschedule
+POST /demo-schedule/jobs/dynamic-cron/delete
 POST /demo-schedule/jobs/dynamic-cron/run
+POST /demo-schedule/jobs/dynamic-interval/register
+POST /demo-schedule/jobs/dynamic-interval/delete
 POST /demo-schedule/jobs/interval/run
+POST /demo-schedule/jobs/dynamic-timeout/register
+POST /demo-schedule/jobs/dynamic-timeout/delete
 POST /demo-schedule/jobs/timeout/run
 ```
 
 `GET /demo-schedule/jobs` returns the schedule switch, time zone, cron jobs,
 intervals, and timeouts. The `POST .../run` routes manually execute each demo
 scheduler style so the controller layer shows declarative cron, dynamic cron,
-interval, and timeout entrypoints. The dynamic registration route demonstrates
-idempotent runtime cron registration and returns the refreshed overview.
+interval, and timeout entrypoints. The dynamic cron routes demonstrate runtime
+registration, start, stop, reschedule, and delete operations. The dynamic
+interval and timeout routes demonstrate runtime registration and deletion.
 
 `GET /demo-schedule/jobs` 返回定时任务开关、时区、cron、interval 和 timeout
 状态。`POST .../run` 路由手动执行每一种 demo 调度方式，让 controller 层示例覆盖
-声明式 cron、动态 cron、interval 和 timeout。动态注册路由用于演示运行时幂等注册
-cron，并返回刷新后的状态。
+声明式 cron、动态 cron、interval 和 timeout。动态 cron 路由演示运行时注册、
+启动、停止、改执行时间和删除；动态 interval 与 timeout 路由演示运行时注册和删除。
+
+## Covered NestJS Examples / 已覆盖示例
+
+- `@Cron(CronExpression.EVERY_30_SECONDS)`: enum-based declarative cron.
+  使用 `CronExpression` 的声明式 cron。
+- `@Cron('45 * * * * *')`: raw cron expression string.
+  原始 cron 表达式字符串。
+- `@Cron(new Date(...))`: one-time job.
+  一次性任务。
+- `@Cron(..., { timeZone: 'Asia/Shanghai' })`: IANA time zone option.
+  IANA 时区选项。
+- `@Cron(..., { utcOffset: 480 })`: UTC offset option.
+  UTC 偏移选项。
+- Named `@Interval()` and `@Timeout()` jobs.
+  命名 interval 和 timeout。
+- `SchedulerRegistry` dynamic API for cron, interval, and timeout jobs.
+  cron、interval、timeout 的 `SchedulerRegistry` 动态 API。
 
 ## How To Add A Job / 如何新增任务
 
