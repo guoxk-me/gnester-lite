@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
-import { DEMO_QUEUE } from './demo-queue.constants';
+import { DEMO_QUEUE, DEMO_QUEUE_FLOW_PRODUCER } from './demo-queue.constants';
 import { DemoQueueController } from './demo-queue.controller';
 import { DemoQueueProcessor } from './demo-queue.processor';
 import { DemoQueueService } from './demo-queue.service';
@@ -10,6 +10,9 @@ import { DemoQueueService } from './demo-queue.service';
   imports: [
     BullModule.registerQueue({
       name: DEMO_QUEUE,
+    }),
+    BullModule.registerFlowProducer({
+      name: DEMO_QUEUE_FLOW_PRODUCER,
     }),
   ],
   controllers: [DemoQueueController],

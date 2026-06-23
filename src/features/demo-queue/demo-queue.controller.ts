@@ -9,8 +9,11 @@ import {
   VERSION_NEUTRAL,
 } from '@nestjs/common';
 import { CreateDemoEmailJobDto } from './dto/create-demo-email-job.dto';
+import { CreateDemoLongTaskJobDto } from './dto/create-demo-long-task-job.dto';
+import { CreateDemoSubtaskWorkflowDto } from './dto/create-demo-subtask-workflow.dto';
 import { DemoQueueJobDto } from './dto/demo-queue-job.dto';
 import { DemoQueueStatusDto } from './dto/demo-queue-status.dto';
+import { DemoQueueWorkflowDto } from './dto/demo-queue-workflow.dto';
 import { DemoQueueService } from './demo-queue.service';
 
 @Controller({
@@ -28,6 +31,26 @@ export class DemoQueueController {
     @Body() createDemoEmailJobDto: CreateDemoEmailJobDto,
   ): Promise<DemoQueueJobDto> {
     return this.demoQueueService.enqueueEmail(createDemoEmailJobDto);
+  }
+
+  // AI modified: added a visible long-running queue scenario for API demos.
+  @Post('long-task')
+  @HttpCode(HttpStatus.ACCEPTED)
+  enqueueLongTask(
+    @Body() createDemoLongTaskJobDto: CreateDemoLongTaskJobDto,
+  ): Promise<DemoQueueJobDto> {
+    return this.demoQueueService.enqueueLongTask(createDemoLongTaskJobDto);
+  }
+
+  // AI modified: added a parent-child workflow scenario for queue dependency demos.
+  @Post('subtasks')
+  @HttpCode(HttpStatus.ACCEPTED)
+  enqueueSubtaskWorkflow(
+    @Body() createDemoSubtaskWorkflowDto: CreateDemoSubtaskWorkflowDto,
+  ): Promise<DemoQueueWorkflowDto> {
+    return this.demoQueueService.enqueueSubtaskWorkflow(
+      createDemoSubtaskWorkflowDto,
+    );
   }
 
   // CN: 处理 demo-queue 的 get status HTTP 请求；EN: Handles the get status HTTP request for demo-queue.

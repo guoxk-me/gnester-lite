@@ -6,9 +6,19 @@ import { DemoQueueService } from './demo-queue.service';
 // CN: 测试分组：DemoQueueController；EN: Test group: DemoQueueController.
 describe('DemoQueueController', () => {
   const service: jest.Mocked<
-    Pick<DemoQueueService, 'enqueueEmail' | 'getStatus' | 'pause' | 'resume'>
+    Pick<
+      DemoQueueService,
+      | 'enqueueEmail'
+      | 'enqueueLongTask'
+      | 'enqueueSubtaskWorkflow'
+      | 'getStatus'
+      | 'pause'
+      | 'resume'
+    >
   > = {
     enqueueEmail: jest.fn(),
+    enqueueLongTask: jest.fn(),
+    enqueueSubtaskWorkflow: jest.fn(),
     getStatus: jest.fn(),
     pause: jest.fn(),
     resume: jest.fn(),
@@ -48,6 +58,56 @@ describe('DemoQueueController', () => {
 
     await expect(controller.enqueueEmail(dto)).resolves.toEqual(job);
     expect(service.enqueueEmail).toHaveBeenCalledWith(dto);
+  });
+
+  // CN: 测试用例：delegates long task job creation to the service；EN: Test case: delegates long task job creation to the service.
+  it('delegates long task job creation to the service', async () => {
+    const dto = {
+      taskName: 'monthly-report',
+      durationMs: 5_000,
+      steps: 5,
+    };
+    const job = {
+      id: '2',
+      queue: 'demo',
+      name: 'long-task',
+      enqueuedAt: '2026-05-28T00:00:00.000Z',
+    };
+    service.enqueueLongTask.mockResolvedValueOnce(job);
+
+    await expect(controller.enqueueLongTask(dto)).resolves.toEqual(job);
+    expect(service.enqueueLongTask).toHaveBeenCalledWith(dto);
+  });
+
+  // CN: 测试用例：delegates subtask workflow creation to the service；EN: Test case: delegates subtask workflow creation to the service.
+  it('delegates subtask workflow creation to the service', async () => {
+    const dto = {
+      workflowName: 'onboarding',
+      subtasks: [
+        {
+          name: 'send-welcome-email',
+          durationMs: 1_000,
+        },
+      ],
+    };
+    const workflow = {
+      id: 'workflow-1',
+      queue: 'demo',
+      name: 'workflow',
+      enqueuedAt: '2026-05-28T00:00:00.000Z',
+      children: [
+        {
+          id: 'subtask-1',
+          name: 'subtask',
+        },
+      ],
+    };
+    service.enqueueSubtaskWorkflow.mockResolvedValueOnce(workflow);
+
+    await expect(controller.enqueueSubtaskWorkflow(dto)).resolves.toEqual(
+      workflow,
+    );
+    expect(service.enqueueSubtaskWorkflow).toHaveBeenCalledWith(dto);
   });
 
   // CN: 测试用例：delegates queue status reads to the service；EN: Test case: delegates queue status reads to the service.

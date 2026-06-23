@@ -39,9 +39,51 @@ queue behavior:
 `DemoQueueModule` registers the `demo` queue and exposes:
 
 - `POST /demo-queue/email`
+- `POST /demo-queue/long-task`
+- `POST /demo-queue/subtasks`
 - `GET /demo-queue/status`
 - `POST /demo-queue/pause`
 - `POST /demo-queue/resume`
+
+`POST /demo-queue/email` creates a fast job:
+
+```json
+{
+  "to": "test@example.com",
+  "subject": "Queue demo test",
+  "body": "Hello from the queue"
+}
+```
+
+`POST /demo-queue/long-task` creates a simulated long-running job that updates
+progress across multiple steps:
+
+```json
+{
+  "taskName": "monthly-report",
+  "durationMs": 10000,
+  "steps": 5
+}
+```
+
+`POST /demo-queue/subtasks` creates a BullMQ flow. Child jobs run first, and the
+parent workflow job completes after all children complete:
+
+```json
+{
+  "workflowName": "onboarding",
+  "subtasks": [
+    {
+      "name": "send-welcome-email",
+      "durationMs": 2000
+    },
+    {
+      "name": "create-trial-workspace",
+      "durationMs": 3000
+    }
+  ]
+}
+```
 
 BullMQ processors handle job names inside `WorkerHost.process()` with a
 `switch` statement. Method-level `@Process('name')` handlers belong to the old
