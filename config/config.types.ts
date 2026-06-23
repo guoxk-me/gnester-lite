@@ -17,9 +17,19 @@ export interface CacheConfig {
   readonly ttl: number;
 }
 
+export interface QueueConfig {
+  readonly enabled: boolean;
+  readonly prefix: string;
+  readonly defaultAttempts: number;
+  readonly backoffDelay: number;
+  readonly removeOnComplete: number;
+  readonly removeOnFail: number;
+}
+
 export interface YamlConfig {
   readonly app: AppConfig;
   readonly cache: CacheConfig;
+  readonly queue: QueueConfig;
 }
 
 export interface DatabaseOptions {

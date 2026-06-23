@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import * as yaml from 'js-yaml';
 import { plainToInstance, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsNumber,
   IsObject,
   IsString,
@@ -27,6 +28,30 @@ class CacheVariables {
   ttl: number;
 }
 
+class QueueVariables {
+  @IsBoolean()
+  enabled: boolean;
+
+  @IsString()
+  prefix: string;
+
+  @IsNumber()
+  @Min(1)
+  defaultAttempts: number;
+
+  @IsNumber()
+  @Min(0)
+  backoffDelay: number;
+
+  @IsNumber()
+  @Min(0)
+  removeOnComplete: number;
+
+  @IsNumber()
+  @Min(0)
+  removeOnFail: number;
+}
+
 class YamlVariables {
   @IsObject()
   @ValidateNested()
@@ -37,6 +62,11 @@ class YamlVariables {
   @ValidateNested()
   @Type(() => CacheVariables)
   cache: CacheVariables;
+
+  @IsObject()
+  @ValidateNested()
+  @Type(() => QueueVariables)
+  queue: QueueVariables;
 }
 
 export default (): YamlConfig => {

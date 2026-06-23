@@ -3,3 +3,11 @@ app:
 
 cache:
   ttl: 0
+
+queue:
+  enabled: true
+  prefix: gnester-lite
+  defaultAttempts: 3
+  backoffDelay: 1000
+  removeOnComplete: 1000
+  removeOnFail: 5000

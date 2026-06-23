@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -10,10 +11,15 @@ import { validate } from 'config/validation';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CommonCacheModule } from './common/cache/cache.module';
+import { CommonQueueModule } from './common/queue/queue.module';
 import { DemoCacheModule } from './features/demo-cache/demo-cache.module';
 import { DemoConfigModule } from './features/demo-config/demo-config.module';
 import { DemoDatabaseModule } from './features/demo-database/demo-database.module';
+import { DemoQueueModule } from './features/demo-queue/demo-queue.module';
 import { DemoSerializationModule } from './features/demo-serialization/demo-serialization.module';
+
+const isTestEnvironment = process.env.NODE_ENV === 'test';
+const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
 
 @Module({
   imports: [
@@ -34,10 +40,38 @@ import { DemoSerializationModule } from './features/demo-serialization/demo-seri
         stores: [new KeyvRedis(configService.getOrThrow<string>('REDIS_URL'))],
       }),
     }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      extraOptions: {
+        manualRegistration: isTestEnvironment,
+      },
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          url: configService.getOrThrow<string>('REDIS_URL'),
+          lazyConnect: isTestEnvironment,
+          enableOfflineQueue: !isTestEnvironment,
+          maxRetriesPerRequest: isTestEnvironment ? 1 : null,
+        },
+        prefix: `${configService.getOrThrow<string>('queue.prefix')}:${configService.getOrThrow<string>('NODE_ENV')}`,
+        defaultJobOptions: {
+          attempts: configService.getOrThrow<number>('queue.defaultAttempts'),
+          backoff: {
+            type: 'exponential',
+            delay: configService.getOrThrow<number>('queue.backoffDelay'),
+          },
+          removeOnComplete: configService.getOrThrow<number>(
+            'queue.removeOnComplete',
+          ),
+          removeOnFail: configService.getOrThrow<number>('queue.removeOnFail'),
+        },
+      }),
+    }),
     CommonCacheModule,
+    CommonQueueModule,
     DemoCacheModule,
     DemoConfigModule,
     DemoDatabaseModule,
+    ...queueFeatureImports,
     DemoSerializationModule,
     ScheduleModule.forRoot(),
   ],
