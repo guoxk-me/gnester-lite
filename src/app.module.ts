@@ -14,6 +14,7 @@ import { CommonCacheModule } from './common/cache/cache.module';
 import { CommonQueueModule } from './common/queue/queue.module';
 import { DemoCacheModule } from './features/demo-cache/demo-cache.module';
 import { DemoConfigModule } from './features/demo-config/demo-config.module';
+import { DemoCookiesModule } from './features/demo-cookies/demo-cookies.module';
 import { DemoDatabaseModule } from './features/demo-database/demo-database.module';
 import { DemoQueueModule } from './features/demo-queue/demo-queue.module';
 import { DemoSerializationModule } from './features/demo-serialization/demo-serialization.module';
@@ -70,6 +71,7 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
     CommonQueueModule,
     DemoCacheModule,
     DemoConfigModule,
+    DemoCookiesModule,
     DemoDatabaseModule,
     ...queueFeatureImports,
     DemoSerializationModule,
