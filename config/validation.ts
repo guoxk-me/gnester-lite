@@ -80,6 +80,9 @@ class EnvironmentVariables {
   })
   @IsOptional()
   REDIS_URL: string = 'redis://localhost:6379';
+  COMPRESSION_ENABLED: boolean = true;
+  COMPRESSION_THRESHOLD: string = '1kb';
+  COMPRESSION_LEVEL: number = 6;
 }
 
 export function validate(

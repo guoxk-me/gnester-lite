@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { Logger, VersioningType } from '@nestjs/common';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 
 import { Environment } from 'config/config.types';
@@ -18,7 +19,31 @@ async function bootstrap(): Promise<void> {
     Environment.Development,
   );
   const cookieSecret = configService.get<string>('COOKIE_SECRET') || undefined;
+  const compressionEnabled = configService.get<boolean>(
+    'COMPRESSION_ENABLED',
+    true,
+  );
+  const compressionThreshold = configService.get<string>(
+    'COMPRESSION_THRESHOLD',
+    '1kb',
+  );
+  const compressionLevel = configService.get<number>('COMPRESSION_LEVEL', 6);
 
+  if (compressionEnabled) {
+    app.use(
+      compression({
+        threshold: compressionThreshold,
+        level: compressionLevel,
+        filter: (req, res) => {
+          if (req.headers.accept?.includes('text/event-stream')) {
+            return false;
+          }
+
+          return compression.filter(req, res);
+        },
+      }),
+    );
+  }
   app.use(cookieParser(cookieSecret));
   app.useGlobalPipes(createValidationPipe(nodeEnv));
   app.enableVersioning({
