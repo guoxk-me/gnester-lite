@@ -12,6 +12,7 @@ This document records the demo feature modules under `src/features/`.
 
 - `DemoConfigModule`: configuration reading example. 配置读取示例。
 - `DemoDatabaseModule`: pure TypeORM database examples. 纯 TypeORM 数据库示例。
+- `DemoEventsModule`: in-process event emitter examples. 进程内事件示例。
 
 The database demo intentionally focuses on database scenarios only. It does not demonstrate API versioning, interceptors, cache, or scheduled jobs.
 
@@ -253,6 +254,77 @@ DELETE /demo-database/1
   `searchByName()` 使用 query builder 编写自定义查询条件。
 - `count()` uses repository counting for aggregate reads.
   `count()` 使用 repository count 做聚合读取。
+
+## Demo Events / 事件示例
+
+Files / 文件：
+
+- `src/features/demo-events/demo-events.module.ts`
+- `src/features/demo-events/demo-events.controller.ts`
+- `src/features/demo-events/demo-events.service.ts`
+- `src/features/demo-events/demo-events.listener.ts`
+- `src/features/demo-events/demo-events-log.service.ts`
+- `src/features/demo-events/events/demo-user-registered.event.ts`
+- `src/features/demo-events/events/demo-cache-invalidation-requested.event.ts`
+
+Configuration / 配置：
+
+`src/app.module.ts` registers `EventEmitterModule.forRoot()` with wildcard
+support:
+
+```ts
+EventEmitterModule.forRoot({
+  wildcard: true,
+  delimiter: '.',
+  maxListeners: 20,
+  verboseMemoryLeak: process.env.NODE_ENV !== 'production',
+  ignoreErrors: false,
+});
+```
+
+Routes / 路由：
+
+```http
+GET /demo-events
+```
+
+```http
+POST /demo-events/users/register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "displayName": "Demo User"
+}
+```
+
+```http
+POST /demo-events/cache/invalidate
+Content-Type: application/json
+
+{
+  "cacheKey": "demo:user:42",
+  "reason": "user profile updated"
+}
+```
+
+```http
+DELETE /demo-events/records
+```
+
+What it shows / 演示点：
+
+- Domain events decouple a command from side effects.
+  领域事件把主流程和副作用解耦。
+- One event can fan out to audit, notification, cache invalidation, and trace
+  handlers. 一个事件可以分发到审计、通知、缓存失效和追踪处理器。
+- `@OnEvent('demo-events.**')` demonstrates wildcard namespace observation.
+  `@OnEvent('demo-events.**')` 演示通配符监听。
+- Event payloads are explicit classes instead of anonymous objects.
+  事件载荷使用明确 class，而不是匿名对象。
+- The demo stores records in memory only; production audit logs, emails, cache
+  invalidation, and queue handoff should call real infrastructure services.
+  示例只把记录存在内存里；生产审计、邮件、缓存失效和队列转交应调用真实基础设施服务。
 
 ## Verify / 验证
 

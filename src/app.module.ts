@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import KeyvRedis from '@keyv/redis';
@@ -16,6 +17,7 @@ import { DemoCacheModule } from './features/demo-cache/demo-cache.module';
 import { DemoConfigModule } from './features/demo-config/demo-config.module';
 import { DemoCookiesModule } from './features/demo-cookies/demo-cookies.module';
 import { DemoDatabaseModule } from './features/demo-database/demo-database.module';
+import { DemoEventsModule } from './features/demo-events/demo-events.module';
 import { DemoQueueModule } from './features/demo-queue/demo-queue.module';
 import { DemoSerializationModule } from './features/demo-serialization/demo-serialization.module';
 
@@ -67,12 +69,20 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
         },
       }),
     }),
+    EventEmitterModule.forRoot({
+      wildcard: true,
+      delimiter: '.',
+      maxListeners: 20,
+      verboseMemoryLeak: process.env.NODE_ENV !== 'production',
+      ignoreErrors: false,
+    }),
     CommonCacheModule,
     CommonQueueModule,
     DemoCacheModule,
     DemoConfigModule,
     DemoCookiesModule,
     DemoDatabaseModule,
+    DemoEventsModule,
     ...queueFeatureImports,
     DemoSerializationModule,
     ScheduleModule.forRoot(),
