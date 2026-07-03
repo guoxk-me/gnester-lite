@@ -11,3 +11,25 @@ queue:
   backoffDelay: 1000
   removeOnComplete: 1000
   removeOnFail: 5000
+
+http:
+  baseUrl: https://jsonplaceholder.typicode.com
+  timeout: 5000
+  maxRedirects: 5
+  maxContentLength: 10485760
+  maxBodyLength: 10485760
+
+rateLimit:
+  enabled: true
+  trustProxy: loopback
+  errorMessage: Too many requests
+  throttlers:
+    - name: short
+      ttl: 1000
+      limit: 3
+    - name: medium
+      ttl: 10000
+      limit: 20
+    - name: long
+      ttl: 60000
+      limit: 100

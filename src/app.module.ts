@@ -12,12 +12,14 @@ import { validate } from 'config/validation';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CommonCacheModule } from './common/cache/cache.module';
+import { CommonHttpClientModule } from './common/http-client/http-client.module';
 import { CommonQueueModule } from './common/queue/queue.module';
 import { DemoCacheModule } from './features/demo-cache/demo-cache.module';
 import { DemoConfigModule } from './features/demo-config/demo-config.module';
 import { DemoCookiesModule } from './features/demo-cookies/demo-cookies.module';
 import { DemoDatabaseModule } from './features/demo-database/demo-database.module';
 import { DemoEventsModule } from './features/demo-events/demo-events.module';
+import { DemoHttpModule } from './features/demo-http/demo-http.module';
 import { DemoQueueModule } from './features/demo-queue/demo-queue.module';
 import { DemoSerializationModule } from './features/demo-serialization/demo-serialization.module';
 
@@ -77,12 +79,14 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
       ignoreErrors: false,
     }),
     CommonCacheModule,
+    CommonHttpClientModule,
     CommonQueueModule,
     DemoCacheModule,
     DemoConfigModule,
     DemoCookiesModule,
     DemoDatabaseModule,
     DemoEventsModule,
+    DemoHttpModule,
     ...queueFeatureImports,
     DemoSerializationModule,
     ScheduleModule.forRoot(),
