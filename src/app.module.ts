@@ -23,6 +23,7 @@ import { DemoHttpModule } from './features/demo-http/demo-http.module';
 import { DemoQueueModule } from './features/demo-queue/demo-queue.module';
 import { DemoSerializationModule } from './features/demo-serialization/demo-serialization.module';
 import { DemoSessionModule } from './features/demo-session/demo-session.module';
+import { DemoSseModule } from './features/demo-sse/demo-sse.module';
 import { DemoStreamingFilesModule } from './features/demo-streaming-files/demo-streaming-files.module';
 
 const isTestEnvironment = process.env.NODE_ENV === 'test';
@@ -92,6 +93,7 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
     ...queueFeatureImports,
     DemoSerializationModule,
     DemoSessionModule,
+    DemoSseModule,
     DemoStreamingFilesModule,
     ScheduleModule.forRoot(),
   ],
