@@ -326,6 +326,39 @@ What it shows / 演示点：
   invalidation, and queue handoff should call real infrastructure services.
   示例只把记录存在内存里；生产审计、邮件、缓存失效和队列转交应调用真实基础设施服务。
 
+
+## Demo Streaming Files / 文件流响应示例
+
+Files / 文件：
+
+- `src/features/demo-streaming-files/demo-streaming-files.module.ts`
+- `src/features/demo-streaming-files/demo-streaming-files.controller.ts`
+- `src/features/demo-streaming-files/demo-streaming-files.service.ts`
+- `src/features/demo-streaming-files/demo-streaming-files.http.ts`
+- `src/features/demo-streaming-files/demo-streaming-files.types.ts`
+- `src/features/demo-streaming-files/dto/*.ts`
+
+Routes / 路由：
+
+```http
+GET /demo-streaming-files
+GET /demo-streaming-files/project/package-json
+GET /demo-streaming-files/project/readme
+GET /demo-streaming-files/generated/report.csv
+GET /demo-streaming-files/generated/note.txt
+```
+
+What it shows / 演示点：
+
+- `demo-streaming-files.service.ts` describes the file source, safe path
+  resolution, content type, filename, length, and inline/attachment mode.
+  `service` 描述文件来源、安全路径解析、内容类型、文件名、长度和 inline/attachment 模式。
+- `demo-streaming-files.http.ts` adapts that file description to NestJS
+  `StreamableFile` and HTTP `Content-Disposition`. `http` 文件把文件描述适配成
+  NestJS `StreamableFile` 和 HTTP `Content-Disposition`。
+- The controller delegates to the service and HTTP adapter; it does not create
+  file streams or compose response headers itself. controller 只委托 service 和 HTTP
+  adapter，不直接创建文件流或拼响应头。
 ## Verify / 验证
 
 Run the normal checks after changing demo behavior:
