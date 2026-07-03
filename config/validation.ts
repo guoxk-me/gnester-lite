@@ -2,6 +2,7 @@ import { plainToInstance, Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
@@ -83,6 +84,34 @@ class EnvironmentVariables {
   COMPRESSION_ENABLED: boolean = true;
   COMPRESSION_THRESHOLD: string = '1kb';
   COMPRESSION_LEVEL: number = 6;
+
+  @IsBoolean()
+  @Transform(({ value }) => parseBoolean(value))
+  @IsOptional()
+  SESSION_ENABLED: boolean = true;
+
+  @IsString()
+  @IsOptional()
+  SESSION_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  SESSION_COOKIE_NAME: string = 'gnester.sid';
+
+  @IsNumber()
+  @IsOptional()
+  @Min(1000)
+  SESSION_COOKIE_MAX_AGE: number = 86_400_000;
+
+  @IsBoolean()
+  @Transform(({ value }) => parseBoolean(value))
+  @IsOptional()
+  SESSION_COOKIE_SECURE?: boolean;
+
+  @IsString()
+  @IsIn(['lax', 'strict', 'none'])
+  @IsOptional()
+  SESSION_COOKIE_SAME_SITE: 'lax' | 'strict' | 'none' = 'lax';
 }
 
 export function validate(

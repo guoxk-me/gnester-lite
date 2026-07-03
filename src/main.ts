@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Logger, VersioningType } from '@nestjs/common';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
+import session from 'express-session';
 
 import { Environment } from 'config/config.types';
 import { createValidationPipe } from './common/validation/validation.pipe';
@@ -45,6 +46,42 @@ async function bootstrap(): Promise<void> {
     );
   }
   app.use(cookieParser(cookieSecret));
+
+  const sessionEnabled = configService.get<boolean>('SESSION_ENABLED', true);
+
+  if (sessionEnabled) {
+    if (nodeEnv === Environment.Production) {
+      throw new Error(
+        'SESSION_ENABLED=true uses the demo MemoryStore. Configure a production session store before enabling sessions in production.',
+      );
+    }
+
+    const sessionSecret =
+      configService.get<string>('SESSION_SECRET') ||
+      'gnester-lite-local-session-secret';
+
+    app.use(
+      session({
+        name: configService.get<string>('SESSION_COOKIE_NAME', 'gnester.sid'),
+        secret: sessionSecret,
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+          httpOnly: true,
+          secure: configService.get<boolean>('SESSION_COOKIE_SECURE', false),
+          sameSite: configService.get<'lax' | 'strict' | 'none'>(
+            'SESSION_COOKIE_SAME_SITE',
+            'lax',
+          ),
+          maxAge: configService.get<number>(
+            'SESSION_COOKIE_MAX_AGE',
+            86_400_000,
+          ),
+        },
+      }),
+    );
+  }
+
   app.useGlobalPipes(createValidationPipe(nodeEnv));
   app.enableVersioning({
     type: VersioningType.URI,
