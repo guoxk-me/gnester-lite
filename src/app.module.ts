@@ -15,6 +15,7 @@ import { CommonCacheModule } from './common/cache/cache.module';
 import { CommonCsrfModule } from './common/csrf/csrf.module';
 import { CommonHttpClientModule } from './common/http-client/http-client.module';
 import { CommonQueueModule } from './common/queue/queue.module';
+import { CommonRateLimitModule } from './common/rate-limit/rate-limit.module';
 import { DemoCacheModule } from './features/demo-cache/demo-cache.module';
 import { DemoConfigModule } from './features/demo-config/demo-config.module';
 import { DemoCookiesModule } from './features/demo-cookies/demo-cookies.module';
@@ -23,6 +24,7 @@ import { DemoDatabaseModule } from './features/demo-database/demo-database.modul
 import { DemoEventsModule } from './features/demo-events/demo-events.module';
 import { DemoHttpModule } from './features/demo-http/demo-http.module';
 import { DemoQueueModule } from './features/demo-queue/demo-queue.module';
+import { DemoRateLimitModule } from './features/demo-rate-limit/demo-rate-limit.module';
 import { DemoSerializationModule } from './features/demo-serialization/demo-serialization.module';
 import { DemoSessionModule } from './features/demo-session/demo-session.module';
 import { DemoSseModule } from './features/demo-sse/demo-sse.module';
@@ -87,6 +89,7 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
     CommonCsrfModule,
     CommonHttpClientModule,
     CommonQueueModule,
+    CommonRateLimitModule,
     DemoCacheModule,
     DemoConfigModule,
     DemoCookiesModule,
@@ -95,6 +98,7 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
     DemoEventsModule,
     DemoHttpModule,
     ...queueFeatureImports,
+    DemoRateLimitModule,
     DemoSerializationModule,
     DemoSessionModule,
     DemoSseModule,

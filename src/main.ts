@@ -1,11 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { Logger, VersioningType } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
 
-import { Environment } from 'config/config.types';
+import { Environment, RateLimitConfig } from 'config/config.types';
 import { createValidationPipe } from './common/validation/validation.pipe';
 import { AppModule } from './app.module';
 import { CsrfService } from './common/csrf/csrf.service';
@@ -13,7 +14,7 @@ import { CsrfService } from './common/csrf/csrf.service';
 const logger = new Logger('Bootstrap');
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
   const nodeEnv = configService.get<Environment>(
@@ -30,6 +31,10 @@ async function bootstrap(): Promise<void> {
     '1kb',
   );
   const compressionLevel = configService.get<number>('COMPRESSION_LEVEL', 6);
+  const rateLimitConfig =
+    configService.getOrThrow<RateLimitConfig>('rateLimit');
+
+  app.set('trust proxy', rateLimitConfig.trustProxy);
 
   if (compressionEnabled) {
     app.use(
