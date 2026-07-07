@@ -112,6 +112,38 @@ class EnvironmentVariables {
   @IsIn(['lax', 'strict', 'none'])
   @IsOptional()
   SESSION_COOKIE_SAME_SITE: 'lax' | 'strict' | 'none' = 'lax';
+
+  @IsBoolean()
+  @Transform(parseBooleanTransform)
+  @IsOptional()
+  CSRF_ENABLED: boolean = true;
+
+  @IsString()
+  @IsOptional()
+  CSRF_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  CSRF_COOKIE_NAME: string = 'gnester.csrf-token';
+
+  @IsString()
+  @IsOptional()
+  CSRF_IDENTIFIER_COOKIE_NAME: string = 'gnester.csrf-id';
+
+  @IsBoolean()
+  @Transform(parseBooleanTransform)
+  @IsOptional()
+  CSRF_COOKIE_SECURE?: boolean;
+
+  @IsString()
+  @IsIn(['lax', 'strict', 'none'])
+  @IsOptional()
+  CSRF_COOKIE_SAME_SITE: 'lax' | 'strict' | 'none' = 'lax';
+
+  @IsString()
+  @Matches(/^[A-Za-z0-9-]+$/)
+  @IsOptional()
+  CSRF_HEADER_NAME: string = 'x-csrf-token';
 }
 
 export function validate(
@@ -129,6 +161,16 @@ export function validate(
 
   if (errors.length > 0) {
     throw new Error(errors.toString());
+  }
+
+  if (
+    validatedConfig.NODE_ENV === Environment.Production &&
+    validatedConfig.CSRF_ENABLED &&
+    !validatedConfig.CSRF_SECRET
+  ) {
+    throw new Error(
+      'CSRF_SECRET is required in production when CSRF is enabled.',
+    );
   }
   return validatedConfig;
 }

@@ -11,6 +11,7 @@ This document records the demo feature modules under `src/features/`.
 `src/app.module.ts` 注册了这些 demo 模块：
 
 - `DemoConfigModule`: configuration reading example. 配置读取示例。
+- `DemoCsrfModule`: CSRF token and protected mutation examples. CSRF token 与受保护写请求示例。
 - `DemoDatabaseModule`: pure TypeORM database examples. 纯 TypeORM 数据库示例。
 - `DemoEventsModule`: in-process event emitter examples. 进程内事件示例。
 
@@ -48,6 +49,67 @@ What it shows / 演示点：
   必填配置使用 `getOrThrow()` 读取。
 - `app.name` comes from `config/config.yaml`.
   `app.name` 来自 `config/config.yaml`。
+
+## Demo CSRF / CSRF 示例
+
+Files / 文件：
+
+- `src/common/csrf/csrf.module.ts`
+- `src/common/csrf/csrf.service.ts`
+- `src/features/demo-csrf/demo-csrf.module.ts`
+- `src/features/demo-csrf/demo-csrf.controller.ts`
+- `src/features/demo-csrf/demo-csrf.service.ts`
+- `src/features/demo-csrf/dto/*.ts`
+
+Routes / 路由：
+
+```http
+GET /demo-csrf
+GET /demo-csrf/token
+POST /demo-csrf/transfer-preview
+```
+
+Token flow / Token 流程：
+
+```http
+GET /demo-csrf/token
+```
+
+```json
+{
+  "csrfToken": "<token>",
+  "headerName": "x-csrf-token"
+}
+```
+
+Protected mutation / 受保护写请求：
+
+```http
+POST /demo-csrf/transfer-preview
+x-csrf-token: <token>
+Content-Type: application/json
+
+{
+  "recipient": "alice@example.com",
+  "amount": 25
+}
+```
+
+What it shows / 演示点：
+
+- `CsrfService` wraps `csrf-csrf` behind a Nest provider so bootstrap code and
+  controllers share the same token settings.
+  `CsrfService` 用 Nest provider 封装 `csrf-csrf`，让启动代码和 controller 共享同一套 token 配置。
+- `src/main.ts` registers CSRF after cookie/session middleware and before global
+  pipes and routes. `src/main.ts` 在 cookie/session 中间件之后、全局 pipe 和路由之前注册 CSRF。
+- Browser clients fetch a token first, then submit it in `x-csrf-token` for
+  unsafe methods. 浏览器客户端先获取 token，再在 unsafe method 中通过
+  `x-csrf-token` 提交。
+- Missing or invalid tokens return a stable `CSRF_TOKEN_INVALID` 403 response.
+  token 缺失或无效时返回稳定的 `CSRF_TOKEN_INVALID` 403 响应。
+- The overview endpoint documents when CSRF is needed and when bearer-token APIs
+  usually do not need it. overview 接口说明哪些场景需要 CSRF，以及为什么纯 bearer-token API 通常不需要。
+
 
 ## Demo Database / 数据库示例
 

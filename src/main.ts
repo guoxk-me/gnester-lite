@@ -8,6 +8,7 @@ import session from 'express-session';
 import { Environment } from 'config/config.types';
 import { createValidationPipe } from './common/validation/validation.pipe';
 import { AppModule } from './app.module';
+import { CsrfService } from './common/csrf/csrf.service';
 
 const logger = new Logger('Bootstrap');
 
@@ -83,6 +84,9 @@ async function bootstrap(): Promise<void> {
   }
 
   app.useGlobalPipes(createValidationPipe(nodeEnv));
+  const csrfService = app.get(CsrfService);
+  app.use(csrfService.createProtectionMiddleware());
+  app.use(csrfService.createErrorHandler());
   app.enableVersioning({
     type: VersioningType.URI,
     prefix: 'v',
