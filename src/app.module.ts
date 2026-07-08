@@ -18,6 +18,7 @@ import { CommonQueueModule } from './common/queue/queue.module';
 import { CommonRateLimitModule } from './common/rate-limit/rate-limit.module';
 import { DemoCacheModule } from './features/demo-cache/demo-cache.module';
 import { DemoConfigModule } from './features/demo-config/demo-config.module';
+import { DemoCorsModule } from './features/demo-cors/demo-cors.module';
 import { DemoCookiesModule } from './features/demo-cookies/demo-cookies.module';
 import { DemoCsrfModule } from './features/demo-csrf/demo-csrf.module';
 import { DemoDatabaseModule } from './features/demo-database/demo-database.module';
@@ -92,6 +93,7 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
     CommonRateLimitModule,
     DemoCacheModule,
     DemoConfigModule,
+    DemoCorsModule,
     DemoCookiesModule,
     DemoCsrfModule,
     DemoDatabaseModule,

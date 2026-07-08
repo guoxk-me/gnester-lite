@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import session from 'express-session';
 
 import { Environment, RateLimitConfig } from 'config/config.types';
+import { createCorsOptions } from './common/cors/cors.config';
 import { createValidationPipe } from './common/validation/validation.pipe';
 import { AppModule } from './app.module';
 import { CsrfService } from './common/csrf/csrf.service';
@@ -33,8 +34,13 @@ async function bootstrap(): Promise<void> {
   const compressionLevel = configService.get<number>('COMPRESSION_LEVEL', 6);
   const rateLimitConfig =
     configService.getOrThrow<RateLimitConfig>('rateLimit');
+  const corsOptions = createCorsOptions(configService, nodeEnv);
 
   app.set('trust proxy', rateLimitConfig.trustProxy);
+
+  if (corsOptions) {
+    app.enableCors(corsOptions);
+  }
 
   if (compressionEnabled) {
     app.use(

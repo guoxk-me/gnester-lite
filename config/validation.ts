@@ -81,6 +81,44 @@ class EnvironmentVariables {
   })
   @IsOptional()
   REDIS_URL: string = 'redis://localhost:6379';
+
+  @IsBoolean()
+  @Transform(({ value }) => parseBoolean(value))
+  @IsOptional()
+  CORS_ENABLED: boolean = true;
+
+  @IsString()
+  @IsOptional()
+  CORS_ORIGINS?: string;
+
+  @IsBoolean()
+  @Transform(({ value }) => parseBoolean(value))
+  @IsOptional()
+  CORS_CREDENTIALS: boolean = true;
+
+  @IsString()
+  @IsOptional()
+  CORS_METHODS: string = 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS';
+
+  @IsString()
+  @IsOptional()
+  CORS_ALLOWED_HEADERS?: string;
+
+  @IsString()
+  @IsOptional()
+  CORS_EXPOSED_HEADERS?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  CORS_MAX_AGE: number = 600;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(200)
+  @Max(299)
+  CORS_OPTIONS_SUCCESS_STATUS: number = 204;
+
   COMPRESSION_ENABLED: boolean = true;
   COMPRESSION_THRESHOLD: string = '1kb';
   COMPRESSION_LEVEL: number = 6;
@@ -163,6 +201,8 @@ export function validate(
     throw new Error(errors.toString());
   }
 
+  validateCorsConfig(validatedConfig);
+
   if (
     validatedConfig.NODE_ENV === Environment.Production &&
     validatedConfig.CSRF_ENABLED &&
@@ -173,4 +213,35 @@ export function validate(
     );
   }
   return validatedConfig;
+}
+
+function validateCorsConfig(config: EnvironmentVariables): void {
+  if (!config.CORS_ENABLED) {
+    return;
+  }
+
+  const origins = parseCsv(config.CORS_ORIGINS);
+
+  if (config.NODE_ENV === Environment.Production && origins.length === 0) {
+    throw new Error(
+      'CORS_ORIGINS is required when CORS is enabled in production.',
+    );
+  }
+
+  if (config.CORS_CREDENTIALS && origins.includes('*')) {
+    throw new Error(
+      'CORS_CREDENTIALS=true cannot be combined with CORS_ORIGINS=*.',
+    );
+  }
+
+  if (origins.includes('*') && origins.length > 1) {
+    throw new Error('CORS_ORIGINS=* cannot be combined with other origins.');
+  }
+}
+
+function parseCsv(value: string | undefined): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
 }
