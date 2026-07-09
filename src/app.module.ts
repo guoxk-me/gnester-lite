@@ -26,6 +26,7 @@ import { DemoEventsModule } from './features/demo-events/demo-events.module';
 import { DemoHttpModule } from './features/demo-http/demo-http.module';
 import { DemoQueueModule } from './features/demo-queue/demo-queue.module';
 import { DemoRateLimitModule } from './features/demo-rate-limit/demo-rate-limit.module';
+import { DemoSecurityModule } from './features/demo-security/demo-security.module';
 import { DemoSerializationModule } from './features/demo-serialization/demo-serialization.module';
 import { DemoSessionModule } from './features/demo-session/demo-session.module';
 import { DemoSseModule } from './features/demo-sse/demo-sse.module';
@@ -101,6 +102,7 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
     DemoHttpModule,
     ...queueFeatureImports,
     DemoRateLimitModule,
+    DemoSecurityModule,
     DemoSerializationModule,
     DemoSessionModule,
     DemoSseModule,

@@ -50,6 +50,64 @@ What it shows / 演示点：
 - `app.name` comes from `config/config.yaml`.
   `app.name` 来自 `config/config.yaml`。
 
+## Demo Security / 安全响应头示例
+
+Files / 文件：
+
+- `src/common/security/helmet-options.ts`
+- `src/common/security/security.middleware.ts`
+- `src/features/demo-security/demo-security.module.ts`
+- `src/features/demo-security/demo-security.controller.ts`
+- `src/features/demo-security/demo-security.service.ts`
+- `src/features/demo-security/dto/*.ts`
+
+Route / 路由：
+
+```http
+GET /demo-security
+```
+
+Example response shape / 示例响应结构：
+
+```json
+{
+  "middleware": "helmet",
+  "registration": "global bootstrap middleware before compression, cookies, sessions, pipes, versioning, and routes",
+  "headers": [
+    {
+      "name": "Content-Security-Policy",
+      "defaultValue": "default-src 'self'; object-src 'none'; base-uri 'self'",
+      "purpose": "Restricts browser-loadable resources to reduce XSS and content injection risk."
+    }
+  ],
+  "scenarios": [
+    "Public REST APIs that should not leak framework fingerprints",
+    "Browser-consumed APIs that need baseline XSS and clickjacking headers",
+    "Production HTTPS services that should emit HSTS"
+  ],
+  "notes": []
+}
+```
+
+What it shows / 演示点：
+
+- Helmet is applied in `src/main.ts` through `applySecurityMiddleware()` before
+  compression, cookies, sessions, pipes, versioning, and route handling.
+  Helmet 通过 `applySecurityMiddleware()` 在 `src/main.ts` 中提前注册，早于压缩、cookie、session、pipe、版本化和路由处理。
+- `createHelmetOptions()` centralizes environment-specific security header
+  decisions. `createHelmetOptions()` 集中管理按环境变化的安全响应头配置。
+- Development and test disable HSTS plus CSP `upgrade-insecure-requests`, so
+  local HTTP remains usable. development 和 test 环境关闭 HSTS 以及 CSP
+  `upgrade-insecure-requests`，避免影响本地 HTTP 开发。
+- Production enables HSTS with `max-age=31536000; includeSubDomains`.
+  production 环境启用 `max-age=31536000; includeSubDomains` 的 HSTS。
+- `crossOriginEmbedderPolicy` is disabled by default because general Nest
+  templates often add Swagger, GraphQL sandboxes, or third-party browser assets.
+  默认关闭 `crossOriginEmbedderPolicy`，因为通用 Nest 模板经常接入 Swagger、GraphQL sandbox 或第三方浏览器资源。
+- The feature module only documents observable behavior; global security
+  middleware stays in bootstrap code because middleware order is a startup
+  concern. feature 模块只说明可观察行为；全局安全中间件保留在启动代码中，因为中间件顺序属于启动层职责。
+
 ## Demo CSRF / CSRF 示例
 
 Files / 文件：

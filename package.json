@@ -45,6 +45,7 @@
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "express-session": "^1.19.0",
+    "helmet": "^8.2.0",
     "js-yaml": "^4.1.1",
     "mysql2": "^3.20.0",
     "reflect-metadata": "^0.2.2",

@@ -11,6 +11,7 @@ import { createCorsOptions } from './common/cors/cors.config';
 import { createValidationPipe } from './common/validation/validation.pipe';
 import { AppModule } from './app.module';
 import { CsrfService } from './common/csrf/csrf.service';
+import { applySecurityMiddleware } from './common/security/security.middleware';
 
 const logger = new Logger('Bootstrap');
 
@@ -37,6 +38,7 @@ async function bootstrap(): Promise<void> {
   const corsOptions = createCorsOptions(configService, nodeEnv);
 
   app.set('trust proxy', rateLimitConfig.trustProxy);
+  applySecurityMiddleware(app, nodeEnv);
 
   if (corsOptions) {
     app.enableCors(corsOptions);
