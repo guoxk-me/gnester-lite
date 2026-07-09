@@ -1,3 +1,4 @@
+// CN: 项目文件，支持 eslint 的实现；EN: Project file supports implementation for eslint.
 // @ts-check
 import eslint from '@eslint/js';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';

@@ -1,3 +1,4 @@
+// CN: 实体文件，定义 demo-database 的数据库映射；EN: Entity file defines database mapping for demo-database.
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()

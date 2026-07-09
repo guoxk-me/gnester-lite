@@ -1,3 +1,4 @@
+// CN: 管道，转换或校验 validation common 的输入；EN: Pipe transforms or validates input for validation common.
 import {
   BadRequestException,
   type ValidationError,
@@ -12,6 +13,7 @@ export interface ValidationErrorDetail {
   readonly reason: string;
 }
 
+// CN: 校验或转换 validation common 的 collect validation errors 输入；EN: Validates or transforms collect validation errors input for validation common.
 function collectValidationErrors(
   errors: ValidationError[],
   parentPath = '',
@@ -35,6 +37,7 @@ function collectValidationErrors(
   });
 }
 
+// CN: 校验或转换 validation common 的 validation exception factory 输入；EN: Validates or transforms validation exception factory input for validation common.
 export function validationExceptionFactory(
   errors: ValidationError[],
 ): BadRequestException {
@@ -47,6 +50,7 @@ export function validationExceptionFactory(
   });
 }
 
+// CN: 校验或转换 validation common 的 create validation pipe 输入；EN: Validates or transforms create validation pipe input for validation common.
 export function createValidationPipe(
   nodeEnv: Environment,
   options: ValidationPipeOptions = {},

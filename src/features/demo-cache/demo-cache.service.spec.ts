@@ -1,8 +1,10 @@
+// CN: 测试文件，验证 demo-cache 的行为契约；EN: Test file verifies behavior contracts for demo-cache.
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CacheService } from '../../common/cache/cache.service';
 import { DemoCacheService } from './demo-cache.service';
 
+// CN: 测试分组：DemoCacheService；EN: Test group: DemoCacheService.
 describe('DemoCacheService', () => {
   const cacheService: jest.Mocked<Pick<CacheService, 'get' | 'set' | 'del'>> = {
     get: jest.fn(),
@@ -11,6 +13,7 @@ describe('DemoCacheService', () => {
   };
   let service: DemoCacheService;
 
+  // CN: 测试准备，组织或验证测试流程；EN: Test setup organizes or verifies the test flow.
   beforeEach(async () => {
     jest.clearAllMocks();
     cacheService.get.mockResolvedValue(undefined);
@@ -28,6 +31,7 @@ describe('DemoCacheService', () => {
     service = module.get<DemoCacheService>(DemoCacheService);
   });
 
+  // CN: 测试用例：creates a cache item and tracks its key without declaring a local ttl；EN: Test case: creates a cache item and tracks its key without declaring a local ttl.
   it('creates a cache item and tracks its key without declaring a local ttl', async () => {
     await expect(
       service.create({ key: 'welcome', value: 'hello cache' }),
@@ -45,6 +49,7 @@ describe('DemoCacheService', () => {
     ]);
   });
 
+  // CN: 测试用例：lists tracked cache items and skips expired values；EN: Test case: lists tracked cache items and skips expired values.
   it('lists tracked cache items and skips expired values', async () => {
     cacheService.get
       .mockResolvedValueOnce(['first', 'expired'])
@@ -59,6 +64,7 @@ describe('DemoCacheService', () => {
     ]);
   });
 
+  // CN: 测试用例：returns one cache item by key；EN: Test case: returns one cache item by key.
   it('returns one cache item by key', async () => {
     cacheService.get.mockResolvedValueOnce('cached value');
 
@@ -69,12 +75,14 @@ describe('DemoCacheService', () => {
     expect(cacheService.get).toHaveBeenCalledWith('demo-cache:item:welcome');
   });
 
+  // CN: 测试用例：throws NotFoundException when a cache item is missing；EN: Test case: throws NotFoundException when a cache item is missing.
   it('throws NotFoundException when a cache item is missing', async () => {
     await expect(service.findOne('missing')).rejects.toBeInstanceOf(
       NotFoundException,
     );
   });
 
+  // CN: 测试用例：updates an existing cache item without declaring a local ttl；EN: Test case: updates an existing cache item without declaring a local ttl.
   it('updates an existing cache item without declaring a local ttl', async () => {
     cacheService.get.mockResolvedValueOnce('old value');
 
@@ -91,6 +99,7 @@ describe('DemoCacheService', () => {
     );
   });
 
+  // CN: 测试用例：removes a cache item and updates the tracked key index；EN: Test case: removes a cache item and updates the tracked key index.
   it('removes a cache item and updates the tracked key index', async () => {
     cacheService.get
       .mockResolvedValueOnce('cached value')

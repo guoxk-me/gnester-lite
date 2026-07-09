@@ -1,3 +1,4 @@
+// CN: 控制器，定义 demo-serialization 的 HTTP 接口；EN: Controller defines HTTP endpoints for demo-serialization.
 import {
   ClassSerializerInterceptor,
   Controller,
@@ -17,21 +18,25 @@ import { DemoSerializationService } from './demo-serialization.service';
   path: 'demo-serialization',
 })
 export class DemoSerializationController {
+  // CN: 初始化 demo-serialization 的依赖和运行状态；EN: Initializes dependencies and runtime state for demo-serialization.
   constructor(
     private readonly demoSerializationService: DemoSerializationService,
   ) {}
 
+  // CN: 处理 demo-serialization 的 find profile HTTP 请求；EN: Handles the find profile HTTP request for demo-serialization.
   @Get('profile')
   findProfile(): DemoSerializationUserDto {
     return this.demoSerializationService.findProfile();
   }
 
+  // CN: 处理 demo-serialization 的 find admin profile HTTP 请求；EN: Handles the find admin profile HTTP request for demo-serialization.
   @Get('profile/admin')
   @SerializeOptions({ groups: ['admin'], excludePrefixes: ['_'] })
   findAdminProfile(): DemoSerializationUserDto {
     return this.demoSerializationService.findAdminProfile();
   }
 
+  // CN: 处理 demo-serialization 的 find plain profile HTTP 请求；EN: Handles the find plain profile HTTP request for demo-serialization.
   @Get('profile/plain')
   @SerializeOptions({
     type: DemoSerializationUserDto,
@@ -41,6 +46,7 @@ export class DemoSerializationController {
     return this.demoSerializationService.findPlainProfile();
   }
 
+  // CN: 处理 demo-serialization 的 find plain page HTTP 请求；EN: Handles the find plain page HTTP request for demo-serialization.
   @Get('page/plain')
   @SerializeOptions({
     type: DemoSerializationPageDto,

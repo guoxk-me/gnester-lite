@@ -3,6 +3,7 @@ import { createDatabaseCliOptions } from './database.config';
 
 const databaseOptions = createDatabaseCliOptions();
 
+// CN: TypeORM CLI 数据源用于迁移生成和执行；EN: TypeORM CLI data source drives migrations.
 export default new DataSource({
   type: databaseOptions.type,
   host: databaseOptions.host,

@@ -1,3 +1,4 @@
+// CN: 服务，承载 demo-serialization 的业务逻辑；EN: Service holds business logic for demo-serialization.
 import { Injectable } from '@nestjs/common';
 import { DemoSerializationRoleDto } from './dto/demo-serialization-role.dto';
 import { DemoSerializationUserDto } from './dto/demo-serialization-user.dto';
@@ -23,18 +24,22 @@ type PlainDemoSerializationPage = {
 
 @Injectable()
 export class DemoSerializationService {
+  // CN: 执行 demo-serialization 的 find profile 业务逻辑；EN: Runs the find profile business logic for demo-serialization.
   findProfile(): DemoSerializationUserDto {
     return new DemoSerializationUserDto(this.createPlainProfile());
   }
 
+  // CN: 执行 demo-serialization 的 find admin profile 业务逻辑；EN: Runs the find admin profile business logic for demo-serialization.
   findAdminProfile(): DemoSerializationUserDto {
     return new DemoSerializationUserDto(this.createPlainProfile());
   }
 
+  // CN: 执行 demo-serialization 的 find plain profile 业务逻辑；EN: Runs the find plain profile business logic for demo-serialization.
   findPlainProfile(): PlainDemoSerializationUser {
     return this.createPlainProfile();
   }
 
+  // CN: 执行 demo-serialization 的 find plain page 业务逻辑；EN: Runs the find plain page business logic for demo-serialization.
   findPlainPage(): PlainDemoSerializationPage {
     return {
       data: [this.createPlainProfile()],
@@ -45,6 +50,7 @@ export class DemoSerializationService {
     };
   }
 
+  // CN: 执行 demo-serialization 的 create plain profile 业务逻辑；EN: Runs the create plain profile business logic for demo-serialization.
   private createPlainProfile(): PlainDemoSerializationUser {
     return {
       id: 1,

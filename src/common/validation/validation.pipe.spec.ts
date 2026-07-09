@@ -1,3 +1,4 @@
+// CN: 测试文件，验证 validation common 的行为契约；EN: Test file verifies behavior contracts for validation common.
 import { BadRequestException } from '@nestjs/common';
 import type { ValidationError } from '@nestjs/common';
 
@@ -7,13 +8,16 @@ import {
 } from './validation.pipe';
 import { Environment } from 'config/config.types';
 
+// CN: 测试分组：validation pipe helpers；EN: Test group: validation pipe helpers.
 describe('validation pipe helpers', () => {
+  // CN: 测试用例：builds the shared ValidationPipe with secure defaults；EN: Test case: builds the shared ValidationPipe with secure defaults.
   it('builds the shared ValidationPipe with secure defaults', () => {
     const pipe = createValidationPipe(Environment.Development);
 
     expect(pipe).toBeDefined();
   });
 
+  // CN: 测试用例：flattens nested validation errors into field paths；EN: Test case: flattens nested validation errors into field paths.
   it('flattens nested validation errors into field paths', () => {
     const exception = validationExceptionFactory([
       {

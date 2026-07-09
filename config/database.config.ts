@@ -6,6 +6,7 @@ const RUNTIME_MIGRATION_GLOBS = ['dist/migrations/*.js'];
 const CLI_ENTITY_GLOBS = ['src/**/*.entity.ts', ...RUNTIME_ENTITY_GLOBS];
 const CLI_MIGRATION_GLOBS = ['src/migrations/*.ts', ...RUNTIME_MIGRATION_GLOBS];
 
+// CN: 数据库配置只从 DB_* 环境变量派生；EN: Database config is derived from DB_* env vars.
 function parseBoolean(
   value: string | undefined,
   defaultValue: boolean,
@@ -17,10 +18,12 @@ function parseBoolean(
   return value.toLowerCase() === 'true';
 }
 
+// CN: 生成或校验 configuration 的 get database env value 配置；EN: Builds or validates the get database env value configuration for configuration.
 function getDatabaseEnvValue(key: string): string | undefined {
   return process.env[`DB_${key}`];
 }
 
+// CN: 生成或校验 configuration 的 create data source options 配置；EN: Builds or validates the create data source options configuration for configuration.
 function createDataSourceOptions(): DatabaseOptions {
   const isProduction = process.env.NODE_ENV === 'production';
   const synchronize = parseBoolean(getDatabaseEnvValue('SYNCHRONIZE'), false);
@@ -44,10 +47,12 @@ function createDataSourceOptions(): DatabaseOptions {
   };
 }
 
+// CN: 运行时数据库配置；EN: Runtime database configuration.
 export function createDatabaseOptions(): DatabaseOptions {
   return createDataSourceOptions();
 }
 
+// CN: TypeORM CLI 使用源码和构建产物路径；EN: TypeORM CLI uses source and build paths.
 export function createDatabaseCliOptions(): DatabaseOptions {
   return {
     ...createDataSourceOptions(),
