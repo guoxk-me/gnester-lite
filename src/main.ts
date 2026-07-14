@@ -12,6 +12,7 @@ import { createValidationPipe } from './common/validation/validation.pipe';
 import { AppModule } from './app.module';
 import { CsrfService } from './common/csrf/csrf.service';
 import { applySecurityMiddleware } from './common/security/security.middleware';
+import { DemoSocketIoAdapter } from './common/websocket/demo-socket-io.adapter';
 
 const logger = new Logger('Bootstrap');
 
@@ -37,6 +38,7 @@ async function bootstrap(): Promise<void> {
     configService.getOrThrow<RateLimitConfig>('rateLimit');
   const corsOptions = createCorsOptions(configService, nodeEnv);
 
+  app.useWebSocketAdapter(new DemoSocketIoAdapter(app));
   app.set('trust proxy', rateLimitConfig.trustProxy);
   applySecurityMiddleware(app, nodeEnv);
 

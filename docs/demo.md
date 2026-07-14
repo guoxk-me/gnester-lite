@@ -14,6 +14,7 @@ This document records the demo feature modules under `src/features/`.
 - `DemoCsrfModule`: CSRF token and protected mutation examples. CSRF token 与受保护写请求示例。
 - `DemoDatabaseModule`: pure TypeORM database examples. 纯 TypeORM 数据库示例。
 - `DemoEventsModule`: in-process event emitter examples. 进程内事件示例。
+- `DemoWebsocketModule`: authenticated Socket.IO gateway examples. 已认证 Socket.IO gateway 示例。
 
 The database demo intentionally focuses on database scenarios only. It does not demonstrate API versioning, interceptors, cache, or scheduled jobs.
 

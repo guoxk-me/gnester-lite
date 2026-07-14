@@ -31,6 +31,7 @@ import { DemoSerializationModule } from './features/demo-serialization/demo-seri
 import { DemoSessionModule } from './features/demo-session/demo-session.module';
 import { DemoSseModule } from './features/demo-sse/demo-sse.module';
 import { DemoStreamingFilesModule } from './features/demo-streaming-files/demo-streaming-files.module';
+import { DemoWebsocketModule } from './features/demo-websocket/demo-websocket.module';
 
 const isTestEnvironment = process.env.NODE_ENV === 'test';
 const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
@@ -107,6 +108,7 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
     DemoSessionModule,
     DemoSseModule,
     DemoStreamingFilesModule,
+    DemoWebsocketModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
