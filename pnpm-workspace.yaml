@@ -1,8 +1,22 @@
+# CN: 配置文件，定义 pnpm workspace 的默认参数；EN: Config file defines default settings for pnpm workspace.
 allowBuilds:
+  '@hyperjump/json-pointer': true
+  '@hyperjump/json-schema': true
+  '@hyperjump/json-schema-core': true
+  '@hyperjump/pact': true
   '@nestjs/core': true
+  '@scarf/scarf': false
   msgpackr-extract: true
+  protobufjs: true
+  puppeteer: true
   unrs-resolver: true
 onlyBuiltDependencies:
+  - '@hyperjump/json-pointer'
+  - '@hyperjump/json-schema'
+  - '@hyperjump/json-schema-core'
+  - '@hyperjump/pact'
   - '@nestjs/core'
   - msgpackr-extract
+  - protobufjs
+  - puppeteer
   - unrs-resolver

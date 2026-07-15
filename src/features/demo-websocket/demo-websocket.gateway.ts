@@ -14,12 +14,20 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import type { Server, Socket } from 'socket.io';
+import { AsyncApiReceive, AsyncApiSend } from 'nestjs-asyncapi';
 
 import type { JwtAuthenticatedUser } from '../../common/auth/types/jwt-authenticated-user.type';
 import { DemoWebsocketPingDto } from './dto/demo-websocket-ping.dto';
 import { DemoWebsocketRoomDto } from './dto/demo-websocket-room.dto';
 import { DemoWebsocketRoomMessageDto } from './dto/demo-websocket-room-message.dto';
 import { DemoWebsocketScenarioDto } from './dto/demo-websocket-scenario.dto';
+import {
+  DemoWebsocketErrorDto,
+  DemoWebsocketMessageAcceptedDto,
+  DemoWebsocketPongResponseDto,
+  DemoWebsocketRoomBroadcastDto,
+  DemoWebsocketRoomJoinedResponseDto,
+} from './dto/demo-websocket-response.dto';
 import { DemoWebsocketAuthenticatedGuard } from './demo-websocket-authenticated.guard';
 import { DemoWebsocketExceptionFilter } from './demo-websocket-exception.filter';
 import { DemoWebsocketResponseInterceptor } from './demo-websocket-response.interceptor';
@@ -51,6 +59,13 @@ export class DemoWebsocketGateway
   constructor(private readonly demoWebsocketService: DemoWebsocketService) {}
 
   // CN: 处理 demo-websocket 的 handle connection 实时消息；EN: Handles the handle connection real-time message for demo-websocket.
+  @AsyncApiSend({
+    channel: 'demo-websocket.error',
+    message: {
+      name: 'DemoWebsocketError',
+      payload: DemoWebsocketErrorDto,
+    },
+  })
   async handleConnection(client: DemoWebsocketSocket): Promise<void> {
     try {
       const user = await this.demoWebsocketService.verifyAccessToken(
@@ -75,6 +90,20 @@ export class DemoWebsocketGateway
 
   // CN: 处理 demo-websocket 的 handle scenarios 实时消息；EN: Handles the handle scenarios real-time message for demo-websocket.
   @SubscribeMessage('demo-websocket.scenarios')
+  @AsyncApiReceive({
+    channel: 'demo-websocket.scenarios',
+    message: {
+      name: 'DemoWebsocketScenariosRequest',
+      payload: 'void',
+    },
+  })
+  @AsyncApiSend({
+    channel: 'demo-websocket.scenarios',
+    message: {
+      name: 'DemoWebsocketScenariosResponse',
+      payload: DemoWebsocketScenarioDto,
+    },
+  })
   handleScenarios(): {
     readonly event: 'demo-websocket.scenarios';
     readonly data: DemoWebsocketScenarioDto[];
@@ -87,6 +116,20 @@ export class DemoWebsocketGateway
 
   // CN: 处理 demo-websocket 的 handle ping 实时消息；EN: Handles the handle ping real-time message for demo-websocket.
   @SubscribeMessage('demo-websocket.ping')
+  @AsyncApiReceive({
+    channel: 'demo-websocket.ping',
+    message: {
+      name: 'DemoWebsocketPing',
+      payload: DemoWebsocketPingDto,
+    },
+  })
+  @AsyncApiSend({
+    channel: 'demo-websocket.pong',
+    message: {
+      name: 'DemoWebsocketPong',
+      payload: DemoWebsocketPongResponseDto,
+    },
+  })
   handlePing(
     @MessageBody() dto: DemoWebsocketPingDto,
     @ConnectedSocket() client: DemoWebsocketSocket,
@@ -96,6 +139,20 @@ export class DemoWebsocketGateway
 
   // CN: 处理 demo-websocket 的 handle join room 实时消息；EN: Handles the handle join room real-time message for demo-websocket.
   @SubscribeMessage('demo-websocket.room.join')
+  @AsyncApiReceive({
+    channel: 'demo-websocket.room.join',
+    message: {
+      name: 'DemoWebsocketRoomJoin',
+      payload: DemoWebsocketRoomDto,
+    },
+  })
+  @AsyncApiSend({
+    channel: 'demo-websocket.room.joined',
+    message: {
+      name: 'DemoWebsocketRoomJoined',
+      payload: DemoWebsocketRoomJoinedResponseDto,
+    },
+  })
   async handleJoinRoom(
     @MessageBody() dto: DemoWebsocketRoomDto,
     @ConnectedSocket() client: DemoWebsocketSocket,
@@ -110,6 +167,29 @@ export class DemoWebsocketGateway
 
   // CN: 处理 demo-websocket 的 handle room message 实时消息；EN: Handles the handle room message real-time message for demo-websocket.
   @SubscribeMessage('demo-websocket.message')
+  @AsyncApiReceive({
+    channel: 'demo-websocket.message',
+    message: {
+      name: 'DemoWebsocketRoomMessage',
+      payload: DemoWebsocketRoomMessageDto,
+    },
+  })
+  @AsyncApiSend(
+    {
+      channel: 'demo-websocket.message',
+      message: {
+        name: 'DemoWebsocketRoomBroadcast',
+        payload: DemoWebsocketRoomBroadcastDto,
+      },
+    },
+    {
+      channel: 'demo-websocket.message.accepted',
+      message: {
+        name: 'DemoWebsocketMessageAccepted',
+        payload: DemoWebsocketMessageAcceptedDto,
+      },
+    },
+  )
   handleRoomMessage(
     @MessageBody() dto: DemoWebsocketRoomMessageDto,
     @ConnectedSocket() client: DemoWebsocketSocket,

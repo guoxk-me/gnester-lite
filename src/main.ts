@@ -13,6 +13,7 @@ import { AppModule } from './app.module';
 import { CsrfService } from './common/csrf/csrf.service';
 import { applySecurityMiddleware } from './common/security/security.middleware';
 import { DemoSocketIoAdapter } from './common/websocket/demo-socket-io.adapter';
+import { setupAsyncApi } from './common/asyncapi/asyncapi.config';
 
 const logger = new Logger('Bootstrap');
 
@@ -24,6 +25,7 @@ async function bootstrap(): Promise<void> {
     'NODE_ENV',
     Environment.Development,
   );
+  const isProduction = nodeEnv === Environment.Production;
   const cookieSecret = configService.get<string>('COOKIE_SECRET') || undefined;
   const compressionEnabled = configService.get<boolean>(
     'COMPRESSION_ENABLED',
@@ -107,6 +109,9 @@ async function bootstrap(): Promise<void> {
     prefix: 'v',
     defaultVersion: '1',
   });
+
+  setupAsyncApi(app, nodeEnv, port);
+
   await app.listen(port);
   logger.log(`Application is running on port ${port}`);
 }
