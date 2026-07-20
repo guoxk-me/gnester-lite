@@ -16,6 +16,8 @@ import { CommonCsrfModule } from './common/csrf/csrf.module';
 import { CommonHttpClientModule } from './common/http-client/http-client.module';
 import { CommonQueueModule } from './common/queue/queue.module';
 import { CommonRateLimitModule } from './common/rate-limit/rate-limit.module';
+import { DemoAuthorizationModule } from './features/demo-authorization/demo-authorization.module';
+import { DemoAuthModule } from './features/demo-auth/demo-auth.module';
 import { DemoCacheModule } from './features/demo-cache/demo-cache.module';
 import { DemoConfigModule } from './features/demo-config/demo-config.module';
 import { DemoCorsModule } from './features/demo-cors/demo-cors.module';
@@ -94,6 +96,8 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
     CommonHttpClientModule,
     CommonQueueModule,
     CommonRateLimitModule,
+    DemoAuthorizationModule,
+    DemoAuthModule,
     DemoCacheModule,
     DemoConfigModule,
     DemoCorsModule,

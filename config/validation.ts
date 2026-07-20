@@ -182,6 +182,22 @@ class EnvironmentVariables {
   @Matches(/^[A-Za-z0-9-]+$/)
   @IsOptional()
   CSRF_HEADER_NAME: string = 'x-csrf-token';
+
+  @IsString()
+  @IsOptional()
+  JWT_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  JWT_ACCESS_TOKEN_TTL: string = '15m';
+
+  @IsString()
+  @IsOptional()
+  JWT_ISSUER: string = 'gnester-lite';
+
+  @IsString()
+  @IsOptional()
+  JWT_AUDIENCE: string = 'gnester-lite';
 }
 
 export function validate(
@@ -202,6 +218,13 @@ export function validate(
   }
 
   validateCorsConfig(validatedConfig);
+
+  if (
+    validatedConfig.NODE_ENV === Environment.Production &&
+    !validatedConfig.JWT_SECRET
+  ) {
+    throw new Error('JWT_SECRET is required in production.');
+  }
 
   if (
     validatedConfig.NODE_ENV === Environment.Production &&
