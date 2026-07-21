@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   Max,
   Min,
   validateSync,
@@ -198,6 +199,15 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   JWT_AUDIENCE: string = 'gnester-lite';
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^[A-Za-z0-9_-]{43}$/)
+  ENCRYPTION_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  HMAC_SECRET?: string;
 }
 
 export function validate(
@@ -224,6 +234,20 @@ export function validate(
     !validatedConfig.JWT_SECRET
   ) {
     throw new Error('JWT_SECRET is required in production.');
+  }
+
+  if (
+    validatedConfig.NODE_ENV === Environment.Production &&
+    !validatedConfig.ENCRYPTION_KEY
+  ) {
+    throw new Error('ENCRYPTION_KEY is required in production.');
+  }
+
+  if (
+    validatedConfig.NODE_ENV === Environment.Production &&
+    !validatedConfig.HMAC_SECRET
+  ) {
+    throw new Error('HMAC_SECRET is required in production.');
   }
 
   if (

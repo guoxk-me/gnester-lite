@@ -23,6 +23,7 @@ import { DemoConfigModule } from './features/demo-config/demo-config.module';
 import { DemoCorsModule } from './features/demo-cors/demo-cors.module';
 import { DemoCookiesModule } from './features/demo-cookies/demo-cookies.module';
 import { DemoCsrfModule } from './features/demo-csrf/demo-csrf.module';
+import { DemoCryptoModule } from './features/demo-crypto/demo-crypto.module';
 import { DemoDatabaseModule } from './features/demo-database/demo-database.module';
 import { DemoEventsModule } from './features/demo-events/demo-events.module';
 import { DemoHttpModule } from './features/demo-http/demo-http.module';
@@ -103,6 +104,7 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
     DemoCorsModule,
     DemoCookiesModule,
     DemoCsrfModule,
+    DemoCryptoModule,
     DemoDatabaseModule,
     DemoEventsModule,
     DemoHttpModule,
