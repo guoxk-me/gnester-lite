@@ -14,6 +14,7 @@ import { CsrfService } from './common/csrf/csrf.service';
 import { applySecurityMiddleware } from './common/security/security.middleware';
 import { DemoSocketIoAdapter } from './common/websocket/demo-socket-io.adapter';
 import { setupAsyncApi } from './common/asyncapi/asyncapi.config';
+import { setupOpenApi } from './common/openapi/openapi.config';
 
 const logger = new Logger('Bootstrap');
 
@@ -110,6 +111,7 @@ async function bootstrap(): Promise<void> {
     defaultVersion: '1',
   });
 
+  setupOpenApi(app, nodeEnv);
   setupAsyncApi(app, nodeEnv, port);
 
   await app.listen(port);
