@@ -17,6 +17,11 @@ export interface CacheConfig {
   readonly ttl: number;
 }
 
+export interface ScheduleConfig {
+  readonly enabled: boolean;
+  readonly timeZone: string;
+}
+
 export interface QueueConfig {
   readonly enabled: boolean;
   readonly prefix: string;

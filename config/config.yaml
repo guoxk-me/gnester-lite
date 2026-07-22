@@ -4,6 +4,10 @@ app:
 cache:
   ttl: 0
 
+schedule:
+  enabled: true
+  timeZone: Asia/Shanghai
+
 queue:
   enabled: true
   prefix: gnester-lite

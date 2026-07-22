@@ -17,6 +17,7 @@ import { CommonHealthModule } from './common/health/health.module';
 import { CommonHttpClientModule } from './common/http-client/http-client.module';
 import { CommonQueueModule } from './common/queue/queue.module';
 import { CommonRateLimitModule } from './common/rate-limit/rate-limit.module';
+import { CommonScheduleModule } from './common/schedule/schedule.module';
 import { DemoAuthorizationModule } from './features/demo-authorization/demo-authorization.module';
 import { DemoAuthModule } from './features/demo-auth/demo-auth.module';
 import { DemoCacheModule } from './features/demo-cache/demo-cache.module';
@@ -30,6 +31,7 @@ import { DemoEventsModule } from './features/demo-events/demo-events.module';
 import { DemoHttpModule } from './features/demo-http/demo-http.module';
 import { DemoQueueModule } from './features/demo-queue/demo-queue.module';
 import { DemoRateLimitModule } from './features/demo-rate-limit/demo-rate-limit.module';
+import { DemoScheduleModule } from './features/demo-schedule/demo-schedule.module';
 import { DemoSecurityModule } from './features/demo-security/demo-security.module';
 import { DemoSerializationModule } from './features/demo-serialization/demo-serialization.module';
 import { DemoSessionModule } from './features/demo-session/demo-session.module';
@@ -99,6 +101,7 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
     CommonHttpClientModule,
     CommonQueueModule,
     CommonRateLimitModule,
+    CommonScheduleModule,
     DemoAuthorizationModule,
     DemoAuthModule,
     DemoCacheModule,
@@ -112,6 +115,7 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
     DemoHttpModule,
     ...queueFeatureImports,
     DemoRateLimitModule,
+    DemoScheduleModule,
     DemoSecurityModule,
     DemoSerializationModule,
     DemoSessionModule,

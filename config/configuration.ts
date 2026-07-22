@@ -7,6 +7,7 @@ import {
   IsNumber,
   IsObject,
   IsString,
+  IsTimeZone,
   Max,
   Min,
   ValidateNested,
@@ -26,6 +27,15 @@ class CacheVariables {
   @Min(0)
   @Max(86_400_000)
   ttl: number;
+}
+
+class ScheduleVariables {
+  @IsBoolean()
+  enabled: boolean;
+
+  @IsString()
+  @IsTimeZone()
+  timeZone: string;
 }
 
 class QueueVariables {
