@@ -13,8 +13,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CommonCacheModule } from './common/cache/cache.module';
 import { CommonCsrfModule } from './common/csrf/csrf.module';
-import { CommonHealthModule } from './common/health/health.module';
 import { CommonHttpClientModule } from './common/http-client/http-client.module';
+import { CommonHealthModule } from './common/health/health.module';
 import { CommonLoggerModule } from './common/logger/logger.module';
 import { CommonQueueModule } from './common/queue/queue.module';
 import { CommonRateLimitModule } from './common/rate-limit/rate-limit.module';
@@ -44,6 +44,7 @@ import { DemoWebsocketModule } from './features/demo-websocket/demo-websocket.mo
 const isTestEnvironment = process.env.NODE_ENV === 'test';
 const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
 
+// CN: 根模块组合平台能力和示例功能；EN: Root module composes platform capabilities and demo features.
 @Module({
   imports: [
     ConfigModule.forRoot({

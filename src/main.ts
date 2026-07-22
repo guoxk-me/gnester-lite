@@ -8,31 +8,33 @@ import session from 'express-session';
 import helmet from 'helmet';
 
 import { Environment, RateLimitConfig } from 'config/config.types';
+import { setupAsyncApi } from './common/asyncapi/asyncapi.config';
 import { createCorsOptions } from './common/cors/cors.config';
-import { createValidationPipe } from './common/validation/validation.pipe';
-import { AppModule } from './app.module';
 import { CsrfService } from './common/csrf/csrf.service';
 import { SystemLoggerService } from './common/logger/logger.service';
-import { createHelmetOptions } from './common/security/helmet-options';
-import { DemoSocketIoAdapter } from './common/websocket/demo-socket-io.adapter';
-import { setupAsyncApi } from './common/asyncapi/asyncapi.config';
 import { setupOpenApi } from './common/openapi/openapi.config';
+import { createHelmetOptions } from './common/security/helmet-options';
+import { createValidationPipe } from './common/validation/validation.pipe';
+import { DemoSocketIoAdapter } from './common/websocket/demo-socket-io.adapter';
+import { AppModule } from './app.module';
 
 let logger: LoggerService = new Logger('Bootstrap');
 
+// CN: 应用启动层，集中挂载跨请求基础设施；EN: Bootstrap layer applies cross-request infrastructure.
 async function bootstrap(): Promise<void> {
+  // AI modified: buffer startup logs until the configured DI logger is attached.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
   });
   logger = app.get(SystemLoggerService);
   app.useLogger(logger);
+
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
   const nodeEnv = configService.get<Environment>(
     'NODE_ENV',
     Environment.Development,
   );
-  const isProduction = nodeEnv === Environment.Production;
   const cookieSecret = configService.get<string>('COOKIE_SECRET') || undefined;
   const compressionEnabled = configService.get<boolean>(
     'COMPRESSION_ENABLED',
@@ -43,12 +45,15 @@ async function bootstrap(): Promise<void> {
     '1kb',
   );
   const compressionLevel = configService.get<number>('COMPRESSION_LEVEL', 6);
+  const sessionEnabled = configService.get<boolean>('SESSION_ENABLED', true);
   const rateLimitConfig =
     configService.getOrThrow<RateLimitConfig>('rateLimit');
+  const isProduction = nodeEnv === Environment.Production;
   const corsOptions = createCorsOptions(configService, nodeEnv);
 
   app.useWebSocketAdapter(new DemoSocketIoAdapter(app));
   app.set('trust proxy', rateLimitConfig.trustProxy);
+  // AI modified: mount Helmet directly so bootstrap middleware uses one registration style.
   app.use(helmet(createHelmetOptions(nodeEnv)));
 
   if (corsOptions) {
@@ -72,10 +77,8 @@ async function bootstrap(): Promise<void> {
   }
   app.use(cookieParser(cookieSecret));
 
-  const sessionEnabled = configService.get<boolean>('SESSION_ENABLED', true);
-
   if (sessionEnabled) {
-    if (nodeEnv === Environment.Production) {
+    if (isProduction) {
       throw new Error(
         'SESSION_ENABLED=true uses the demo MemoryStore. Configure a production session store before enabling sessions in production.',
       );
@@ -107,16 +110,16 @@ async function bootstrap(): Promise<void> {
     );
   }
 
-  app.useGlobalPipes(createValidationPipe(nodeEnv));
   const csrfService = app.get(CsrfService);
   app.use(csrfService.createProtectionMiddleware());
   app.use(csrfService.createErrorHandler());
+
+  app.useGlobalPipes(createValidationPipe(nodeEnv));
   app.enableVersioning({
     type: VersioningType.URI,
     prefix: 'v',
     defaultVersion: '1',
   });
-
   setupOpenApi(app, nodeEnv);
   setupAsyncApi(app, nodeEnv, port);
 

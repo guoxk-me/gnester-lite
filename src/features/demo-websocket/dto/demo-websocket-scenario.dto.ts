@@ -1,6 +1,9 @@
 // CN: DTO 文件，定义 demo-websocket 的数据结构；EN: DTO file defines data shapes for demo-websocket.
 import { ApiProperty } from '@nestjs/swagger';
 
+// AI modified: use an object payload so AsyncAPI emits a valid schema for the no-argument event.
+export class DemoWebsocketScenariosRequestDto {}
+
 export class DemoWebsocketScenarioDto {
   @ApiProperty({
     description: 'Scenario name',

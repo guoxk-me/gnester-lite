@@ -3,11 +3,14 @@ import { join } from 'node:path';
 import * as yaml from 'js-yaml';
 import { plainToInstance, Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsNumber,
   IsObject,
+  IsOptional,
   IsString,
   IsTimeZone,
+  IsUrl,
   Max,
   Min,
   ValidateNested,
@@ -17,6 +20,7 @@ import { YamlConfig } from './config.types';
 
 const YAML_CONFIG_FILENAME = 'config.yaml';
 
+// CN: YAML 配置结构契约；EN: Contract for YAML-based configuration.
 class AppVariables {
   @IsString()
   name: string;
@@ -169,4 +173,15 @@ export function validateYamlConfig(
   }
 
   return validatedConfig;
+}
+
+// CN: 读取并校验 config.yaml；EN: Load and validate config.yaml.
+export default (): YamlConfig => {
+  const configYaml = readFileSync(
+    join(__dirname, YAML_CONFIG_FILENAME),
+    'utf8',
+  );
+  const config = yaml.load(configYaml) as Record<string, unknown>;
+
+  return validateYamlConfig(config);
 };

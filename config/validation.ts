@@ -1,4 +1,8 @@
-import { plainToInstance, Transform } from 'class-transformer';
+import {
+  plainToInstance,
+  Transform,
+  type TransformFnParams,
+} from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
@@ -14,18 +18,42 @@ import {
 } from 'class-validator';
 import { Environment } from './config.types';
 
+// CN: 将字符串布尔值转成真实布尔值；EN: Convert string booleans into real booleans.
 function parseBoolean(value: unknown): unknown {
   if (typeof value === 'boolean') {
     return value;
   }
 
   if (typeof value === 'string') {
-    return value.toLowerCase() === 'true';
+    const normalizedValue = value.toLowerCase();
+
+    if (normalizedValue === 'true') {
+      return true;
+    }
+
+    if (normalizedValue === 'false') {
+      return false;
+    }
   }
 
   return value;
 }
 
+// CN: 生成或校验 configuration 的 is record 配置；EN: Builds or validates the is record configuration for configuration.
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+// CN: 生成或校验 configuration 的 parse boolean transform 配置；EN: Builds or validates the parse boolean transform configuration for configuration.
+function parseBooleanTransform(params: TransformFnParams): unknown {
+  return parseBoolean(
+    typeof params.key === 'string' && isRecord(params.obj as unknown)
+      ? (params.obj as Record<string, unknown>)[params.key]
+      : (params.value as unknown),
+  );
+}
+
+// CN: 环境变量结构契约；EN: Contract for environment variables.
 class EnvironmentVariables {
   @IsEnum(Environment)
   NODE_ENV: Environment;
@@ -58,12 +86,12 @@ class EnvironmentVariables {
   DB_DATABASE: string;
 
   @IsBoolean()
-  @Transform(({ value }) => parseBoolean(value))
+  @Transform(parseBooleanTransform)
   @IsOptional()
   DB_SYNCHRONIZE: boolean = false;
 
   @IsBoolean()
-  @Transform(({ value }) => parseBoolean(value))
+  @Transform(parseBooleanTransform)
   @IsOptional()
   DB_AUTO_LOAD_ENTITIES: boolean = true;
 
@@ -84,7 +112,7 @@ class EnvironmentVariables {
   REDIS_URL: string = 'redis://localhost:6379';
 
   @IsBoolean()
-  @Transform(({ value }) => parseBoolean(value))
+  @Transform(parseBooleanTransform)
   @IsOptional()
   CORS_ENABLED: boolean = true;
 
@@ -93,7 +121,7 @@ class EnvironmentVariables {
   CORS_ORIGINS?: string;
 
   @IsBoolean()
-  @Transform(({ value }) => parseBoolean(value))
+  @Transform(parseBooleanTransform)
   @IsOptional()
   CORS_CREDENTIALS: boolean = true;
 
@@ -120,12 +148,28 @@ class EnvironmentVariables {
   @Max(299)
   CORS_OPTIONS_SUCCESS_STATUS: number = 204;
 
+  @IsString()
+  @IsOptional()
+  COOKIE_SECRET?: string;
+
+  @IsBoolean()
+  @Transform(parseBooleanTransform)
+  @IsOptional()
   COMPRESSION_ENABLED: boolean = true;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^\d+(?:\.\d+)?\s*(?:b|kb|mb|gb|tb)?$/i)
   COMPRESSION_THRESHOLD: string = '1kb';
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  @Max(9)
   COMPRESSION_LEVEL: number = 6;
 
   @IsBoolean()
-  @Transform(({ value }) => parseBoolean(value))
+  @Transform(parseBooleanTransform)
   @IsOptional()
   SESSION_ENABLED: boolean = true;
 
@@ -143,7 +187,7 @@ class EnvironmentVariables {
   SESSION_COOKIE_MAX_AGE: number = 86_400_000;
 
   @IsBoolean()
-  @Transform(({ value }) => parseBoolean(value))
+  @Transform(parseBooleanTransform)
   @IsOptional()
   SESSION_COOKIE_SECURE?: boolean;
 
@@ -222,15 +266,16 @@ class EnvironmentVariables {
   LOGGER_LEVELS?: string;
 }
 
+// CN: 生成或校验 configuration 的 validate 配置；EN: Builds or validates the validate configuration for configuration.
 export function validate(
   config: Record<string, unknown>,
 ): EnvironmentVariables {
-  // validate the configuration object 校验配置对象
+  // CN: 校验环境配置对象；EN: Validate the environment configuration object.
   const validatedConfig = plainToInstance(EnvironmentVariables, config, {
     enableImplicitConversion: true,
   });
 
-  // Don't skip missing fields(property) 不跳过缺失字段
+  // CN: 不跳过缺失字段；EN: Do not skip missing fields.
   const errors = validateSync(validatedConfig, {
     skipMissingProperties: false,
   });
@@ -271,9 +316,11 @@ export function validate(
       'CSRF_SECRET is required in production when CSRF is enabled.',
     );
   }
+
   return validatedConfig;
 }
 
+// CN: 生产跨域配置必须明确且安全；EN: Production CORS config must be explicit and safe.
 function validateCorsConfig(config: EnvironmentVariables): void {
   if (!config.CORS_ENABLED) {
     return;
@@ -298,6 +345,7 @@ function validateCorsConfig(config: EnvironmentVariables): void {
   }
 }
 
+// CN: 生成或校验 configuration 的 parse csv 配置；EN: Builds or validates the parse csv configuration for configuration.
 function parseCsv(value: string | undefined): string[] {
   return (value ?? '')
     .split(',')

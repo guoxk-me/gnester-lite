@@ -1,3 +1,4 @@
+// CN: 类型文件，描述 configuration 的 TypeScript 契约；EN: Type file describes TypeScript contracts for configuration.
 export enum Environment {
   Development = 'development',
   Production = 'production',

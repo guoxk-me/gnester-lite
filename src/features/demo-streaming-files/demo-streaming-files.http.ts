@@ -12,8 +12,11 @@ export function createDemoStreamableFile(
     disposition: getContentDispositionHeader(file),
     length: file.contentLength,
   };
-
-  return new StreamableFile(file.body, options);
+  const body = file.body;
+  if (body instanceof Uint8Array) {
+    return new StreamableFile(body, options);
+  }
+  return new StreamableFile(body, options);
 }
 
 function getContentDispositionHeader(file: DemoStreamingFileDownload): string {

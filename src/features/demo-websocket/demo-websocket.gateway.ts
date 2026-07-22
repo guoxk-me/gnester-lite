@@ -20,7 +20,10 @@ import type { JwtAuthenticatedUser } from '../../common/auth/types/jwt-authentic
 import { DemoWebsocketPingDto } from './dto/demo-websocket-ping.dto';
 import { DemoWebsocketRoomDto } from './dto/demo-websocket-room.dto';
 import { DemoWebsocketRoomMessageDto } from './dto/demo-websocket-room-message.dto';
-import { DemoWebsocketScenarioDto } from './dto/demo-websocket-scenario.dto';
+import {
+  DemoWebsocketScenarioDto,
+  DemoWebsocketScenariosRequestDto,
+} from './dto/demo-websocket-scenario.dto';
 import {
   DemoWebsocketErrorDto,
   DemoWebsocketMessageAcceptedDto,
@@ -94,13 +97,14 @@ export class DemoWebsocketGateway
     channel: 'demo-websocket.scenarios',
     message: {
       name: 'DemoWebsocketScenariosRequest',
-      payload: 'void',
+      payload: DemoWebsocketScenariosRequestDto,
     },
   })
   @AsyncApiSend({
     channel: 'demo-websocket.scenarios',
     message: {
       name: 'DemoWebsocketScenariosResponse',
+      // AI modified: v2.0.1 cannot emit root-array schemas, so document the item type to keep the contract valid.
       payload: DemoWebsocketScenarioDto,
     },
   })
