@@ -13,6 +13,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CommonCacheModule } from './common/cache/cache.module';
 import { CommonCsrfModule } from './common/csrf/csrf.module';
+import { CommonHealthModule } from './common/health/health.module';
 import { CommonHttpClientModule } from './common/http-client/http-client.module';
 import { CommonQueueModule } from './common/queue/queue.module';
 import { CommonRateLimitModule } from './common/rate-limit/rate-limit.module';
@@ -94,6 +95,7 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
     }),
     CommonCacheModule,
     CommonCsrfModule,
+    CommonHealthModule,
     CommonHttpClientModule,
     CommonQueueModule,
     CommonRateLimitModule,
