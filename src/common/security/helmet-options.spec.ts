@@ -1,4 +1,8 @@
 // CN: 测试文件，验证 security common 的行为契约；EN: Test file verifies behavior contracts for security common.
+import { IncomingMessage, ServerResponse } from 'node:http';
+import { Socket } from 'node:net';
+import type { NestMiddleware } from '@nestjs/common';
+import helmet from 'helmet';
 import { Environment } from 'config/config.types';
 import { createHelmetOptions } from './helmet-options';
 
@@ -31,5 +35,36 @@ describe('createHelmetOptions', () => {
       maxAge: 31_536_000,
     });
     expect(options.crossOriginEmbedderPolicy).toBe(false);
+  });
+
+  // AI modified: preserve integration coverage after removing the one-line middleware wrapper.
+  it('applies development security headers through Helmet', async () => {
+    const middleware: NestMiddleware['use'] = helmet(
+      createHelmetOptions(Environment.Development),
+    );
+    const req = new IncomingMessage(new Socket());
+    const res = new ServerResponse(req);
+
+    await new Promise<void>((resolve, reject) => {
+      middleware(req, res, (error?: Error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
+
+    const contentSecurityPolicy = String(
+      res.getHeader('content-security-policy'),
+    );
+
+    expect(res.getHeader('x-content-type-options')).toBe('nosniff');
+    expect(res.getHeader('x-frame-options')).toBe('SAMEORIGIN');
+    expect(res.getHeader('x-powered-by')).toBeUndefined();
+    expect(res.getHeader('strict-transport-security')).toBeUndefined();
+    expect(contentSecurityPolicy).toContain("default-src 'self'");
+    expect(contentSecurityPolicy).not.toContain('upgrade-insecure-requests');
   });
 });

@@ -5,13 +5,14 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
+import helmet from 'helmet';
 
 import { Environment, RateLimitConfig } from 'config/config.types';
 import { createCorsOptions } from './common/cors/cors.config';
 import { createValidationPipe } from './common/validation/validation.pipe';
 import { AppModule } from './app.module';
 import { CsrfService } from './common/csrf/csrf.service';
-import { applySecurityMiddleware } from './common/security/security.middleware';
+import { createHelmetOptions } from './common/security/helmet-options';
 import { DemoSocketIoAdapter } from './common/websocket/demo-socket-io.adapter';
 import { setupAsyncApi } from './common/asyncapi/asyncapi.config';
 import { setupOpenApi } from './common/openapi/openapi.config';
@@ -43,7 +44,7 @@ async function bootstrap(): Promise<void> {
 
   app.useWebSocketAdapter(new DemoSocketIoAdapter(app));
   app.set('trust proxy', rateLimitConfig.trustProxy);
-  applySecurityMiddleware(app, nodeEnv);
+  app.use(helmet(createHelmetOptions(nodeEnv)));
 
   if (corsOptions) {
     app.enableCors(corsOptions);
