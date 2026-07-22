@@ -1,5 +1,7 @@
 # Serialization Guide / 序列化指南
 
+> CN: 文档文件，说明 serialization 的用途；EN: Documentation file explains the purpose of serialization.
+
 This document is for AI agents and developers who need to change response serialization safely.
 
 本文档面向需要安全修改响应序列化的 AI agent 和开发者。

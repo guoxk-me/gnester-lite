@@ -56,7 +56,6 @@ pnpm run test:e2e
 ### Configuration system
 
 Double-validation design in `config/`:
-
 - **YAML defaults** (`config/config.yaml`) → validated by `configuration.ts` using `class-validator` on a typed `YamlVariables` class. Used for non-secret app defaults (cache TTL, queue settings, HTTP client options, rate-limit throttlers).
 - **Environment variables** → validated by `config/validation.ts` using `class-validator` on `EnvironmentVariables`. Secrets, DB credentials, Redis URL, CORS settings. Production enforces JWT_SECRET, ENCRYPTION_KEY, HMAC_SECRET, and CSRF_SECRET.
 

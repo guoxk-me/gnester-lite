@@ -1,5 +1,7 @@
 # Validation Guide / 校验指南
 
+> CN: 文档文件，说明 validation 的用途；EN: Documentation file explains the purpose of validation.
+
 This document is for AI agents and developers who need to change request validation safely.
 
 本文档面向需要安全修改请求校验的 AI agent 和开发者。

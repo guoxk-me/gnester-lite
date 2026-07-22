@@ -1,5 +1,7 @@
 # Config Guide / 配置指南
 
+> CN: 文档文件，说明 configuration 的用途；EN: Documentation file explains the purpose of configuration.
+
 This document is for AI agents and developers who need to change configuration safely.
 
 本文档面向需要安全修改配置的 AI agent 和开发者。
@@ -68,7 +70,26 @@ app:
   name: gnester-lite
 
 cache:
-  ttl: 60000
+  ttl: 0
+
+schedule:
+  enabled: false
+  timeZone: Asia/Shanghai
+
+queue:
+  enabled: true
+  prefix: gnester-lite
+  defaultAttempts: 3
+  backoffDelay: 1000
+  removeOnComplete: 1000
+  removeOnFail: 5000
+
+http:
+  baseUrl: https://jsonplaceholder.typicode.com
+  timeout: 5000
+  maxRedirects: 5
+  maxContentLength: 10485760
+  maxBodyLength: 10485760
 ```
 
 Env:
@@ -86,6 +107,17 @@ DB_AUTO_LOAD_ENTITIES
 DB_RETRY_ATTEMPTS
 DB_RETRY_DELAY
 REDIS_URL
+JWT_SECRET
+JWT_ACCESS_TOKEN_TTL
+JWT_ISSUER
+JWT_AUDIENCE
+CSRF_ENABLED
+CSRF_SECRET
+CSRF_COOKIE_NAME
+CSRF_IDENTIFIER_COOKIE_NAME
+CSRF_COOKIE_SECURE
+CSRF_COOKIE_SAME_SITE
+CSRF_HEADER_NAME
 ```
 
 Notes / 说明：
@@ -96,6 +128,14 @@ Notes / 说明：
   `DB_SYNCHRONIZE` 在生产环境会被强制关闭。
 - `REDIS_URL` defaults to `redis://localhost:6379`.
   `REDIS_URL` 默认值为 `redis://localhost:6379`。
+- `JWT_SECRET` is required in production and defaults only for local/test usage.
+  `JWT_SECRET` 在生产环境必填；默认值只用于本地和测试环境。
+- `CSRF_SECRET` is required in production when `CSRF_ENABLED=true`.
+  `CSRF_ENABLED=true` 且运行在生产环境时，`CSRF_SECRET` 必填。
+- CSRF defaults protect browser cookie/session clients and can be disabled with
+  `CSRF_ENABLED=false` for pure bearer-token APIs.
+  CSRF 默认保护浏览器 cookie/session 客户端；纯 bearer-token API 可用
+  `CSRF_ENABLED=false` 关闭。
 
 ## How To Change / 如何修改
 

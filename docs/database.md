@@ -1,5 +1,7 @@
 # Database Guide / 数据库指南
 
+> CN: 文档文件，说明 database 的用途；EN: Documentation file explains the purpose of database.
+
 This project uses one MySQL database through NestJS + TypeORM.
 
 本项目通过 NestJS + TypeORM 使用一个 MySQL 数据库。

@@ -1,0 +1,9 @@
+# CN: Docker 忽略文件，减少构建上下文；EN: Docker ignore file reduces build context.
+node_modules
+dist
+coverage
+.git
+.DS_Store
+*.log
+.env.local
+.env.*.local

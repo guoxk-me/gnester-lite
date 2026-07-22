@@ -1,0 +1,60 @@
+# CN: 配置文件，定义 docker compose 的默认参数；EN: Config file defines default settings for docker compose.
+services:
+  app:
+    build: .
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: gnester
+      DB_PASSWORD: gnester
+      DB_DATABASE: gnester
+      DB_SYNCHRONIZE: false
+      DB_AUTO_LOAD_ENTITIES: true
+      DB_RETRY_ATTEMPTS: 10
+      DB_RETRY_DELAY: 3000
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGINS: http://localhost:3000
+      SESSION_ENABLED: false
+      JWT_SECRET: change-me-before-production
+      CSRF_SECRET: change-me-before-production
+      ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      HMAC_SECRET: change-me-before-production
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.4
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: gnester
+      MYSQL_USER: gnester
+      MYSQL_PASSWORD: gnester
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-ugnester', '-pgnester']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  mysql-data:
