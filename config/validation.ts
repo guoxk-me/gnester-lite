@@ -208,6 +208,18 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   HMAC_SECRET?: string;
+
+  @IsBoolean()
+  @Transform(parseBooleanTransform)
+  @IsOptional()
+  LOGGER_JSON?: boolean;
+
+  @IsString()
+  @Matches(
+    /^(log|fatal|error|warn|debug|verbose)(\s*,\s*(log|fatal|error|warn|debug|verbose))*$/,
+  )
+  @IsOptional()
+  LOGGER_LEVELS?: string;
 }
 
 export function validate(

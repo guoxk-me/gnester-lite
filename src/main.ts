@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { Logger, VersioningType } from '@nestjs/common';
+import { Logger, type LoggerService, VersioningType } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
@@ -12,15 +12,20 @@ import { createCorsOptions } from './common/cors/cors.config';
 import { createValidationPipe } from './common/validation/validation.pipe';
 import { AppModule } from './app.module';
 import { CsrfService } from './common/csrf/csrf.service';
+import { SystemLoggerService } from './common/logger/logger.service';
 import { createHelmetOptions } from './common/security/helmet-options';
 import { DemoSocketIoAdapter } from './common/websocket/demo-socket-io.adapter';
 import { setupAsyncApi } from './common/asyncapi/asyncapi.config';
 import { setupOpenApi } from './common/openapi/openapi.config';
 
-const logger = new Logger('Bootstrap');
+let logger: LoggerService = new Logger('Bootstrap');
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
+  logger = app.get(SystemLoggerService);
+  app.useLogger(logger);
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
   const nodeEnv = configService.get<Environment>(
@@ -116,8 +121,12 @@ async function bootstrap(): Promise<void> {
   setupAsyncApi(app, nodeEnv, port);
 
   await app.listen(port);
-  logger.log(`Application is running on port ${port}`);
+  logger.log(`Application is running on port ${port}`, 'Bootstrap');
 }
 bootstrap().catch((err) => {
-  logger.error('Error during application bootstrap', err);
+  logger.error(
+    'Error during application bootstrap',
+    err instanceof Error ? err.stack : String(err),
+    'Bootstrap',
+  );
 });

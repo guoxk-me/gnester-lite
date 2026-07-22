@@ -15,6 +15,7 @@ import { CommonCacheModule } from './common/cache/cache.module';
 import { CommonCsrfModule } from './common/csrf/csrf.module';
 import { CommonHealthModule } from './common/health/health.module';
 import { CommonHttpClientModule } from './common/http-client/http-client.module';
+import { CommonLoggerModule } from './common/logger/logger.module';
 import { CommonQueueModule } from './common/queue/queue.module';
 import { CommonRateLimitModule } from './common/rate-limit/rate-limit.module';
 import { CommonScheduleModule } from './common/schedule/schedule.module';
@@ -99,6 +100,7 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
     CommonCsrfModule,
     CommonHealthModule,
     CommonHttpClientModule,
+    CommonLoggerModule,
     CommonQueueModule,
     CommonRateLimitModule,
     CommonScheduleModule,
