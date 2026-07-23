@@ -20,6 +20,7 @@ This document records the demo feature modules under `src/features/`.
 - `DemoEventsModule`: in-process event emitter examples. 进程内事件示例。
 - `DemoHttpModule`: outbound HTTP client examples. 出站 HTTP 客户端示例。
 - `DemoSecurityModule`: Helmet security header examples. Helmet 安全响应头示例。
+- `DemoSentryModule`: Sentry status and debug error examples. Sentry 状态与调试错误示例。
 - `DemoWebsocketModule`: authenticated Socket.IO gateway examples. 已认证 Socket.IO gateway 示例。
 
 The database demo intentionally focuses on database scenarios only. It does not demonstrate API versioning, interceptors, cache, or scheduled jobs.
@@ -63,11 +64,15 @@ Files / 文件：
 
 - `src/common/auth/auth.module.ts`
 - `src/common/auth/auth.guard.ts`
+- `src/common/auth/guards/local-auth.guard.ts`
+- `src/common/auth/guards/jwt-auth.guard.ts`
+- `src/common/auth/strategies/jwt.strategy.ts`
 - `src/common/auth/decorators/public.decorator.ts`
 - `src/common/auth/decorators/current-user.decorator.ts`
 - `src/features/demo-auth/demo-auth.module.ts`
 - `src/features/demo-auth/demo-auth.controller.ts`
 - `src/features/demo-auth/demo-auth.service.ts`
+- `src/features/demo-auth/local.strategy.ts`
 
 Routes / 路由：
 
@@ -98,10 +103,14 @@ Authorization: Bearer <accessToken>
 
 What it shows / 演示点：
 
-- `JwtModule` is wrapped by `CommonAuthModule` and configured from env values.
-  `JwtModule` 由 `CommonAuthModule` 包装，并从环境变量读取配置。
-- `AuthGuard` validates `Authorization: Bearer <token>` and writes the payload to `request.user`.
-  `AuthGuard` 校验 `Authorization: Bearer <token>` 并把 payload 写入 `request.user`。
+- Follows the NestJS Passport recipe: `PassportModule` + `LocalStrategy` / `JwtStrategy`.
+  遵循 NestJS Passport 配方：`PassportModule` + `LocalStrategy` / `JwtStrategy`。
+- `LocalAuthGuard` validates username/password on login; `DemoAuthService.validateUser` / `login` issue the JWT.
+  `LocalAuthGuard` 在登录时校验用户名密码；`DemoAuthService.validateUser` / `login` 签发 JWT。
+- `JwtAuthGuard` + `JwtStrategy` validate `Authorization: Bearer <token>` and write `request.user`.
+  `JwtAuthGuard` + `JwtStrategy` 校验 `Authorization: Bearer <token>` 并把用户写入 `request.user`。
+- The hand-rolled `AuthGuard` remains for other demos (for example authorization) that still use it.
+  手写 `AuthGuard` 仍保留，供其他仍在使用它的演示（例如 authorization）。
 - `@Public()` marks login and scenario routes as public.
   `@Public()` 标记登录和场景说明路由为公开接口。
 - `@CurrentUser()` exposes the verified JWT payload to controllers.
@@ -168,6 +177,39 @@ What it shows / 演示点：
 - The feature module only documents observable behavior; global security
   middleware stays in bootstrap code because middleware order is a startup
   concern. feature 模块只说明可观察行为；全局安全中间件保留在启动代码中，因为中间件顺序属于启动层职责。
+
+## Demo Sentry / Sentry 示例
+
+Files / 文件：
+
+- `src/instrument.ts`
+- `src/common/sentry/sentry.module.ts`
+- `src/common/sentry/with-sentry-isolation.ts`
+- `src/features/demo-sentry/demo-sentry.module.ts`
+- `src/features/demo-sentry/demo-sentry.controller.ts`
+- `src/features/demo-sentry/demo-sentry.service.ts`
+- `src/features/demo-sentry/dto/*.ts`
+- `docs/sentry.md`
+
+Routes / 路由：
+
+```http
+GET /demo-sentry/scenarios
+GET /demo-sentry/status
+GET /demo-sentry/debug-sentry
+```
+
+What it shows / 演示点：
+
+- `instrument.ts` initializes Sentry before Nest bootstraps.
+  `instrument.ts` 在 Nest 启动前初始化 Sentry。
+- Empty `SENTRY_DSN` keeps the template runnable without a Sentry project.
+  留空 `SENTRY_DSN` 即可在没有 Sentry 项目时运行模板。
+- `SentryGlobalFilter` captures unexpected HTTP errors; `HttpException` is
+  skipped by default.
+  `SentryGlobalFilter` 捕获未预期 HTTP 错误；`HttpException` 默认不上报。
+- Cron, queue, and event handlers use `withSentryIsolation()`.
+  定时任务、队列和事件处理使用 `withSentryIsolation()`。
 
 ## Demo CSRF / CSRF 示例
 
@@ -465,6 +507,7 @@ DELETE /demo-database/1
 Files / 文件：
 
 - `src/common/http-client/http-client.module.ts`
+- `src/common/http-client/http-client.config.ts`
 - `src/features/demo-http/demo-http.module.ts`
 - `src/features/demo-http/demo-http.controller.ts`
 - `src/features/demo-http/demo-http.service.ts`
@@ -489,34 +532,22 @@ Content-Type: application/json
 
 What it shows / 演示点：
 
-- `CommonHttpClientModule` wraps `@nestjs/axios` and reads default Axios options from `config/config.yaml`.
-  `CommonHttpClientModule` 封装 `@nestjs/axios`，并从 `config/config.yaml` 读取默认 Axios 配置。
+- `CommonHttpClientModule` wraps `@nestjs/axios` and reads default Axios options from `config/config.yaml` via `createHttpModuleOptions`.
+  `CommonHttpClientModule` 封装 `@nestjs/axios`，并通过 `createHttpModuleOptions` 从 `config/config.yaml` 读取默认 Axios 配置。
 - Controllers keep validation and routing concerns; outbound HTTP calls stay in the service.
   Controller 只负责路由与校验，出站 HTTP 调用集中在 service。
-- `HttpService.get<T>()` and `HttpService.post<T>()` demonstrate typed JSON calls.
-  `HttpService.get<T>()` 与 `HttpService.post<T>()` 演示带类型的 JSON 调用。
+- `HttpService.get<T>()` and `HttpService.post<T>()` demonstrate typed JSON calls against the configured `http.baseUrl` (JSONPlaceholder by default).
+  `HttpService.get<T>()` 与 `HttpService.post<T>()` 演示对配置的 `http.baseUrl`（默认 JSONPlaceholder）做带类型的 JSON 调用。
+- `ListDemoHttpPostsQueryDto` validates optional list filters on `GET /demo-http/posts`.
+  `ListDemoHttpPostsQueryDto` 校验 `GET /demo-http/posts` 的可选列表过滤参数。
+- `ParseIntPipe` parses `GET /demo-http/posts/:id` path params.
+  `ParseIntPipe` 解析 `GET /demo-http/posts/:id` 路径参数。
 - `firstValueFrom()` converts `HttpService` Observables into Promise-returning Nest service methods.
   `firstValueFrom()` 将 `HttpService` 返回的 Observable 转成 Nest service 常用的 Promise。
-- `axiosRef` is shown for low-level Axios access, while still hidden behind the service boundary.
-  `axiosRef` 演示底层 Axios 访问，但仍封装在 service 边界内。
-- Axios timeout and upstream HTTP failures are translated into Nest exceptions.
-  Axios 超时与上游 HTTP 失败会转换成 Nest 异常。
-- `FindDemoParamsDto` demonstrates validating `@Param()` as a DTO with `@IsNumberString()`.
-  `FindDemoParamsDto` 演示使用 `@IsNumberString()` 校验 `@Param()` DTO。
-- `ListDemoQueryDto` demonstrates transformed query DTOs, integer ranges, defaults, and enum validation.
-  `ListDemoQueryDto` 演示 query DTO 转换、整数范围、默认值和枚举校验。
-- `demo-mapped-types.dto.ts` demonstrates `PickType()`, `OmitType()`, and `IntersectionType()`.
-  `demo-mapped-types.dto.ts` 演示 `PickType()`、`OmitType()` 和 `IntersectionType()`。
-- `findPage()` uses `findAndCount()` for paginated reads and supports `ASC` / `DESC` ordering.
-  `findPage()` 使用 `findAndCount()` 做分页查询，并支持 `ASC` / `DESC` 排序。
-- `findManyByIds()` uses `In()` for ID-list queries.
-  `findManyByIds()` 使用 `In()` 做 ID 集合查询。
-- `ParseIntPipe`, `ParseBoolPipe`, `ParseArrayPipe`, and `ParseUUIDPipe` demonstrate explicit primitive parsing.
-  `ParseIntPipe`、`ParseBoolPipe`、`ParseArrayPipe` 和 `ParseUUIDPipe` 演示显式基础类型解析。
-- `searchByName()` uses a query builder for custom SQL conditions.
-  `searchByName()` 使用 query builder 编写自定义查询条件。
-- `count()` uses repository counting for aggregate reads.
-  `count()` 使用 repository count 做聚合读取。
+- `axiosRef` is shown for low-level Axios access (`GET /demo-http/provider-status`), while still hidden behind the service boundary.
+  `axiosRef` 演示底层 Axios 访问（`GET /demo-http/provider-status`），但仍封装在 service 边界内。
+- Axios timeout and upstream HTTP failures are translated into Nest exceptions (`GatewayTimeoutException` / `BadGatewayException`).
+  Axios 超时与上游 HTTP 失败会转换成 Nest 异常（`GatewayTimeoutException` / `BadGatewayException`）。
 
 ## Demo Events / 事件示例
 

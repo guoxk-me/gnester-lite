@@ -209,6 +209,14 @@ NestJS WebSocket handler 应使用 `WsException` 表达 socket 业务异常。�
 demo-websocket.exception
 ```
 
+`APP_FILTER` does not cover gateways, so the filter also calls
+`Sentry.captureException()` for unexpected errors while skipping
+`HttpException` / `WsException` control-flow cases. See `docs/sentry.md`.
+
+`APP_FILTER` 不会覆盖 gateway，因此该过滤器还会对未预期错误调用
+`Sentry.captureException()`，并跳过 `HttpException` / `WsException` 控制流异常。
+详见 `docs/sentry.md`。
+
 Validation failure example / 校验失败示例：
 
 ```json

@@ -44,6 +44,30 @@ When adding an entity, put it under the owning feature module and register it wi
 
 新增 entity 时，放到所属 feature module 下，并通过 `forFeature()` 注册。
 
+## SWC Circular Imports / SWC 循环依赖
+
+This template compiles with SWC. Relation property types that point at another entity can trigger circular-import issues because SWC stores decorator metadata differently than `tsc`.
+
+本模板使用 SWC 编译。实体关系字段若直接引用另一个实体类型，可能因装饰器元数据与 `tsc` 不同而触发循环依赖问题。
+
+Prefer TypeORM's `Relation<T>` wrapper on relation fields:
+
+关系字段优先使用 TypeORM 的 `Relation<T>` 包装：
+
+```ts
+import { Entity, OneToOne, Relation } from 'typeorm';
+
+@Entity()
+export class User {
+  @OneToOne(() => Profile, (profile) => profile.user)
+  profile: Relation<Profile>;
+}
+```
+
+For circular constructor injection, wrap the injected type the same way (or use a local `WrapperType<T> = T`) together with `forwardRef()`.
+
+构造函数循环注入时，同样包装注入类型（或本地定义 `WrapperType<T> = T`），并配合 `forwardRef()`。
+
 ## Migrations / 迁移
 
 Place generated migrations in `src/migrations/`.

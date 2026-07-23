@@ -118,6 +118,11 @@ CSRF_IDENTIFIER_COOKIE_NAME
 CSRF_COOKIE_SECURE
 CSRF_COOKIE_SAME_SITE
 CSRF_HEADER_NAME
+LOGGER_JSON
+LOGGER_LEVELS
+SENTRY_DSN
+SENTRY_ENABLED
+SENTRY_TRACES_SAMPLE_RATE
 ```
 
 Notes / 说明：
@@ -136,6 +141,14 @@ Notes / 说明：
   `CSRF_ENABLED=false` for pure bearer-token APIs.
   CSRF 默认保护浏览器 cookie/session 客户端；纯 bearer-token API 可用
   `CSRF_ENABLED=false` 关闭。
+- `SENTRY_DSN` is optional; leave it empty to disable Sentry.
+  `SENTRY_DSN` 可选；留空即关闭 Sentry。
+- `LOGGER_JSON` defaults to `true` in production. When `false`, development
+  uses `pino-pretty`. Nest level names in `LOGGER_LEVELS` map to a Pino
+  threshold (`verbose`→`trace`, `log`→`info`).
+  `LOGGER_JSON` 生产默认 `true`；为 `false` 时开发环境使用 `pino-pretty`。
+  `LOGGER_LEVELS` 使用 Nest 级别名，并映射为 Pino 阈值阈值
+  （`verbose`→`trace`，`log`→`info`）。
 
 ## How To Change / 如何修改
 

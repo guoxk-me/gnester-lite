@@ -10,6 +10,7 @@ it exists.
 ## Root / 根目录
 
 - `src/main.ts`: Bootstraps the NestJS app, applies global middleware, validation, API versioning, OpenAPI, CSRF, sessions, and WebSocket adapter. / 启动 NestJS 应用并挂载全局中间件、校验、接口版本、OpenAPI、CSRF、会话和 WebSocket 适配器。
+- `src/instrument.ts`: Initializes Sentry before any Nest modules load. / 在任何 Nest 模块加载前初始化 Sentry。
 - `src/app.module.ts`: Wires configuration, database, Redis cache, BullMQ queues, events, schedules, common modules, and demo features. / 装配配置、数据库、Redis 缓存、BullMQ 队列、事件、定时任务、公共模块和示例功能。
 - `config/`: Loads YAML/env configuration, validates runtime settings, and provides TypeORM CLI config. / 加载 YAML/env 配置、校验运行参数，并提供 TypeORM CLI 配置。
 - `docs/`: Explains each template capability so code examples have operational context. / 说明各模板能力，让代码示例有可运行、可维护的上下文。
@@ -17,21 +18,24 @@ it exists.
 
 ## Common Modules / 公共模块
 
-- `common/auth`: Issues/verifies JWTs, hashes passwords, and protects routes. / 签发与校验 JWT、处理密码哈希，并保护接口。
-- `common/authorization`: Provides role, permission, and policy guards. / 提供角色、权限和策略守卫。
-- `common/cache`: Wraps cache access and HTTP cache interception. / 封装缓存访问和 HTTP 缓存拦截。
-- `common/cors`: Builds CORS options from environment-specific config. / 根据环境配置生成跨域策略。
-- `common/crypto`: Provides HMAC signing, secure token generation, and symmetric encryption. / 提供 HMAC 签名、安全令牌生成和对称加密。
-- `common/csrf`: Creates CSRF protection middleware and error handling. / 创建 CSRF 防护中间件和错误处理。
-- `common/health`: Exposes liveness/readiness checks for deployment probes. / 提供存活和就绪检查，服务部署探针使用。
-- `common/http-client`: Centralizes outbound HTTP client configuration. / 集中管理外部 HTTP 请求客户端配置。
-- `common/openapi`: Configures Swagger/OpenAPI outside production. / 在非生产环境配置 Swagger/OpenAPI 文档。
-- `common/queue`: Gives shared queue helper functions for BullMQ features. / 为 BullMQ 功能提供共享队列辅助能力。
-- `common/rate-limit`: Configures request throttling to reduce abuse. / 配置请求限流，降低滥用风险。
-- `common/schedule`: Exposes runtime schedule/job visibility. / 暴露运行时定时任务和作业状态。
-- `common/security`: Applies Helmet and security headers. / 应用 Helmet 和安全响应头。
-- `common/validation`: Defines the global request validation pipe. / 定义全局请求校验管道。
-- `common/websocket`: Customizes Socket.IO behavior for the demo gateway. / 为示例网关定制 Socket.IO 行为。
+- `common/auth`: Issues/verifies JWTs, hashes passwords, and protects routes. See `docs/security.md`. / 签发与校验 JWT、处理密码哈希，并保护接口。详见 `docs/security.md`。
+- `common/authorization`: Provides role, permission, and policy guards. See `docs/security.md`. / 提供角色、权限和策略守卫。详见 `docs/security.md`。
+- `common/cache`: Wraps cache access and HTTP cache interception. See `docs/cache.md`. / 封装缓存访问和 HTTP 缓存拦截。详见 `docs/cache.md`。
+- `common/cors`: Builds CORS options from environment-specific config. See `docs/security.md`. / 根据环境配置生成跨域策略。详见 `docs/security.md`。
+- `common/crypto`: Provides HMAC signing, secure token generation, and symmetric encryption. See `docs/security.md`. / 提供 HMAC 签名、安全令牌生成和对称加密。详见 `docs/security.md`。
+- `common/csrf`: Creates CSRF protection middleware and error handling. See `docs/security.md`. / 创建 CSRF 防护中间件和错误处理。详见 `docs/security.md`。
+- `common/health`: Exposes liveness/readiness checks for deployment probes. See `docs/health.md`. / 提供存活和就绪检查，服务部署探针使用。详见 `docs/health.md`。
+- `common/http-client`: Centralizes outbound HTTP client configuration. See `docs/demo.md` (Demo HTTP). / 集中管理外部 HTTP 请求客户端配置。详见 `docs/demo.md`（Demo HTTP）。
+- `common/logger`: Wraps `nestjs-pino` for structured logs and HTTP access logging. See `docs/logger.md`. / 封装 `nestjs-pino`，提供结构化日志与 HTTP 访问日志。详见 `docs/logger.md`。
+- `common/openapi`: Configures Swagger/OpenAPI outside production. See `docs/openapi.md`. / 在非生产环境配置 Swagger/OpenAPI 文档。详见 `docs/openapi.md`。
+- `common/asyncapi`: Exposes AsyncAPI JSON/YAML for the Socket.IO demo outside production. See `docs/asyncapi.md`. / 非生产环境为 Socket.IO 演示暴露 AsyncAPI JSON/YAML。详见 `docs/asyncapi.md`。
+- `common/queue`: Gives shared queue helper functions for BullMQ features. See `docs/queue.md`. / 为 BullMQ 功能提供共享队列辅助能力。详见 `docs/queue.md`。
+- `common/rate-limit`: Configures request throttling to reduce abuse. See `docs/security.md`. / 配置请求限流，降低滥用风险。详见 `docs/security.md`。
+- `common/schedule`: Exposes runtime schedule/job visibility. See `docs/schedule.md`. / 暴露运行时定时任务和作业状态。详见 `docs/schedule.md`。
+- `common/security`: Applies Helmet and security headers. See `docs/security.md`. / 应用 Helmet 和安全响应头。详见 `docs/security.md`。
+- `common/sentry`: Initializes Sentry module, global filter, and background isolation helpers. See `docs/sentry.md`. / 接入 Sentry 模块、全局过滤器和后台任务隔离辅助函数。详见 `docs/sentry.md`。
+- `common/validation`: Defines the global request validation pipe. See `docs/validation.md`. / 定义全局请求校验管道。详见 `docs/validation.md`。
+- `common/websocket`: Customizes Socket.IO behavior for the demo gateway. See `docs/websocket.md`. / 为示例网关定制 Socket.IO 行为。详见 `docs/websocket.md`。
 
 ## Feature Modules / 功能示例模块
 
@@ -50,6 +54,7 @@ it exists.
 - `demo-rate-limit`: Shows throttled routes and rate-limit scenarios. / 演示限流接口和限流场景。
 - `demo-schedule`: Shows scheduled jobs plus manual pause/resume/run controls. / 演示定时任务以及手动暂停、恢复和运行控制。
 - `demo-security`: Shows security headers and middleware effects. / 演示安全响应头和中间件效果。
+- `demo-sentry`: Shows Sentry status checks and a deliberate debug error. See `docs/sentry.md`. / 演示 Sentry 状态查询与故意触发的调试错误。详见 `docs/sentry.md`。
 - `demo-serialization`: Shows response shaping with class serialization. / 演示使用类序列化整理响应结构。
 - `demo-session`: Shows server-side session state and flash/cart examples. / 演示服务端会话状态、闪存消息和购物车示例。
 - `demo-sse`: Shows server-sent event streaming. / 演示服务端事件流。

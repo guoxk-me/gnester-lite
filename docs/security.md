@@ -104,6 +104,25 @@ Cookie/session 浏览器应用、后台管理页面、依赖浏览器自动携�
 CSRF 防护。纯 `Authorization: Bearer <token>` API 通常不需要 CSRF，因为浏览器
 不会自动附加该 header。
 
+## Auth Guards / 鉴权守卫
+
+This template currently ships **two** JWT HTTP guard styles:
+
+本模板目前并存 **两套** JWT HTTP 守卫：
+
+| Guard | Style | Used by |
+|---|---|---|
+| `JwtAuthGuard` + `JwtStrategy` | Passport (`@nestjs/passport`) | `demo-auth` (`GET /demo-auth/profile`) |
+| `AuthGuard` (hand-rolled) | Direct `JwtService.verifyAsync` + `@Public()` | `demo-authorization` protected routes |
+
+- Login uses `LocalAuthGuard` + `LocalStrategy` in `demo-auth`.
+  登录在 `demo-auth` 使用 `LocalAuthGuard` + `LocalStrategy`。
+- Prefer Passport guards for new endpoints so strategies stay centralized.
+  新接口优先用 Passport 守卫，策略集中在一处。
+- Converging `demo-authorization` onto `JwtAuthGuard` is an intentional auth
+  contract change and should be done deliberately (not as a drive-by refactor).
+  将 `demo-authorization` 收敛到 `JwtAuthGuard` 属于鉴权契约变更，应显式决策后再做。
+
 ## Rate Limiting / 请求限流
 
 Use `CommonRateLimitModule` from `src/common/rate-limit/` for request budget
