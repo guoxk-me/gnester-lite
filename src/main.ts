@@ -1,32 +1,33 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { Logger, type LoggerService, VersioningType } from '@nestjs/common';
+import { Logger as NestLogger, VersioningType } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import helmet from 'helmet';
+import { Logger } from 'nestjs-pino';
 
 import { Environment, RateLimitConfig } from 'config/config.types';
 import { setupAsyncApi } from './common/asyncapi/asyncapi.config';
 import { createCorsOptions } from './common/cors/cors.config';
 import { CsrfService } from './common/csrf/csrf.service';
-import { SystemLoggerService } from './common/logger/logger.service';
 import { setupOpenApi } from './common/openapi/openapi.config';
 import { createHelmetOptions } from './common/security/helmet-options';
 import { createValidationPipe } from './common/validation/validation.pipe';
 import { DemoSocketIoAdapter } from './common/websocket/demo-socket-io.adapter';
 import { AppModule } from './app.module';
 
-let logger: LoggerService = new Logger('Bootstrap');
+// AI modified: bootstrap starts with Nest Logger, then switches to nestjs-pino.
+let logger: NestLogger | Logger = new NestLogger('Bootstrap');
 
 // CN: 应用启动层，集中挂载跨请求基础设施；EN: Bootstrap layer applies cross-request infrastructure.
 async function bootstrap(): Promise<void> {
-  // AI modified: buffer startup logs until the configured DI logger is attached.
+  // AI modified: buffer startup logs until nestjs-pino Logger is attached.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
   });
-  logger = app.get(SystemLoggerService);
+  logger = app.get(Logger);
   app.useLogger(logger);
 
   const configService = app.get(ConfigService);

@@ -1,10 +1,15 @@
-import { Global, Module } from '@nestjs/common';
-import { SystemLoggerService } from './logger.service';
+import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { LoggerModule } from 'nestjs-pino';
+import { createPinoLoggerParams } from './logger.config';
 
-// AI modified: exposes the application logger as a shared platform provider.
-@Global()
+// AI modified: wraps nestjs-pino so platform logging uses Pino with DI config.
 @Module({
-  providers: [SystemLoggerService],
-  exports: [SystemLoggerService],
+  imports: [
+    LoggerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: createPinoLoggerParams,
+    }),
+  ],
 })
 export class CommonLoggerModule {}
