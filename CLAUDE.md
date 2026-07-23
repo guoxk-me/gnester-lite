@@ -50,7 +50,7 @@ pnpm run test:e2e
 
 ### Two-layer module structure
 
-- **`src/common/`** — reusable platform modules (auth, cache, csrf, crypto, health, http-client, queue, rate-limit, schedule, security, validation, websocket). `@Global()` modules like `CommonCacheModule` export providers without requiring imports in consuming modules.
+- **`src/common/`** — reusable platform modules (auth, cache, csrf, crypto, health, http-client, logger, queue, rate-limit, schedule, security, sentry, validation, websocket). `@Global()` modules like `CommonCacheModule` export providers without requiring imports in consuming modules. Logging uses `nestjs-pino` (`CommonLoggerModule` + `app.useLogger`).
 - **`src/features/`** — demo feature modules (demo-database, demo-auth, demo-queue, demo-upload, etc.). Each contains controller, service, module, spec files, and `dto/` / `entities/` subdirectories.
 
 ### Configuration system
@@ -63,18 +63,25 @@ Both run through NestJS `ConfigModule.forRoot({ validate })`, combining YAML def
 
 ### Bootstrap (main.ts)
 
-Applies cross-request infrastructure: CORS, compression, cookie-parser, express-session (MemoryStore, dev only), CSRF protection, global `ValidationPipe` (createValidationPipe), URI versioning (`/v1/...`), OpenAPI docs (`/docs`, `/docs-json`), `DemoSocketIoAdapter`.
+`src/instrument.ts` is imported first for optional Sentry initialization. Then
+bootstrap applies cross-request infrastructure: `bufferLogs` + nestjs-pino
+`app.useLogger`, CORS, compression, cookie-parser, express-session (MemoryStore,
+dev only), CSRF protection, global `ValidationPipe` (createValidationPipe), URI
+versioning (`/v1/...`), OpenAPI docs (`/docs`, `/docs-json`),
+`DemoSocketIoAdapter`.
 
 ### Test infrastructure
 
-- Jest with `ts-jest`, `NODE_ENV=test`, `--experimental-vm-modules`.
+- Nest CLI builds with SWC (`nest-cli.json` `builder: "swc"`, `typeCheck: true`, `filenames: ["src","config"]`, `stripLeadingPaths: false` so `dist/src` + `dist/config` match runtime imports). Jest uses `@swc/jest` with `.swcrc` (`legacyDecorator` + `decoratorMetadata`).
+- Jest with `NODE_ENV=test`, `--experimental-vm-modules`.
 - Unit tests colocated as `*.spec.ts` (in `src/` and `config/`).
 - E2E tests in `test/` using `test/jest-e2e.json`.
 - Queue feature modules are excluded in test environment (`isTestEnvironment` guard in `app.module.ts`). BullMQ uses `lazyConnect: true` and `manualRegistration: true` in test mode.
+- TypeORM relation fields should use `Relation<T>` to avoid SWC circular-import issues (see `docs/database.md`).
 
 ### Key dependencies
 
-BullMQ (queues via `@nestjs/bullmq`), TypeORM + MySQL, Redis (`@keyv/redis` for caching, also backing BullMQ), `@nestjs/event-emitter`, `@nestjs/schedule`, `@nestjs/throttler`, `@nestjs/swagger`, `@nestjs/jwt`, `@nestjs/websockets` + Socket.IO, `class-validator` + `class-transformer` for validation.
+BullMQ (queues via `@nestjs/bullmq`), TypeORM + MySQL, Redis (`@keyv/redis` for caching, also backing BullMQ), `@nestjs/event-emitter`, `@nestjs/schedule`, `@nestjs/throttler`, `@nestjs/swagger`, `@nestjs/jwt`, `@nestjs/websockets` + Socket.IO, `@sentry/nestjs`, `class-validator` + `class-transformer` for validation.
 
 ## Coding Style
 
