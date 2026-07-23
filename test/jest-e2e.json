@@ -7,6 +7,6 @@
     "^config/(.*)$": "<rootDir>/../config/$1"
   },
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.(t|j)s?$": ["@swc/jest"]
   }
 }
