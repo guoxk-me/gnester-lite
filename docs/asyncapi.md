@@ -12,8 +12,8 @@ JSON/YAML.
 ## Layout / 结构
 
 - `src/common/asyncapi/asyncapi.config.ts`: `setupAsyncApi(app, nodeEnv, port)`.
-- Called from `src/main.ts` after OpenAPI setup.
-  在 `src/main.ts` 中于 OpenAPI 之后调用。
+- Called from `src/bootstrap/configure-application.ts` after OpenAPI setup.
+  在共享启动编排中于 OpenAPI 之后调用。
 - Demo gateway: `src/features/demo-websocket/` (namespace `/demo-websocket`).
   演示网关命名空间为 `/demo-websocket`。See also `docs/websocket.md`.
 

@@ -21,13 +21,14 @@ queue:
   removeOnFail: 5000
 ```
 
-`NODE_ENV=test` uses BullMQ manual registration and skips the demo queue feature
-from `AppModule`, so app-level tests do not start workers or require Redis.
+`CommonQueueModule` owns the BullMQ root registration and shared queue defaults.
+`NODE_ENV=test` uses manual registration, while `DemosModule` skips the demo
+queue feature so app-level tests do not start workers or require Redis.
 
 ## Common Module
 
-`CommonQueueModule` exports `CommonQueueService`, which centralizes template
-queue behavior:
+`CommonQueueModule` exports BullMQ and `CommonQueueService`, which centralizes
+template queue behavior:
 
 - rejects job mutation when `queue.enabled` is false
 - adds jobs with typed payloads

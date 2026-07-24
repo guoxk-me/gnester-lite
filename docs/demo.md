@@ -8,20 +8,15 @@ This document records the demo feature modules under `src/features/`.
 
 ## Runtime Setup / 运行入口
 
-`src/app.module.ts` registers the demo modules:
+`src/features/demos.module.ts` aggregates the removable demo catalog, and
+`src/app.module.ts` imports that catalog once. The complete `DemoQueueModule`
+(routes, providers, and workers) is omitted when `NODE_ENV=test`. See
+`docs/project-notes.zh-en.md` for the complete module list.
 
-`src/app.module.ts` 注册了这些 demo 模块：
-
-- `DemoConfigModule`: configuration reading example. 配置读取示例。
-- `DemoAuthModule`: JWT authentication and protected route examples. JWT 认证与受保护路由示例。
-- `DemoCsrfModule`: CSRF token and protected mutation examples. CSRF token 与受保护写请求示例。
-- `DemoCryptoModule`: encryption, token digest, and HMAC signature examples. 加密、令牌摘要与 HMAC 签名示例。
-- `DemoDatabaseModule`: pure TypeORM database examples. 纯 TypeORM 数据库示例。
-- `DemoEventsModule`: in-process event emitter examples. 进程内事件示例。
-- `DemoHttpModule`: outbound HTTP client examples. 出站 HTTP 客户端示例。
-- `DemoSecurityModule`: Helmet security header examples. Helmet 安全响应头示例。
-- `DemoSentryModule`: Sentry status and debug error examples. Sentry 状态与调试错误示例。
-- `DemoWebsocketModule`: authenticated Socket.IO gateway examples. 已认证 Socket.IO gateway 示例。
+`src/features/demos.module.ts` 聚合可整体移除的示例目录，根模块只导入一次；
+`NODE_ENV=test` 时不加载整个 `DemoQueueModule`（路由、provider 与 worker）。
+完整模块清单见
+`docs/project-notes.zh-en.md`。
 
 The database demo intentionally focuses on database scenarios only. It does not demonstrate API versioning, interceptors, cache, or scheduled jobs.
 
@@ -123,7 +118,7 @@ What it shows / 演示点：
 Files / 文件：
 
 - `src/common/security/helmet-options.ts`
-- `src/main.ts`
+- `src/bootstrap/configure-application.ts`
 - `src/features/demo-security/demo-security.module.ts`
 - `src/features/demo-security/demo-security.controller.ts`
 - `src/features/demo-security/demo-security.service.ts`
@@ -160,10 +155,10 @@ Example response shape / 示例响应结构：
 What it shows / 演示点：
 
 - Helmet is applied directly with `app.use(helmet(createHelmetOptions(nodeEnv)))`
-  in `src/main.ts` before
+  in `src/bootstrap/configure-application.ts` before
   compression, cookies, sessions, pipes, versioning, and route handling.
-  Helmet 在 `src/main.ts` 中通过 `app.use(helmet(createHelmetOptions(nodeEnv)))`
-  直接注册，早于压缩、cookie、session、pipe、版本化和路由处理。
+  Helmet 在 `src/bootstrap/configure-application.ts` 中直接注册，早于压缩、
+  cookie、session、pipe、版本化和路由处理。
 - `createHelmetOptions()` centralizes environment-specific security header
   decisions. `createHelmetOptions()` 集中管理按环境变化的安全响应头配置。
 - Development and test disable HSTS plus CSP `upgrade-insecure-requests`, so
@@ -261,8 +256,9 @@ What it shows / 演示点：
 - `CsrfService` wraps `csrf-csrf` behind a Nest provider so bootstrap code and
   controllers share the same token settings.
   `CsrfService` 用 Nest provider 封装 `csrf-csrf`，让启动代码和 controller 共享同一套 token 配置。
-- `src/main.ts` registers CSRF after cookie/session middleware and before global
-  pipes and routes. `src/main.ts` 在 cookie/session 中间件之后、全局 pipe 和路由之前注册 CSRF。
+- `src/bootstrap/configure-application.ts` registers CSRF after cookie/session
+  middleware and before global pipes and routes. 该启动编排在 cookie/session
+  中间件之后、全局 pipe 和路由之前注册 CSRF。
 - Browser clients fetch a token first, then submit it in `x-csrf-token` for
   unsafe methods. 浏览器客户端先获取 token，再在 unsafe method 中通过
   `x-csrf-token` 提交。

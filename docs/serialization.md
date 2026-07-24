@@ -61,8 +61,8 @@ It shows common response cases:
   嵌套数组序列化。
 - `src/features/demo-serialization/demo-serialization.controller.spec.ts`: executable contracts.
   可执行契约测试。
-- `src/app.module.ts`: imports `DemoSerializationModule`.
-  接入 `DemoSerializationModule`。
+- `src/features/demos.module.ts`: imports `DemoSerializationModule`.
+  在示例目录中接入 `DemoSerializationModule`。
 
 ## Routes / 路由
 

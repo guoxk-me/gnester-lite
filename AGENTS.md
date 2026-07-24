@@ -62,14 +62,15 @@ Double-validation design in `config/`:
 
 Both run through NestJS `ConfigModule.forRoot({ validate })`, combining YAML defaults with env overrides. Config types live in `config/config.types.ts`.
 
-### Bootstrap (main.ts)
+### Bootstrap
 
-`src/instrument.ts` is imported first for optional Sentry initialization. Then
-bootstrap applies cross-request infrastructure: `bufferLogs` + nestjs-pino
-`app.useLogger`, CORS, compression, cookie-parser, express-session (MemoryStore,
-dev only), CSRF protection, global `ValidationPipe` (createValidationPipe), URI
-versioning (`/v1/...`), OpenAPI docs (`/docs`, `/docs-json`),
-`DemoSocketIoAdapter`.
+`src/instrument.ts` is imported first for optional Sentry initialization.
+`src/main.ts` creates the app, attaches nestjs-pino, delegates the
+order-sensitive runtime pipeline to
+`src/bootstrap/configure-application.ts`, and starts listening. That shared
+bootstrap configures CORS, compression, cookie-parser, express-session
+(MemoryStore, dev only), CSRF, global validation, URI versioning, API docs, and
+the Socket.IO adapter.
 
 ### Test infrastructure
 
@@ -77,7 +78,7 @@ versioning (`/v1/...`), OpenAPI docs (`/docs`, `/docs-json`),
 - Jest with `NODE_ENV=test`, `--experimental-vm-modules`.
 - Unit tests colocated as `*.spec.ts` (in `src/` and `config/`).
 - E2E tests in `test/` using `test/jest-e2e.json`.
-- Queue feature modules are excluded in test environment (`isTestEnvironment` guard in `app.module.ts`). BullMQ uses `lazyConnect: true` and `manualRegistration: true` in test mode.
+- `DemosModule` excludes `DemoQueueModule` in test environments. `CommonQueueModule` keeps BullMQ lazy and manually registered in test mode.
 - TypeORM relation fields should use `Relation<T>` to avoid SWC circular-import issues (see `docs/database.md`).
 
 ### Key dependencies

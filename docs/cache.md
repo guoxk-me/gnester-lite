@@ -11,12 +11,9 @@ response cache interceptor.
 
 ## Layout / 结构
 
-- `src/app.module.ts`: `CacheModule.registerAsync` with Keyv Redis store and
-  YAML `cache.ttl`.
-  用 Keyv Redis store 与 YAML `cache.ttl` 注册全局 `CacheModule`。
-- `src/common/cache/cache.module.ts`: `@Global()` exports `CacheService` and
-  `HttpCacheInterceptor`.
-  全局导出 `CacheService` 与 `HttpCacheInterceptor`。
+- `src/common/cache/cache.module.ts`: owns `CacheModule.registerAsync`, the
+  Keyv Redis store, `CacheService`, and `HttpCacheInterceptor`.
+  集中注册 `CacheModule`、Keyv Redis store，并全局导出缓存服务与拦截器。
 - `src/common/cache/cache.service.ts`: `get` / `set` / `remember` / `del` /
   `clear`.
 - `src/common/cache/http-cache.interceptor.ts`: GET-only track keys with
@@ -50,9 +47,10 @@ Notes / 说明：
 - Redis is shared with BullMQ; use distinct key prefixes in app code
   (`demo-cache:...`) so cache keys do not collide with queue data.
   Redis 与 BullMQ 共用；业务键请自带前缀，避免与队列键冲突。
-- `CommonCacheModule` does not re-register `CacheModule`; it assumes the root
-  `CacheModule.registerAsync` already ran.
-  `CommonCacheModule` 不再次注册 `CacheModule`，依赖根模块已装配。
+- `CommonCacheModule` is the single cache composition boundary; importing it
+  registers the Redis-backed Nest cache and shared providers together.
+  `CommonCacheModule` 是唯一缓存装配边界，导入后同时注册 Redis 缓存与共享
+  provider。
 
 ## Usage / 用法
 

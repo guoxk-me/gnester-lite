@@ -61,7 +61,8 @@ that authenticate through cookies or sessions.
 浏览器客户端通过 cookie 或 session 自动携带凭证时，使用
 `src/common/csrf/csrf.service.ts` 中的 `CsrfService`。
 
-- Implementation: `csrf-csrf`, registered globally in `src/main.ts`.
+- Implementation: `csrf-csrf`, registered globally in
+  `src/bootstrap/configure-application.ts`.
 - Token endpoint demo: `GET /demo-csrf/token`.
 - Unsafe methods (`POST`, `PUT`, `PATCH`, `DELETE`) must send the token in
   `x-csrf-token`.

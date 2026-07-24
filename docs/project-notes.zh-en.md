@@ -9,9 +9,10 @@ it exists.
 
 ## Root / 根目录
 
-- `src/main.ts`: Bootstraps the NestJS app, applies global middleware, validation, API versioning, OpenAPI, CSRF, sessions, and WebSocket adapter. / 启动 NestJS 应用并挂载全局中间件、校验、接口版本、OpenAPI、CSRF、会话和 WebSocket 适配器。
+- `src/main.ts`: Creates the NestJS app, delegates application configuration, and starts listening. / 创建 NestJS 应用、委托应用配置并启动监听。
+- `src/bootstrap/configure-application.ts`: Applies the order-sensitive middleware, validation, versioning, documentation, and WebSocket bootstrap pipeline. / 按顺序挂载中间件、校验、版本化、文档与 WebSocket 启动管线。
 - `src/instrument.ts`: Initializes Sentry before any Nest modules load. / 在任何 Nest 模块加载前初始化 Sentry。
-- `src/app.module.ts`: Wires configuration, database, Redis cache, BullMQ queues, events, schedules, common modules, and demo features. / 装配配置、数据库、Redis 缓存、BullMQ 队列、事件、定时任务、公共模块和示例功能。
+- `src/app.module.ts`: Composes configuration, database, events, common capability modules, and the removable demo catalog. / 组合配置、数据库、事件、公共能力模块与可整体移除的示例目录。
 - `config/`: Loads YAML/env configuration, validates runtime settings, and provides TypeORM CLI config. / 加载 YAML/env 配置、校验运行参数，并提供 TypeORM CLI 配置。
 - `docs/`: Explains each template capability so code examples have operational context. / 说明各模板能力，让代码示例有可运行、可维护的上下文。
 - `test/`: Holds e2e tests for API wiring and cross-module behavior. / 存放端到端测试，验证接口装配和跨模块行为。

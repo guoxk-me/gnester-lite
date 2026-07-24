@@ -30,9 +30,9 @@ Reuse another DTO? -> mapped types
 
 ## Load Flow / 加载流程
 
-`src/main.ts` wires validation:
+`src/bootstrap/configure-application.ts` wires validation:
 
-`src/main.ts` 接入校验：
+`src/bootstrap/configure-application.ts` 接入校验：
 
 ```ts
 app.useGlobalPipes(createValidationPipe(nodeEnv));

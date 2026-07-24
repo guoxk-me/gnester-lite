@@ -10,8 +10,9 @@ APIs via `@nestjs/swagger`.
 ## Layout / 结构
 
 - `src/common/openapi/openapi.config.ts`: `setupOpenApi(app, nodeEnv)`.
-- Called from `src/main.ts` after URI versioning is enabled.
-  在 `src/main.ts` 启用 URI 版本后再调用。
+- Called from `src/bootstrap/configure-application.ts` after URI versioning is
+  enabled.
+  在共享启动编排启用 URI 版本后再调用。
 
 ## Endpoints / 端点
 

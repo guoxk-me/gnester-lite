@@ -39,8 +39,8 @@ Do not use `UTC+8` or `Beijing`; validation rejects non-IANA values.
 
 ## Key Files / 关键文件
 
-- `src/app.module.ts`: imports `ScheduleModule.forRoot()` and
-  `CommonScheduleModule`.
+- `src/common/schedule/schedule.module.ts`: owns `ScheduleModule.forRoot()` and
+  exports the shared scheduler runtime service.
 - `config/config.yaml`: schedule defaults.
 - `config/configuration.ts`: validates `schedule.enabled` and
   `schedule.timeZone`.

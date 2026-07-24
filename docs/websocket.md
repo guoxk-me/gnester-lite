@@ -43,7 +43,7 @@ Socket.IO adapter，符合 NestJS 官方 adapter 扩展模式。
 Files / 文件：
 
 - `src/common/websocket/demo-socket-io.adapter.ts`
-- `src/main.ts`
+- `src/bootstrap/configure-application.ts`
 
 The adapter is registered during bootstrap:
 
