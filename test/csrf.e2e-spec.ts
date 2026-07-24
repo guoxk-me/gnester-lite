@@ -1,14 +1,10 @@
-// CN: 端到端测试，验证 application e2e 的真实应用流程；EN: E2E test verifies real application flows for application e2e.
-import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test, TestingModule } from '@nestjs/testing';
-import cookieParser from 'cookie-parser';
-import session from 'express-session';
 import request from 'supertest';
-import { App } from 'supertest/types';
 
+import { configureApplication } from '../src/bootstrap/configure-application';
 import { CommonCsrfModule } from '../src/common/csrf/csrf.module';
-import { CsrfService } from '../src/common/csrf/csrf.service';
 import { DemoCsrfModule } from '../src/features/demo-csrf/demo-csrf.module';
 
 interface CsrfTokenResponseBody {
@@ -18,7 +14,7 @@ interface CsrfTokenResponseBody {
 
 // CN: 测试分组：CSRF protection (e2e)；EN: Test group: CSRF protection (e2e).
 describe('CSRF protection (e2e)', () => {
-  let app: INestApplication<App> | undefined;
+  let app: NestExpressApplication | undefined;
 
   // CN: 测试准备，组织或验证测试流程；EN: Test setup organizes or verifies the test flow.
   beforeEach(async () => {
@@ -33,6 +29,9 @@ describe('CSRF protection (e2e)', () => {
               CSRF_ENABLED: true,
               CSRF_SECRET: 'test-csrf-secret',
               COOKIE_SECRET: 'test-cookie-secret',
+              rateLimit: {
+                trustProxy: false,
+              },
             }),
           ],
         }),
@@ -41,23 +40,9 @@ describe('CSRF protection (e2e)', () => {
       ],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
-    app.use(cookieParser('test-cookie-secret'));
-    app.use(
-      session({
-        secret: 'test-session-secret',
-        resave: false,
-        saveUninitialized: false,
-      }),
-    );
-    app.use(app.get(CsrfService).createProtectionMiddleware());
-    app.use(app.get(CsrfService).createErrorHandler());
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        transform: true,
-      }),
-    );
+    app = moduleFixture.createNestApplication<NestExpressApplication>();
+    // AI modified: exercise the same order-sensitive bootstrap pipeline used by production.
+    configureApplication(app);
     await app.init();
   });
 
