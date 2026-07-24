@@ -6,6 +6,7 @@ import {
   HttpException,
 } from '@nestjs/common';
 import { BaseWsExceptionFilter, WsException } from '@nestjs/websockets';
+import * as Sentry from '@sentry/nestjs';
 
 import type { DemoWebsocketSocket } from './demo-websocket.gateway';
 
@@ -24,6 +25,11 @@ interface DemoWebsocketExceptionPayload {
 export class DemoWebsocketExceptionFilter extends BaseWsExceptionFilter {
   // CN: 捕获并格式化 demo-websocket 的 catch 异常；EN: Catches and formats catch exceptions for demo-websocket.
   catch(exception: unknown, host: ArgumentsHost): void {
+    // AI modified: APP_FILTER does not cover gateways, so report unexpected WS errors here.
+    if (shouldCaptureWebsocketException(exception)) {
+      Sentry.captureException(exception);
+    }
+
     const client = host.switchToWs().getClient<DemoWebsocketSocket>();
 
     client.emit('demo-websocket.exception', this.toPayload(exception));
@@ -76,6 +82,15 @@ export class DemoWebsocketExceptionFilter extends BaseWsExceptionFilter {
       message: 'Internal websocket error',
     };
   }
+}
+
+// AI modified: skip expected control-flow exceptions; report unexpected failures only.
+function shouldCaptureWebsocketException(exception: unknown): boolean {
+  return !(
+    exception instanceof BadRequestException ||
+    exception instanceof WsException ||
+    exception instanceof HttpException
+  );
 }
 
 // CN: 捕获并格式化 demo-websocket 的 normalize ws exception error 异常；EN: Catches and formats normalize ws exception error exceptions for demo-websocket.

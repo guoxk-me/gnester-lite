@@ -2,6 +2,7 @@
 import { Logger } from '@nestjs/common';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
+import { withSentryIsolation } from '../../common/sentry/with-sentry-isolation';
 import {
   DEMO_QUEUE,
   DEMO_QUEUE_LONG_TASK_JOB,
@@ -32,26 +33,29 @@ export class DemoQueueProcessor extends WorkerHost {
   async process(
     job: Job<DemoQueueJobData, DemoQueueResultDto, string>,
   ): Promise<DemoQueueResultDto> {
-    switch (job.name) {
-      case DEMO_QUEUE_SEND_EMAIL_JOB:
-        return this.handleEmail(
-          job as Job<DemoEmailJobData, DemoQueueResultDto, string>,
-        );
-      case DEMO_QUEUE_LONG_TASK_JOB:
-        return this.handleLongTask(
-          job as Job<DemoLongTaskJobData, DemoQueueResultDto, string>,
-        );
-      case DEMO_QUEUE_SUBTASK_JOB:
-        return this.handleSubtask(
-          job as Job<DemoSubtaskJobData, DemoQueueResultDto, string>,
-        );
-      case DEMO_QUEUE_WORKFLOW_JOB:
-        return this.handleWorkflow(
-          job as Job<DemoWorkflowJobData, DemoQueueResultDto, string>,
-        );
-      default:
-        throw new Error(`Unsupported demo queue job "${job.name}"`);
-    }
+    // AI modified: isolate BullMQ work so breadcrumbs do not leak into HTTP errors.
+    return withSentryIsolation(async () => {
+      switch (job.name) {
+        case DEMO_QUEUE_SEND_EMAIL_JOB:
+          return this.handleEmail(
+            job as Job<DemoEmailJobData, DemoQueueResultDto, string>,
+          );
+        case DEMO_QUEUE_LONG_TASK_JOB:
+          return this.handleLongTask(
+            job as Job<DemoLongTaskJobData, DemoQueueResultDto, string>,
+          );
+        case DEMO_QUEUE_SUBTASK_JOB:
+          return this.handleSubtask(
+            job as Job<DemoSubtaskJobData, DemoQueueResultDto, string>,
+          );
+        case DEMO_QUEUE_WORKFLOW_JOB:
+          return this.handleWorkflow(
+            job as Job<DemoWorkflowJobData, DemoQueueResultDto, string>,
+          );
+        default:
+          throw new Error(`Unsupported demo queue job "${job.name}"`);
+      }
+    });
   }
 
   // CN: 处理 demo-queue 的 on completed 后台任务；EN: Processes the on completed background job for demo-queue.

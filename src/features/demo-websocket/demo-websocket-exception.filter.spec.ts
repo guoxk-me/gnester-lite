@@ -1,7 +1,12 @@
 // CN: 测试文件，验证 demo-websocket 的行为契约；EN: Test file verifies behavior contracts for demo-websocket.
 import { ArgumentsHost, BadRequestException } from '@nestjs/common';
+import * as Sentry from '@sentry/nestjs';
 import { WsException } from '@nestjs/websockets';
 import { DemoWebsocketExceptionFilter } from './demo-websocket-exception.filter';
+
+jest.mock('@sentry/nestjs', () => ({
+  captureException: jest.fn(),
+}));
 
 // CN: 测试分组：DemoWebsocketExceptionFilter；EN: Test group: DemoWebsocketExceptionFilter.
 describe('DemoWebsocketExceptionFilter', () => {
@@ -16,6 +21,7 @@ describe('DemoWebsocketExceptionFilter', () => {
     client = {
       emit: jest.fn(),
     };
+    jest.clearAllMocks();
   });
 
   // CN: 测试用例：emits validation failures with field-level details for websocket clients；EN: Test case: emits validation failures with field-level details for websocket clients.
@@ -44,6 +50,7 @@ describe('DemoWebsocketExceptionFilter', () => {
         },
       ],
     });
+    expect(Sentry.captureException).not.toHaveBeenCalled();
   });
 
   // CN: 测试用例：emits WsException payloads without rewriting stable application codes；EN: Test case: emits WsException payloads without rewriting stable application codes.
@@ -60,6 +67,7 @@ describe('DemoWebsocketExceptionFilter', () => {
       code: 'WEBSOCKET_UNAUTHORIZED',
       message: 'Unauthorized websocket event',
     });
+    expect(Sentry.captureException).not.toHaveBeenCalled();
   });
 
   // CN: 测试用例：preserves WsException validation details emitted by websocket pipes；EN: Test case: preserves WsException validation details emitted by websocket pipes.
@@ -88,16 +96,20 @@ describe('DemoWebsocketExceptionFilter', () => {
         },
       ],
     });
+    expect(Sentry.captureException).not.toHaveBeenCalled();
   });
 
   // CN: 测试用例：does not leak unexpected Error messages to websocket clients；EN: Test case: does not leak unexpected Error messages to websocket clients.
   it('does not leak unexpected Error messages to websocket clients', () => {
-    filter.catch(new Error('database password leaked'), createHost(client));
+    const unexpectedError = new Error('database password leaked');
+
+    filter.catch(unexpectedError, createHost(client));
 
     expect(client.emit).toHaveBeenCalledWith('demo-websocket.exception', {
       code: 'WEBSOCKET_INTERNAL_ERROR',
       message: 'Internal websocket error',
     });
+    expect(Sentry.captureException).toHaveBeenCalledWith(unexpectedError);
   });
 });
 

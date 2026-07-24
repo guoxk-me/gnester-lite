@@ -15,6 +15,7 @@ import {
   DEMO_UTC_OFFSET_CRON_JOB,
 } from './demo-schedule.constants';
 import { ScheduleOverviewDto } from '../../common/schedule/dto/schedule-overview.dto';
+import { withSentryIsolation } from '../../common/sentry/with-sentry-isolation';
 import { DemoScheduleRunDto } from './dto/demo-schedule-run.dto';
 
 @Injectable()
@@ -181,16 +182,19 @@ export class DemoScheduleService implements OnApplicationBootstrap {
 
   // CN: 执行 demo-schedule 的 run demo task 业务逻辑；EN: Runs the run demo task business logic for demo-schedule.
   private runDemoTask(task: string): DemoScheduleRunDto | undefined {
-    if (!this.scheduleService.isEnabled()) {
-      return undefined;
-    }
+    // AI modified: isolate scheduled work so breadcrumbs do not leak into HTTP errors.
+    return withSentryIsolation(() => {
+      if (!this.scheduleService.isEnabled()) {
+        return undefined;
+      }
 
-    const result = {
-      task,
-      ranAt: new Date().toISOString(),
-    };
+      const result = {
+        task,
+        ranAt: new Date().toISOString(),
+      };
 
-    this.logger.log(`Scheduled task executed: ${task}`);
-    return result;
+      this.logger.log(`Scheduled task executed: ${task}`);
+      return result;
+    });
   }
 }
