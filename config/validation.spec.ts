@@ -229,6 +229,7 @@ describe('environment validation', () => {
       }),
     ).toThrow();
   });
+
   // CN: 测试用例：defaults Sentry to enabled with optional DSN；EN: Test case: defaults Sentry to enabled with optional DSN.
   it('defaults Sentry to enabled with optional DSN', () => {
     const config = validate(baseEnv);
@@ -263,6 +264,4 @@ describe('environment validation', () => {
       }),
     ).toThrow();
   });
-
-
 });

@@ -6,6 +6,7 @@ allowBuilds:
   '@hyperjump/pact': true
   '@nestjs/core': true
   '@scarf/scarf': false
+  '@swc/core': true
   msgpackr-extract: true
   protobufjs: true
   puppeteer: true
@@ -16,6 +17,7 @@ onlyBuiltDependencies:
   - '@hyperjump/json-schema-core'
   - '@hyperjump/pact'
   - '@nestjs/core'
+  - '@swc/core'
   - msgpackr-extract
   - protobufjs
   - puppeteer

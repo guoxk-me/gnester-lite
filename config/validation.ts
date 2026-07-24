@@ -279,7 +279,6 @@ class EnvironmentVariables {
   @Min(0)
   @Max(1)
   SENTRY_TRACES_SAMPLE_RATE?: number;
-
 }
 
 // CN: 生成或校验 configuration 的 validate 配置；EN: Builds or validates the validate configuration for configuration.

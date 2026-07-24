@@ -23,6 +23,10 @@ services:
       CSRF_SECRET: change-me-before-production
       ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
       HMAC_SECRET: change-me-before-production
+      # AI modified: declare optional Sentry env vars; empty DSN keeps monitoring off.
+      SENTRY_DSN: ''
+      SENTRY_ENABLED: 'true'
+      SENTRY_TRACES_SAMPLE_RATE: '0.1'
     depends_on:
       mysql:
         condition: service_healthy

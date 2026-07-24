@@ -6,7 +6,8 @@ cache:
   ttl: 0
 
 schedule:
-  enabled: true
+  # AI modified: keep schedule off by default to match docs/tests and avoid multi-instance duplicate jobs.
+  enabled: false
   timeZone: Asia/Shanghai
 
 queue:
