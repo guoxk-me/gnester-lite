@@ -229,4 +229,40 @@ describe('environment validation', () => {
       }),
     ).toThrow();
   });
+  // CN: 测试用例：defaults Sentry to enabled with optional DSN；EN: Test case: defaults Sentry to enabled with optional DSN.
+  it('defaults Sentry to enabled with optional DSN', () => {
+    const config = validate(baseEnv);
+
+    expect(config.SENTRY_ENABLED).toBe(true);
+    expect(config.SENTRY_DSN).toBeUndefined();
+    expect(config.SENTRY_TRACES_SAMPLE_RATE).toBeUndefined();
+  });
+
+  // CN: 测试用例：coerces Sentry settings from environment strings；EN: Test case: coerces Sentry settings from environment strings.
+  it('coerces Sentry settings from environment strings', () => {
+    const config = validate({
+      ...baseEnv,
+      SENTRY_DSN: 'https://examplePublicKey@o0.ingest.sentry.io/0',
+      SENTRY_ENABLED: 'false',
+      SENTRY_TRACES_SAMPLE_RATE: '0.2',
+    });
+
+    expect(config.SENTRY_DSN).toBe(
+      'https://examplePublicKey@o0.ingest.sentry.io/0',
+    );
+    expect(config.SENTRY_ENABLED).toBe(false);
+    expect(config.SENTRY_TRACES_SAMPLE_RATE).toBe(0.2);
+  });
+
+  // CN: 测试用例：rejects invalid Sentry sample rates；EN: Test case: rejects invalid Sentry sample rates.
+  it('rejects invalid Sentry sample rates', () => {
+    expect(() =>
+      validate({
+        ...baseEnv,
+        SENTRY_TRACES_SAMPLE_RATE: '1.5',
+      }),
+    ).toThrow();
+  });
+
+
 });

@@ -1,3 +1,6 @@
+// AI modified: import Sentry instrumentation before any Nest or app modules.
+import './instrument';
+
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { Logger as NestLogger, VersioningType } from '@nestjs/common';
