@@ -1,10 +1,13 @@
 import { Global, Module } from '@nestjs/common';
+import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
+
 import { CommonScheduleService } from './schedule.service';
 
-// CN: 定时任务模块暴露任务运行状态；EN: Schedule module exposes job runtime state.
+// AI modified: keep scheduler initialization beside the shared schedule runtime service.
 @Global()
 @Module({
+  imports: [NestScheduleModule.forRoot()],
   providers: [CommonScheduleService],
-  exports: [CommonScheduleService],
+  exports: [NestScheduleModule, CommonScheduleService],
 })
 export class CommonScheduleModule {}

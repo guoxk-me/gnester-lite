@@ -1,5 +1,5 @@
 // CN: 控制器，定义 health common 的 HTTP 接口；EN: Controller defines HTTP endpoints for health common.
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import {
   HealthCheck,
   HealthCheckResult,
@@ -7,7 +7,11 @@ import {
   TypeOrmHealthIndicator,
 } from '@nestjs/terminus';
 
-@Controller('health')
+// AI modified: VERSION_NEUTRAL so probes stay at /health/* (not /v1/health/*) matching README.
+@Controller({
+  version: VERSION_NEUTRAL,
+  path: 'health',
+})
 export class HealthController {
   // CN: 初始化 health common 的依赖和运行状态；EN: Initializes dependencies and runtime state for health common.
   constructor(
