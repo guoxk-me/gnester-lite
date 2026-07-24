@@ -6,18 +6,25 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
   UseGuards,
   VERSION_NEUTRAL,
 } from '@nestjs/common';
 
-import { AuthGuard } from '../../common/auth/auth.guard';
 import { CurrentUser } from '../../common/auth/decorators/current-user.decorator';
 import { Public } from '../../common/auth/decorators/public.decorator';
 import { AccessTokenDto } from '../../common/auth/dto/access-token.dto';
+import { JwtAuthGuard } from '../../common/auth/guards/jwt-auth.guard';
+import { LocalAuthGuard } from '../../common/auth/guards/local-auth.guard';
 import type { JwtAuthenticatedUser } from '../../common/auth/types/jwt-authenticated-user.type';
+import type { LocalAuthenticatedUser } from '../../common/auth/types/local-authenticated-user.type';
 import { DemoAuthService } from './demo-auth.service';
 import { DemoAuthScenarioDto } from './dto/demo-auth-scenario.dto';
 import { SignInDto } from './dto/sign-in.dto';
+
+interface LocalAuthenticatedRequest {
+  user: LocalAuthenticatedUser;
+}
 
 @Controller({
   version: VERSION_NEUTRAL,
@@ -34,16 +41,23 @@ export class DemoAuthController {
     return this.demoAuthService.getScenarios();
   }
 
+  // AI modified: login uses LocalAuthGuard so Passport local strategy validates body credentials.
   // CN: 处理 demo-auth 的 sign in HTTP 请求；EN: Handles the sign in HTTP request for demo-auth.
   @Public()
+  @UseGuards(LocalAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  signIn(@Body() dto: SignInDto): Promise<AccessTokenDto> {
-    return this.demoAuthService.signIn(dto);
+  login(
+    // SignInDto documents the body contract; LocalAuthGuard reads username/password from req.body.
+    @Body() _dto: SignInDto,
+    @Req() req: LocalAuthenticatedRequest,
+  ): Promise<AccessTokenDto> {
+    return this.demoAuthService.login(req.user);
   }
 
+  // AI modified: profile uses JwtAuthGuard + JwtStrategy instead of the hand-rolled AuthGuard.
   // CN: 处理 demo-auth 的 get profile HTTP 请求；EN: Handles the get profile HTTP request for demo-auth.
-  @UseGuards(AuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Get('profile')
   getProfile(@CurrentUser() user: JwtAuthenticatedUser): JwtAuthenticatedUser {
     return this.demoAuthService.getProfile(user);

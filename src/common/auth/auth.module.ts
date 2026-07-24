@@ -1,16 +1,22 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule, type JwtModuleOptions } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
 
 import { AuthGuard } from './auth.guard';
 import { AuthTokenService } from './auth-token.service';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { LocalAuthGuard } from './guards/local-auth.guard';
 import { PasswordHashService } from './password-hash.service';
+import { JwtStrategy } from './strategies/jwt.strategy';
 
 type JwtExpiresIn = NonNullable<JwtModuleOptions['signOptions']>['expiresIn'];
 
-// CN: 认证模块提供 JWT、守卫和密码哈希；EN: Auth module provides JWT, guard, and password hashing.
+// CN: 认证模块提供 JWT、Passport 守卫和密码哈希；EN: Auth module provides JWT, Passport guards, and password hashing.
+// AI modified: registered PassportModule and JwtStrategy so JwtAuthGuard works per NestJS passport recipe.
 @Module({
   imports: [
+    PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
@@ -28,7 +34,22 @@ type JwtExpiresIn = NonNullable<JwtModuleOptions['signOptions']>['expiresIn'];
       }),
     }),
   ],
-  providers: [AuthGuard, AuthTokenService, PasswordHashService],
-  exports: [AuthGuard, AuthTokenService, PasswordHashService, JwtModule],
+  providers: [
+    AuthGuard,
+    AuthTokenService,
+    JwtAuthGuard,
+    JwtStrategy,
+    LocalAuthGuard,
+    PasswordHashService,
+  ],
+  exports: [
+    AuthGuard,
+    AuthTokenService,
+    JwtAuthGuard,
+    JwtModule,
+    LocalAuthGuard,
+    PassportModule,
+    PasswordHashService,
+  ],
 })
 export class CommonAuthModule {}

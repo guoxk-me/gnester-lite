@@ -1,12 +1,12 @@
 // CN: 服务，承载 demo-auth 的业务逻辑；EN: Service holds business logic for demo-auth.
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { AccessTokenDto } from '../../common/auth/dto/access-token.dto';
 import { AuthTokenService } from '../../common/auth/auth-token.service';
 import { PasswordHashService } from '../../common/auth/password-hash.service';
 import type { JwtAuthenticatedUser } from '../../common/auth/types/jwt-authenticated-user.type';
+import type { LocalAuthenticatedUser } from '../../common/auth/types/local-authenticated-user.type';
 import { DemoAuthScenarioDto } from './dto/demo-auth-scenario.dto';
-import { SignInDto } from './dto/sign-in.dto';
 
 interface DemoUser {
   readonly id: string;
@@ -39,13 +39,13 @@ export class DemoAuthService {
   getScenarios(): DemoAuthScenarioDto[] {
     return [
       {
-        name: 'JWT bearer API',
+        name: 'Passport local login + JWT bearer API',
         method: 'POST / GET',
         route: '/demo-auth/login -> /demo-auth/profile',
         useCase:
-          'Issue a short-lived access token after login and require it on stateless API requests.',
+          'Validate username/password with LocalStrategy, issue a short-lived access token, then require JwtAuthGuard on stateless API requests.',
         nestPattern:
-          'Use a DTO for credentials, JwtService for token signing, and AuthGuard for bearer validation.',
+          'Use LocalAuthGuard + LocalStrategy for login, JwtService for token signing, and JwtAuthGuard + JwtStrategy for bearer validation.',
       },
       {
         name: 'Public route escape hatch',
@@ -62,22 +62,37 @@ export class DemoAuthService {
         useCase:
           'Read the authenticated subject and roles from the verified JWT payload inside a controller.',
         nestPattern:
-          'AuthGuard assigns request.user and @CurrentUser() exposes it to route handlers.',
+          'JwtStrategy.validate assigns request.user and @CurrentUser() exposes it to route handlers.',
       },
     ];
   }
 
-  // CN: 执行 demo-auth 的 sign in 业务逻辑；EN: Runs the sign in business logic for demo-auth.
-  async signIn(dto: SignInDto): Promise<AccessTokenDto> {
-    const user = DEMO_USERS.find((item) => item.username === dto.username);
+  // AI modified: split credential checks into validateUser for Passport LocalStrategy (NestJS passport recipe).
+  // CN: 校验用户名密码，供 LocalStrategy 调用；EN: Validates credentials for LocalStrategy.
+  async validateUser(
+    username: string,
+    password: string,
+  ): Promise<LocalAuthenticatedUser | null> {
+    const user = DEMO_USERS.find((item) => item.username === username);
 
     if (
       !user ||
-      !(await this.passwordHashService.verify(dto.password, user.passwordHash))
+      !(await this.passwordHashService.verify(password, user.passwordHash))
     ) {
-      throw new UnauthorizedException();
+      return null;
     }
 
+    return {
+      id: user.id,
+      username: user.username,
+      roles: user.roles,
+      permissions: user.permissions,
+    };
+  }
+
+  // AI modified: login signs JWT from LocalAuthGuard-attached user per NestJS passport recipe.
+  // CN: 为已校验用户签发访问令牌；EN: Issues an access token for a validated user.
+  async login(user: LocalAuthenticatedUser): Promise<AccessTokenDto> {
     return {
       accessToken: await this.authTokenService.signAccessToken({
         sub: user.id,
