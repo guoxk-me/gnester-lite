@@ -6,6 +6,7 @@
     "test",
     "dist",
     "documentation",
+    "src/metadata.ts",
     "**/*spec.ts"
   ]
 }

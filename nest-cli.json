@@ -7,11 +7,21 @@
       "type": "swc",
       "options": {
         "filenames": ["src", "config"],
-        "stripLeadingPaths": false
+        "stripLeadingPaths": false,
+        "swcrcPath": ".swcrc.build"
       }
     },
     "typeCheck": true,
     "deleteOutDir": true,
+    "plugins": [
+      {
+        "name": "@nestjs/swagger",
+        "options": {
+          "classValidatorShim": true,
+          "introspectComments": true
+        }
+      }
+    ],
     "assets": [
       {
         "include": "../config/*.yaml",
