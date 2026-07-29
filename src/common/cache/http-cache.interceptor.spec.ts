@@ -1,25 +1,37 @@
-// CN: 测试文件，验证 cache common 的行为契约；EN: Test file verifies behavior contracts for cache common.
-import type { ExecutionContext } from '@nestjs/common';
+import {
+  ServiceUnavailableException,
+  type CallHandler,
+  type ExecutionContext,
+} from '@nestjs/common';
+import { CACHE_TTL_METADATA } from '@nestjs/cache-manager';
 import { Reflector } from '@nestjs/core';
+import { firstValueFrom, of } from 'rxjs';
+import { CacheService } from './cache.service';
 import { HttpCacheInterceptor } from './http-cache.interceptor';
 
 class TestHttpCacheInterceptor extends HttpCacheInterceptor {
-  // CN: 准备或验证 cache common 的 test track by 测试逻辑；EN: Prepares or verifies the test track by test logic for cache common.
   testTrackBy(context: ExecutionContext): string | undefined {
     return this.trackBy(context);
   }
 }
 
-// CN: 测试分组：HttpCacheInterceptor；EN: Test group: HttpCacheInterceptor.
 describe('HttpCacheInterceptor', () => {
+  const cacheService: jest.Mocked<Pick<CacheService, 'get' | 'set'>> = {
+    get: jest.fn(),
+    set: jest.fn(),
+  };
   let interceptor: TestHttpCacheInterceptor;
 
-  // CN: 测试准备，组织或验证测试流程；EN: Test setup organizes or verifies the test flow.
   beforeEach(() => {
-    interceptor = new TestHttpCacheInterceptor({}, new Reflector());
+    jest.clearAllMocks();
+    cacheService.get.mockResolvedValue(undefined);
+    cacheService.set.mockResolvedValue(undefined);
+    interceptor = new TestHttpCacheInterceptor(
+      cacheService as unknown as CacheService,
+      new Reflector(),
+    );
   });
 
-  // CN: 测试用例：uses method and request url for anonymous GET requests；EN: Test case: uses method and request url for anonymous GET requests.
   it('uses method and request url for anonymous GET requests', () => {
     const key = interceptor.testTrackBy(
       createHttpContext('GET', '/demo?take=10'),
@@ -28,14 +40,12 @@ describe('HttpCacheInterceptor', () => {
     expect(key).toBe('http:GET:/demo?take=10');
   });
 
-  // CN: 测试用例：does not cache non-GET requests；EN: Test case: does not cache non-GET requests.
   it('does not cache non-GET requests', () => {
     const key = interceptor.testTrackBy(createHttpContext('POST', '/demo'));
 
     expect(key).toBeUndefined();
   });
 
-  // CN: 测试用例：varies cache keys by identity headers without storing raw secrets；EN: Test case: varies cache keys by identity headers without storing raw secrets.
   it('varies cache keys by identity headers without storing raw secrets', () => {
     const key = interceptor.testTrackBy(
       createHttpContext('GET', '/profile', {
@@ -48,15 +58,72 @@ describe('HttpCacheInterceptor', () => {
     expect(key).not.toContain('secret-token');
     expect(key).not.toContain('tenant-a');
   });
+
+  it('returns a cached response without invoking the route handler', async () => {
+    cacheService.get.mockResolvedValueOnce({ generatedAt: 'cached' });
+    const { handleRoute, next } = createNextHandler({
+      generatedAt: 'fresh',
+    });
+
+    const responseStream = await interceptor.intercept(
+      createHttpContext('GET', '/report'),
+      next,
+    );
+
+    await expect(firstValueFrom(responseStream)).resolves.toEqual({
+      generatedAt: 'cached',
+    });
+    expect(handleRoute).not.toHaveBeenCalled();
+  });
+
+  it('fails open after a bounded cache backend failure', async () => {
+    cacheService.get.mockRejectedValueOnce(
+      new ServiceUnavailableException('Redis stalled'),
+    );
+    const { handleRoute, next } = createNextHandler({
+      generatedAt: 'fresh',
+    });
+
+    const responseStream = await interceptor.intercept(
+      createHttpContext('GET', '/report'),
+      next,
+    );
+
+    await expect(firstValueFrom(responseStream)).resolves.toEqual({
+      generatedAt: 'fresh',
+    });
+    expect(handleRoute).toHaveBeenCalledTimes(1);
+  });
+
+  it('stores cache misses with the route TTL without delaying the response', async () => {
+    const handler = (): void => undefined;
+    Reflect.defineMetadata(CACHE_TTL_METADATA, 5_000, handler);
+    const { next } = createNextHandler({ generatedAt: 'fresh' });
+
+    const responseStream = await interceptor.intercept(
+      createHttpContext('GET', '/report', {}, handler),
+      next,
+    );
+
+    await expect(firstValueFrom(responseStream)).resolves.toEqual({
+      generatedAt: 'fresh',
+    });
+    expect(cacheService.set).toHaveBeenCalledWith(
+      'http:GET:/report',
+      { generatedAt: 'fresh' },
+      5_000,
+    );
+  });
 });
 
-// CN: 准备或验证 cache common 的 create http context 测试逻辑；EN: Prepares or verifies the create http context test logic for cache common.
 function createHttpContext(
   method: string,
   url: string,
   headers: Record<string, string> = {},
+  handler: () => void = () => undefined,
 ): ExecutionContext {
   return {
+    getHandler: () => handler,
     switchToHttp: () => ({
       getRequest: () => ({
         method,
@@ -65,5 +132,19 @@ function createHttpContext(
         headers,
       }),
     }),
-  } as ExecutionContext;
+  } as unknown as ExecutionContext;
+}
+
+function createNextHandler(response: unknown): {
+  readonly handleRoute: jest.MockedFunction<CallHandler<unknown>['handle']>;
+  readonly next: CallHandler<unknown>;
+} {
+  const handleRoute = jest.fn(() => of(response));
+
+  return {
+    handleRoute,
+    next: {
+      handle: handleRoute,
+    },
+  };
 }
