@@ -1,4 +1,3 @@
-// CN: 守卫，保护 auth common 的访问边界；EN: Guard protects access boundaries for auth common.
 import {
   CanActivate,
   ExecutionContext,
@@ -6,21 +5,19 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
 
+import { AuthTokenService } from './auth-token.service';
+import { extractBearerToken } from './bearer-token';
 import { IS_PUBLIC_KEY } from './decorators/public.decorator';
 import type { AuthenticatedRequest } from './types/authenticated-request.type';
-import type { JwtAuthenticatedUser } from './types/jwt-authenticated-user.type';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  // CN: 初始化 auth common 的依赖和运行状态；EN: Initializes dependencies and runtime state for auth common.
   constructor(
-    private readonly jwtService: JwtService,
+    private readonly authTokenService: AuthTokenService,
     private readonly reflector: Reflector,
   ) {}
 
-  // CN: 判断 auth common 的 can activate 访问权限；EN: Checks can activate access for auth common.
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
@@ -39,8 +36,8 @@ export class AuthGuard implements CanActivate {
     }
 
     try {
-      request.user =
-        await this.jwtService.verifyAsync<JwtAuthenticatedUser>(token);
+      // AI modified: hand-written guards share the canonical JWT verification policy.
+      request.user = await this.authTokenService.verifyAccessToken(token);
     } catch {
       throw new UnauthorizedException();
     }
@@ -48,12 +45,9 @@ export class AuthGuard implements CanActivate {
     return true;
   }
 
-  // CN: 判断 auth common 的 extract token from header 访问权限；EN: Checks extract token from header access for auth common.
   private extractTokenFromHeader(
     request: AuthenticatedRequest,
   ): string | undefined {
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-
-    return type === 'Bearer' ? token : undefined;
+    return extractBearerToken(request.headers.authorization);
   }
 }

@@ -1,4 +1,3 @@
-// CN: Passport local 守卫，保护登录路由；EN: Passport local guard for login routes.
 import { Injectable } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 

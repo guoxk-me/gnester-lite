@@ -1,6 +1,12 @@
-// CN: DTO 文件，定义 auth common 的数据结构；EN: DTO file defines data shapes for auth common.
+import { ApiProperty } from '@nestjs/swagger';
+
 export class AccessTokenDto {
-  accessToken: string;
-  tokenType: 'Bearer';
-  expiresIn: string;
+  @ApiProperty()
+  accessToken!: string;
+
+  @ApiProperty({ example: 'Bearer' })
+  tokenType!: 'Bearer';
+
+  @ApiProperty({ example: '15m' })
+  expiresIn!: string;
 }

@@ -1,4 +1,3 @@
-// CN: 装饰器，标记 auth common 的元数据；EN: Decorator marks metadata for auth common.
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 import type { AuthenticatedRequest } from '../types/authenticated-request.type';
