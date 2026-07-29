@@ -1,9 +1,11 @@
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { createDatabaseCliOptions } from './database.config';
+import { loadProjectEnvironmentFiles } from './environment-files';
 
+// AI modified: TypeORM CLI now follows the same runtime-first dotenv precedence as Nest and Sentry bootstrap.
+loadProjectEnvironmentFiles();
 const databaseOptions = createDatabaseCliOptions();
 
-// CN: TypeORM CLI 数据源用于迁移生成和执行；EN: TypeORM CLI data source drives migrations.
 export default new DataSource({
   type: databaseOptions.type,
   host: databaseOptions.host,

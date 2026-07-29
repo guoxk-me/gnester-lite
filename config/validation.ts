@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   plainToInstance,
   Transform,
@@ -7,8 +8,10 @@ import {
   IsBoolean,
   IsEnum,
   IsIn,
-  IsNumber,
+  IsInt,
+  IsNotEmpty,
   IsOptional,
+  IsNumber,
   IsString,
   IsUrl,
   Matches,
@@ -16,91 +19,112 @@ import {
   Min,
   validateSync,
 } from 'class-validator';
+import { csrfIdentifierCookieName, csrfTokenCookieName } from './cookie-name';
 import { Environment } from './config.types';
+import { assertCanonicalCorsOrigins } from './cors-origin';
+import { environmentBooleanValue } from './environment-files';
 
-// CN: 将字符串布尔值转成真实布尔值；EN: Convert string booleans into real booleans.
-function parseBoolean(value: unknown): unknown {
-  if (typeof value === 'boolean') {
-    return value;
-  }
+const COOKIE_NAME_PATTERN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+const DEFAULT_REDIS_URL = 'redis://localhost:6379';
+const PUBLIC_EXAMPLE_SECRET_FINGERPRINTS = new Set([
+  '530b76c32224d660e82290094d753f2bb0c4c22df81aae0dcc2b483395af3db6',
+  '942083283953abc6c18f0655475f4d402a9a705af3261384a333b48738cf671a',
+  '1394f78068682857723def5410302be336b7c5edd3845649cdb2584085c48d18',
+  '6bfebbd0f7bb550cc53837e70e4e3c18c363df229179cdcc4574bbb397c003d4',
+  'a7e3d34141aabaa75a1db70a10bf42b49df2d785ac6219e54c1b4fa066460935',
+]);
 
-  if (typeof value === 'string') {
-    const normalizedValue = value.toLowerCase();
-
-    if (normalizedValue === 'true') {
-      return true;
-    }
-
-    if (normalizedValue === 'false') {
-      return false;
-    }
-  }
-
-  return value;
-}
-
-// CN: 生成或校验 configuration 的 is record 配置；EN: Builds or validates the is record configuration for configuration.
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-// CN: 生成或校验 configuration 的 parse boolean transform 配置；EN: Builds or validates the parse boolean transform configuration for configuration.
-function parseBooleanTransform(params: TransformFnParams): unknown {
-  return parseBoolean(
+function environmentBooleanTransform(params: TransformFnParams): unknown {
+  return environmentBooleanValue(
     typeof params.key === 'string' && isRecord(params.obj as unknown)
       ? (params.obj as Record<string, unknown>)[params.key]
       : (params.value as unknown),
   );
 }
 
-// CN: 环境变量结构契约；EN: Contract for environment variables.
+function blankEnvironmentValue(params: TransformFnParams): unknown {
+  const originalValue =
+    typeof params.key === 'string' && isRecord(params.obj as unknown)
+      ? (params.obj as Record<string, unknown>)[params.key]
+      : (params.value as unknown);
+
+  // AI modified: blank optional numbers stay absent instead of drifting to numeric zero.
+  return typeof originalValue === 'string' && originalValue.trim().length === 0
+    ? undefined
+    : params.value;
+}
+
+function nonBlankEnvironmentNumber(params: TransformFnParams): unknown {
+  const originalValue =
+    typeof params.key === 'string' && isRecord(params.obj as unknown)
+      ? (params.obj as Record<string, unknown>)[params.key]
+      : (params.value as unknown);
+
+  // AI modified: an empty numeric env value must not silently become zero and override a safer default.
+  return typeof originalValue === 'string' && originalValue.trim().length === 0
+    ? Number.NaN
+    : params.value;
+}
+
 class EnvironmentVariables {
   @IsEnum(Environment)
-  NODE_ENV: Environment;
+  NODE_ENV!: Environment;
 
-  @IsNumber()
+  @IsInt()
+  @Transform(nonBlankEnvironmentNumber)
   @Min(0)
   @Max(65535)
-  PORT: number;
+  PORT!: number;
 
   @IsString()
   @IsOptional()
-  DB_HOST: string;
+  DB_HOST!: string;
 
-  @IsNumber()
+  @IsInt()
+  @Transform(nonBlankEnvironmentNumber)
   @IsOptional()
   @Min(1)
   @Max(65535)
-  DB_PORT: number;
+  DB_PORT!: number;
 
   @IsString()
   @IsOptional()
-  DB_USERNAME: string;
+  DB_USERNAME!: string;
 
   @IsString()
   @IsOptional()
-  DB_PASSWORD: string;
+  DB_PASSWORD!: string;
 
   @IsString()
   @IsOptional()
-  DB_DATABASE: string;
+  DB_DATABASE!: string;
 
   @IsBoolean()
-  @Transform(parseBooleanTransform)
+  @Transform(environmentBooleanTransform)
   @IsOptional()
   DB_SYNCHRONIZE: boolean = false;
 
   @IsBoolean()
-  @Transform(parseBooleanTransform)
+  @Transform(environmentBooleanTransform)
   @IsOptional()
   DB_AUTO_LOAD_ENTITIES: boolean = true;
 
-  @IsNumber()
+  @IsInt()
+  @Transform(nonBlankEnvironmentNumber)
   @IsOptional()
+  @Min(0)
+  @Max(100)
   DB_RETRY_ATTEMPTS: number = 10;
 
-  @IsNumber()
+  @IsInt()
+  @Transform(nonBlankEnvironmentNumber)
   @IsOptional()
+  @Min(0)
+  @Max(300_000)
   DB_RETRY_DELAY: number = 3000;
 
   @IsUrl({
@@ -109,10 +133,10 @@ class EnvironmentVariables {
     protocols: ['redis', 'rediss'],
   })
   @IsOptional()
-  REDIS_URL: string = 'redis://localhost:6379';
+  REDIS_URL?: string;
 
   @IsBoolean()
-  @Transform(parseBooleanTransform)
+  @Transform(environmentBooleanTransform)
   @IsOptional()
   CORS_ENABLED: boolean = true;
 
@@ -121,7 +145,7 @@ class EnvironmentVariables {
   CORS_ORIGINS?: string;
 
   @IsBoolean()
-  @Transform(parseBooleanTransform)
+  @Transform(environmentBooleanTransform)
   @IsOptional()
   CORS_CREDENTIALS: boolean = true;
 
@@ -137,12 +161,15 @@ class EnvironmentVariables {
   @IsOptional()
   CORS_EXPOSED_HEADERS?: string;
 
-  @IsNumber()
+  @IsInt()
+  @Transform(nonBlankEnvironmentNumber)
   @IsOptional()
   @Min(0)
+  @Max(86_400)
   CORS_MAX_AGE: number = 600;
 
-  @IsNumber()
+  @IsInt()
+  @Transform(nonBlankEnvironmentNumber)
   @IsOptional()
   @Min(200)
   @Max(299)
@@ -153,7 +180,7 @@ class EnvironmentVariables {
   COOKIE_SECRET?: string;
 
   @IsBoolean()
-  @Transform(parseBooleanTransform)
+  @Transform(environmentBooleanTransform)
   @IsOptional()
   COMPRESSION_ENABLED: boolean = true;
 
@@ -162,14 +189,15 @@ class EnvironmentVariables {
   @Matches(/^\d+(?:\.\d+)?\s*(?:b|kb|mb|gb|tb)?$/i)
   COMPRESSION_THRESHOLD: string = '1kb';
 
-  @IsNumber()
+  @IsInt()
+  @Transform(nonBlankEnvironmentNumber)
   @IsOptional()
   @Min(0)
   @Max(9)
   COMPRESSION_LEVEL: number = 6;
 
   @IsBoolean()
-  @Transform(parseBooleanTransform)
+  @Transform(environmentBooleanTransform)
   @IsOptional()
   SESSION_ENABLED: boolean = true;
 
@@ -179,15 +207,18 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
+  @Matches(COOKIE_NAME_PATTERN)
   SESSION_COOKIE_NAME: string = 'gnester.sid';
 
-  @IsNumber()
+  @IsInt()
+  @Transform(nonBlankEnvironmentNumber)
   @IsOptional()
   @Min(1000)
+  @Max(31_536_000_000)
   SESSION_COOKIE_MAX_AGE: number = 86_400_000;
 
   @IsBoolean()
-  @Transform(parseBooleanTransform)
+  @Transform(environmentBooleanTransform)
   @IsOptional()
   SESSION_COOKIE_SECURE?: boolean;
 
@@ -197,7 +228,7 @@ class EnvironmentVariables {
   SESSION_COOKIE_SAME_SITE: 'lax' | 'strict' | 'none' = 'lax';
 
   @IsBoolean()
-  @Transform(parseBooleanTransform)
+  @Transform(environmentBooleanTransform)
   @IsOptional()
   CSRF_ENABLED: boolean = true;
 
@@ -207,14 +238,16 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
+  @Matches(COOKIE_NAME_PATTERN)
   CSRF_COOKIE_NAME: string = 'gnester.csrf-token';
 
   @IsString()
   @IsOptional()
+  @Matches(COOKIE_NAME_PATTERN)
   CSRF_IDENTIFIER_COOKIE_NAME: string = 'gnester.csrf-id';
 
   @IsBoolean()
-  @Transform(parseBooleanTransform)
+  @Transform(environmentBooleanTransform)
   @IsOptional()
   CSRF_COOKIE_SECURE?: boolean;
 
@@ -233,14 +266,17 @@ class EnvironmentVariables {
   JWT_SECRET?: string;
 
   @IsString()
+  @Matches(/^[1-9]\d*(?:s|m|h|d)$/)
   @IsOptional()
   JWT_ACCESS_TOKEN_TTL: string = '15m';
 
   @IsString()
+  @IsNotEmpty()
   @IsOptional()
   JWT_ISSUER: string = 'gnester-lite';
 
   @IsString()
+  @IsNotEmpty()
   @IsOptional()
   JWT_AUDIENCE: string = 'gnester-lite';
 
@@ -254,7 +290,7 @@ class EnvironmentVariables {
   HMAC_SECRET?: string;
 
   @IsBoolean()
-  @Transform(parseBooleanTransform)
+  @Transform(environmentBooleanTransform)
   @IsOptional()
   LOGGER_JSON?: boolean;
 
@@ -270,27 +306,25 @@ class EnvironmentVariables {
   SENTRY_DSN?: string;
 
   @IsBoolean()
-  @Transform(parseBooleanTransform)
+  @Transform(environmentBooleanTransform)
   @IsOptional()
   SENTRY_ENABLED: boolean = true;
 
   @IsNumber()
+  @Transform(blankEnvironmentValue)
   @IsOptional()
   @Min(0)
   @Max(1)
   SENTRY_TRACES_SAMPLE_RATE?: number;
 }
 
-// CN: 生成或校验 configuration 的 validate 配置；EN: Builds or validates the validate configuration for configuration.
 export function validate(
   config: Record<string, unknown>,
 ): EnvironmentVariables {
-  // CN: 校验环境配置对象；EN: Validate the environment configuration object.
   const validatedConfig = plainToInstance(EnvironmentVariables, config, {
     enableImplicitConversion: true,
   });
 
-  // CN: 不跳过缺失字段；EN: Do not skip missing fields.
   const errors = validateSync(validatedConfig, {
     skipMissingProperties: false,
   });
@@ -299,7 +333,10 @@ export function validate(
     throw new Error(errors.toString());
   }
 
+  validateProductionInfrastructure(validatedConfig);
   validateCorsConfig(validatedConfig);
+  validateCookieSecurity(validatedConfig);
+  validateLoggerConfig(validatedConfig);
 
   if (
     validatedConfig.NODE_ENV === Environment.Production &&
@@ -332,16 +369,310 @@ export function validate(
     );
   }
 
+  validateJwtClaims(validatedConfig);
+
+  if (validatedConfig.NODE_ENV === Environment.Production) {
+    // AI modified: fail startup before weak or checked-in placeholder secrets reach crypto consumers.
+    validateProductionSecret('JWT_SECRET', validatedConfig.JWT_SECRET);
+    validateProductionSecret('HMAC_SECRET', validatedConfig.HMAC_SECRET);
+
+    if (validatedConfig.CSRF_ENABLED) {
+      validateProductionSecret('CSRF_SECRET', validatedConfig.CSRF_SECRET);
+    }
+
+    validateProductionEncryptionKey(validatedConfig.ENCRYPTION_KEY);
+    validateProductionSecretSeparation(validatedConfig);
+  }
+
+  // AI modified: local environments keep clone-ready Redis defaults only after production requirements are checked.
+  validatedConfig.REDIS_URL ??= DEFAULT_REDIS_URL;
+
   return validatedConfig;
 }
 
-// CN: 生产跨域配置必须明确且安全；EN: Production CORS config must be explicit and safe.
+function validateProductionInfrastructure(config: EnvironmentVariables): void {
+  if (config.NODE_ENV !== Environment.Production) {
+    return;
+  }
+
+  const requiredValues: readonly [string, string | number | undefined][] = [
+    ['DB_HOST', config.DB_HOST],
+    ['DB_PORT', config.DB_PORT],
+    ['DB_USERNAME', config.DB_USERNAME],
+    ['DB_PASSWORD', config.DB_PASSWORD],
+    ['DB_DATABASE', config.DB_DATABASE],
+    ['REDIS_URL', config.REDIS_URL],
+  ];
+
+  for (const [name, value] of requiredValues) {
+    if (
+      value === undefined ||
+      (typeof value === 'string' && value.trim().length === 0)
+    ) {
+      throw new Error(`${name} is required in production.`);
+    }
+  }
+
+  if (config.PORT < 1) {
+    throw new Error('PORT must be at least 1 in production.');
+  }
+}
+
+function validateCookieSecurity(config: EnvironmentVariables): void {
+  const isProduction = config.NODE_ENV === Environment.Production;
+  const isCsrfCookieSecure = config.CSRF_COOKIE_SECURE ?? isProduction;
+  const isSessionCookieSecure = config.SESSION_COOKIE_SECURE ?? false;
+
+  if (isProduction && config.CSRF_ENABLED && !isCsrfCookieSecure) {
+    throw new Error(
+      'CSRF_COOKIE_SECURE must be true when CSRF is enabled in production.',
+    );
+  }
+
+  if (config.CSRF_COOKIE_SAME_SITE === 'none' && !isCsrfCookieSecure) {
+    throw new Error(
+      'CSRF_COOKIE_SECURE must be true when CSRF_COOKIE_SAME_SITE is none.',
+    );
+  }
+
+  if (
+    config.SESSION_ENABLED &&
+    config.SESSION_COOKIE_SAME_SITE === 'none' &&
+    !isSessionCookieSecure
+  ) {
+    throw new Error(
+      'SESSION_COOKIE_SECURE must be true when SESSION_COOKIE_SAME_SITE is none.',
+    );
+  }
+
+  const activeCookieNames = [
+    ...(config.SESSION_ENABLED
+      ? [['SESSION_COOKIE_NAME', config.SESSION_COOKIE_NAME] as const]
+      : []),
+    ...(config.CSRF_ENABLED
+      ? [
+          [
+            'CSRF_COOKIE_NAME',
+            csrfTokenCookieName(config.CSRF_COOKIE_NAME, config.NODE_ENV),
+          ] as const,
+          [
+            'CSRF_IDENTIFIER_COOKIE_NAME',
+            csrfIdentifierCookieName(
+              config.CSRF_IDENTIFIER_COOKIE_NAME,
+              config.NODE_ENV,
+            ),
+          ] as const,
+        ]
+      : []),
+  ];
+  const names = new Set<string>();
+
+  for (const [name, value] of activeCookieNames) {
+    if (names.has(value)) {
+      throw new Error(`${name} must use a distinct cookie name.`);
+    }
+
+    names.add(value);
+  }
+}
+
+function validateLoggerConfig(config: EnvironmentVariables): void {
+  if (
+    config.NODE_ENV === Environment.Production &&
+    config.LOGGER_JSON === false
+  ) {
+    throw new Error('LOGGER_JSON must be true in production.');
+  }
+}
+
+function validateJwtClaims(config: EnvironmentVariables): void {
+  if (config.JWT_ISSUER.trim().length === 0) {
+    throw new Error('JWT_ISSUER must not be empty.');
+  }
+
+  if (config.JWT_AUDIENCE.trim().length === 0) {
+    throw new Error('JWT_AUDIENCE must not be empty.');
+  }
+
+  const accessTokenTtlSeconds = jwtTtlSeconds(config.JWT_ACCESS_TOKEN_TTL);
+
+  if (
+    config.NODE_ENV === Environment.Production &&
+    accessTokenTtlSeconds > 86_400
+  ) {
+    throw new Error(
+      'JWT_ACCESS_TOKEN_TTL must not exceed 24 hours in production.',
+    );
+  }
+}
+
+function jwtTtlSeconds(ttl: string): number {
+  const match = /^([1-9]\d*)(s|m|h|d)$/.exec(ttl);
+
+  if (!match) {
+    throw new Error(
+      'JWT_ACCESS_TOKEN_TTL must use a positive s, m, h, or d duration.',
+    );
+  }
+
+  const amount = Number(match[1]);
+  const unit = match[2];
+
+  if (!Number.isSafeInteger(amount)) {
+    throw new Error(
+      'JWT_ACCESS_TOKEN_TTL must use a safe positive integer duration.',
+    );
+  }
+
+  let seconds: number;
+
+  switch (unit) {
+    case 's':
+      seconds = amount;
+      break;
+    case 'm':
+      seconds = amount * 60;
+      break;
+    case 'h':
+      seconds = amount * 3600;
+      break;
+    case 'd':
+      seconds = amount * 86_400;
+      break;
+    default:
+      throw new Error('JWT_ACCESS_TOKEN_TTL has an unsupported unit.');
+  }
+
+  if (!Number.isSafeInteger(seconds)) {
+    throw new Error(
+      'JWT_ACCESS_TOKEN_TTL must resolve to a safe integer number of seconds.',
+    );
+  }
+
+  return seconds;
+}
+
+function validateProductionSecret(
+  name: 'JWT_SECRET' | 'HMAC_SECRET' | 'CSRF_SECRET',
+  secret: string | undefined,
+): void {
+  if (!secret || Buffer.byteLength(secret, 'utf8') < 32) {
+    throw new Error(`${name} must contain at least 32 bytes in production.`);
+  }
+
+  const lowerCaseSecret = secret.toLowerCase();
+  const uniqueSecretBytes = new Set(Buffer.from(secret, 'utf8'));
+  const hasPlaceholderMarker = [
+    'change-me',
+    'changeme',
+    'replace-me',
+    'replace_me',
+  ].some((marker) => lowerCaseSecret.includes(marker));
+
+  if (hasPlaceholderMarker) {
+    throw new Error(`${name} must not use a placeholder value in production.`);
+  }
+
+  if (PUBLIC_EXAMPLE_SECRET_FINGERPRINTS.has(secretFingerprint(secret))) {
+    throw new Error(
+      `${name} must not use a public example value in production.`,
+    );
+  }
+
+  if (
+    uniqueSecretBytes.size < 8 ||
+    hasShortRepeatingPeriod(Buffer.from(secret, 'utf8'))
+  ) {
+    throw new Error(
+      `${name} must not use a low-diversity value in production.`,
+    );
+  }
+}
+
+function validateProductionEncryptionKey(key: string | undefined): void {
+  if (!key) {
+    return;
+  }
+
+  const decodedKey = Buffer.from(key, 'base64url');
+  const uniqueBytes = new Set(decodedKey);
+
+  if (
+    decodedKey.length !== 32 ||
+    // AI modified: canonical encoding prevents alternate strings from bypassing known-key fingerprints.
+    decodedKey.toString('base64url') !== key ||
+    PUBLIC_EXAMPLE_SECRET_FINGERPRINTS.has(secretFingerprint(key)) ||
+    uniqueBytes.size < 16 ||
+    hasShortRepeatingPeriod(decodedKey)
+  ) {
+    throw new Error(
+      'ENCRYPTION_KEY must be a non-placeholder 32-byte base64url value in production.',
+    );
+  }
+}
+
+function validateProductionSecretSeparation(
+  config: EnvironmentVariables,
+): void {
+  const secretMaterials = [
+    ['JWT_SECRET', Buffer.from(config.JWT_SECRET ?? '', 'utf8')],
+    ['HMAC_SECRET', Buffer.from(config.HMAC_SECRET ?? '', 'utf8')],
+    ...(config.CSRF_ENABLED
+      ? [
+          [
+            'CSRF_SECRET',
+            Buffer.from(config.CSRF_SECRET ?? '', 'utf8'),
+          ] as const,
+        ]
+      : []),
+    ['ENCRYPTION_KEY', Buffer.from(config.ENCRYPTION_KEY ?? '', 'base64url')],
+  ] as const;
+  const fingerprints = new Map<string, string>();
+
+  for (const [name, material] of secretMaterials) {
+    const fingerprint = createHash('sha256').update(material).digest('hex');
+    const existingName = fingerprints.get(fingerprint);
+
+    if (existingName) {
+      throw new Error(
+        `${existingName} and ${name} must use distinct production secrets.`,
+      );
+    }
+
+    fingerprints.set(fingerprint, name);
+  }
+}
+
+function secretFingerprint(secret: string): string {
+  return createHash('sha256').update(secret).digest('hex');
+}
+
+function hasShortRepeatingPeriod(bytes: Buffer): boolean {
+  for (
+    let period = 1;
+    period <= Math.min(16, Math.floor(bytes.length / 2));
+    period += 1
+  ) {
+    if (
+      bytes.length % period === 0 &&
+      bytes.every((byte, index) => byte === bytes[index % period])
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function validateCorsConfig(config: EnvironmentVariables): void {
   if (!config.CORS_ENABLED) {
     return;
   }
 
-  const origins = parseCsv(config.CORS_ORIGINS);
+  const origins = commaSeparatedEntries(config.CORS_ORIGINS);
+  const methods = commaSeparatedEntries(config.CORS_METHODS);
+  const allowedHeaders = commaSeparatedEntries(config.CORS_ALLOWED_HEADERS);
+  const exposedHeaders = commaSeparatedEntries(config.CORS_EXPOSED_HEADERS);
 
   if (config.NODE_ENV === Environment.Production && origins.length === 0) {
     throw new Error(
@@ -358,10 +689,28 @@ function validateCorsConfig(config: EnvironmentVariables): void {
   if (origins.includes('*') && origins.length > 1) {
     throw new Error('CORS_ORIGINS=* cannot be combined with other origins.');
   }
+
+  assertCanonicalCorsOrigins(origins);
+
+  // AI modified: reject values that Node cannot safely serialize into CORS response headers.
+  if (
+    methods.length === 0 ||
+    methods.some((method) => !COOKIE_NAME_PATTERN.test(method))
+  ) {
+    throw new Error('CORS_METHODS must contain one or more HTTP tokens.');
+  }
+
+  for (const [name, headers] of [
+    ['CORS_ALLOWED_HEADERS', allowedHeaders],
+    ['CORS_EXPOSED_HEADERS', exposedHeaders],
+  ] as const) {
+    if (headers.some((header) => !COOKIE_NAME_PATTERN.test(header))) {
+      throw new Error(`${name} entries must be valid HTTP header names.`);
+    }
+  }
 }
 
-// CN: 生成或校验 configuration 的 parse csv 配置；EN: Builds or validates the parse csv configuration for configuration.
-function parseCsv(value: string | undefined): string[] {
+function commaSeparatedEntries(value: string | undefined): string[] {
   return (value ?? '')
     .split(',')
     .map((item) => item.trim())

@@ -1,4 +1,3 @@
-# CN: 配置文件，定义 configuration 的默认参数；EN: Config file defines default settings for configuration.
 app:
   name: gnester-lite
 

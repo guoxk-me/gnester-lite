@@ -1,5 +1,5 @@
-// CN: 测试文件，验证 configuration 的行为契约；EN: Test file verifies behavior contracts for configuration.
 import 'reflect-metadata';
+import { randomBytes } from 'node:crypto';
 
 import { validate } from './validation';
 
@@ -10,44 +10,45 @@ const baseEnv = {
 const productionEnv = {
   ...baseEnv,
   NODE_ENV: 'production',
+  DB_HOST: 'database.internal',
+  DB_PORT: 3306,
+  DB_USERNAME: 'application',
+  DB_PASSWORD: randomBytes(24).toString('base64url'),
+  DB_DATABASE: 'application',
+  REDIS_URL: 'rediss://redis.internal:6379',
   CORS_ORIGINS: 'https://app.example.com',
 };
 
-// CN: 测试分组：crypto environment validation；EN: Test group: crypto environment validation.
 describe('crypto environment validation', () => {
-  // CN: 测试用例：requires crypto secrets in production；EN: Test case: requires crypto secrets in production.
   it('requires crypto secrets in production', () => {
     expect(() =>
       validate({
         ...productionEnv,
-        JWT_SECRET: 'jwt-secret',
+        JWT_SECRET: randomBytes(48).toString('base64url'),
       }),
     ).toThrow('ENCRYPTION_KEY is required in production.');
 
     expect(() =>
       validate({
         ...productionEnv,
-        JWT_SECRET: 'jwt-secret',
-        ENCRYPTION_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY',
+        JWT_SECRET: randomBytes(48).toString('base64url'),
+        ENCRYPTION_KEY: randomBytes(32).toString('base64url'),
       }),
     ).toThrow('HMAC_SECRET is required in production.');
   });
 
-  // CN: 测试用例：accepts a 32-byte base64url encryption key；EN: Test case: accepts a 32-byte base64url encryption key.
   it('accepts a 32-byte base64url encryption key', () => {
+    const encryptionKey = randomBytes(32).toString('base64url');
     const config = validate({
       ...baseEnv,
-      ENCRYPTION_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY',
+      ENCRYPTION_KEY: encryptionKey,
       HMAC_SECRET: 'webhook-secret',
     });
 
-    expect(config.ENCRYPTION_KEY).toBe(
-      'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY',
-    );
+    expect(config.ENCRYPTION_KEY).toBe(encryptionKey);
     expect(config.HMAC_SECRET).toBe('webhook-secret');
   });
 
-  // CN: 测试用例：rejects encryption keys that are not 32-byte base64url values；EN: Test case: rejects encryption keys that are not 32-byte base64url values.
   it('rejects encryption keys that are not 32-byte base64url values', () => {
     expect(() =>
       validate({
@@ -55,5 +56,50 @@ describe('crypto environment validation', () => {
         ENCRYPTION_KEY: 'short',
       }),
     ).toThrow();
+  });
+
+  it('rejects a repeated-byte encryption placeholder in production', () => {
+    expect(() =>
+      validate({
+        ...productionEnv,
+        JWT_SECRET: randomBytes(48).toString('base64url'),
+        ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+        HMAC_SECRET: randomBytes(48).toString('base64url'),
+        CSRF_ENABLED: 'false',
+      }),
+    ).toThrow(
+      'ENCRYPTION_KEY must be a non-placeholder 32-byte base64url value in production.',
+    );
+  });
+
+  it('rejects a non-canonical encoding of the same encryption key', () => {
+    const encryptionKey = randomBytes(32).toString('base64url');
+    const base64UrlAlphabet =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    const finalCharacter = encryptionKey.at(-1);
+
+    if (!finalCharacter) {
+      throw new Error('Generated encryption key was empty.');
+    }
+
+    const finalCharacterIndex = base64UrlAlphabet.indexOf(finalCharacter);
+    const alternateEncoding = `${encryptionKey.slice(0, -1)}${
+      base64UrlAlphabet[finalCharacterIndex + 1]
+    }`;
+
+    expect(Buffer.from(alternateEncoding, 'base64url')).toEqual(
+      Buffer.from(encryptionKey, 'base64url'),
+    );
+    expect(() =>
+      validate({
+        ...productionEnv,
+        JWT_SECRET: randomBytes(48).toString('base64url'),
+        ENCRYPTION_KEY: alternateEncoding,
+        HMAC_SECRET: randomBytes(48).toString('base64url'),
+        CSRF_ENABLED: 'false',
+      }),
+    ).toThrow(
+      'ENCRYPTION_KEY must be a non-placeholder 32-byte base64url value in production.',
+    );
   });
 });

@@ -5,13 +5,16 @@ import { plainToInstance, Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
-  IsNumber,
+  IsInt,
   IsObject,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsTimeZone,
   IsUrl,
+  Matches,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
   validateSync,
@@ -19,163 +22,198 @@ import {
 import { YamlConfig } from './config.types';
 
 const YAML_CONFIG_FILENAME = 'config.yaml';
+const REDIS_NAMESPACE_SEGMENT_MAX_LENGTH = 64;
+// AI modified: keep shared-Redis namespace segments bounded and free of separators or control characters.
+const REDIS_NAMESPACE_SEGMENT_PATTERN = /^(?=.*[A-Za-z0-9])[A-Za-z0-9._-]+$/;
 
-// CN: YAML 配置结构契约；EN: Contract for YAML-based configuration.
 class AppVariables {
   @IsString()
-  name: string;
+  @IsNotEmpty()
+  @MaxLength(REDIS_NAMESPACE_SEGMENT_MAX_LENGTH)
+  @Matches(REDIS_NAMESPACE_SEGMENT_PATTERN)
+  name!: string;
 }
 
 class CacheVariables {
-  @IsNumber()
+  @IsInt()
   @Min(0)
   @Max(86_400_000)
-  ttl: number;
+  ttl!: number;
 }
 
 class ScheduleVariables {
   @IsBoolean()
-  enabled: boolean;
+  enabled!: boolean;
 
   @IsString()
   @IsTimeZone()
-  timeZone: string;
+  timeZone!: string;
 }
 
 class QueueVariables {
   @IsBoolean()
-  enabled: boolean;
+  enabled!: boolean;
 
   @IsString()
-  prefix: string;
+  @IsNotEmpty()
+  @MaxLength(REDIS_NAMESPACE_SEGMENT_MAX_LENGTH)
+  @Matches(REDIS_NAMESPACE_SEGMENT_PATTERN)
+  prefix!: string;
 
-  @IsNumber()
+  @IsInt()
   @Min(1)
-  defaultAttempts: number;
+  @Max(100)
+  defaultAttempts!: number;
 
-  @IsNumber()
+  @IsInt()
   @Min(0)
-  backoffDelay: number;
+  @Max(86_400_000)
+  backoffDelay!: number;
 
-  @IsNumber()
+  @IsInt()
   @Min(0)
-  removeOnComplete: number;
+  @Max(1_000_000)
+  removeOnComplete!: number;
 
-  @IsNumber()
+  @IsInt()
   @Min(0)
-  removeOnFail: number;
+  @Max(1_000_000)
+  removeOnFail!: number;
 }
 
 class HttpVariables {
   @IsString()
-  @IsUrl({ require_protocol: true })
-  baseUrl: string;
+  // AI modified: reject schemes that the outbound HTTP transport cannot execute.
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  baseUrl!: string;
 
-  @IsNumber()
+  @IsInt()
   @Min(1)
-  timeout: number;
+  @Max(300_000)
+  timeout!: number;
 
-  @IsNumber()
+  @IsInt()
   @Min(0)
-  maxRedirects: number;
+  @Max(20)
+  maxRedirects!: number;
 
-  @IsNumber()
+  @IsInt()
   @Min(1)
-  maxContentLength: number;
+  @Max(1_073_741_824)
+  maxContentLength!: number;
 
-  @IsNumber()
+  @IsInt()
   @Min(1)
-  maxBodyLength: number;
+  @Max(1_073_741_824)
+  maxBodyLength!: number;
 }
 
 class RateLimitThrottlerVariables {
   @IsString()
-  name: string;
+  @IsNotEmpty()
+  name!: string;
 
-  @IsNumber()
+  @IsInt()
   @Min(1)
-  ttl: number;
+  @Max(86_400_000)
+  ttl!: number;
 
-  @IsNumber()
+  @IsInt()
   @Min(1)
-  limit: number;
+  @Max(1_000_000)
+  limit!: number;
 
-  @IsNumber()
+  @IsInt()
   @Min(1)
+  @Max(86_400_000)
   @IsOptional()
   blockDuration?: number;
 }
 
 class RateLimitVariables {
   @IsBoolean()
-  enabled: boolean;
+  enabled!: boolean;
 
   @IsString()
-  trustProxy: string;
+  trustProxy!: string;
 
   @IsString()
-  errorMessage: string;
+  @IsNotEmpty()
+  // AI modified: a configured 429 response must retain a meaningful client-facing message.
+  @Matches(/\S/)
+  errorMessage!: string;
 
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => RateLimitThrottlerVariables)
-  throttlers: RateLimitThrottlerVariables[];
+  throttlers!: RateLimitThrottlerVariables[];
 }
 
 class YamlVariables {
   @IsObject()
   @ValidateNested()
   @Type(() => AppVariables)
-  app: AppVariables;
+  app!: AppVariables;
 
   @IsObject()
   @ValidateNested()
   @Type(() => CacheVariables)
-  cache: CacheVariables;
+  cache!: CacheVariables;
 
   @IsObject()
   @ValidateNested()
   @Type(() => ScheduleVariables)
-  schedule: ScheduleVariables;
+  schedule!: ScheduleVariables;
 
   @IsObject()
   @ValidateNested()
   @Type(() => QueueVariables)
-  queue: QueueVariables;
+  queue!: QueueVariables;
 
   @IsObject()
   @ValidateNested()
   @Type(() => HttpVariables)
-  http: HttpVariables;
+  http!: HttpVariables;
 
   @IsObject()
   @ValidateNested()
   @Type(() => RateLimitVariables)
-  rateLimit: RateLimitVariables;
+  rateLimit!: RateLimitVariables;
 }
 
-// CN: 生成或校验 configuration 的 validate yaml config 配置；EN: Builds or validates the validate yaml config configuration for configuration.
 export function validateYamlConfig(
   config: Record<string, unknown>,
 ): YamlConfig {
-  // CN: 校验配置对象；EN: Validate the configuration object.
-  const validatedConfig = plainToInstance(YamlVariables, config, {
-    enableImplicitConversion: true,
-  });
+  // AI modified: YAML scalars stay exact and undeclared keys fail closed instead of drifting silently.
+  const validatedConfig = plainToInstance(YamlVariables, config);
 
-  // CN: 不跳过缺失字段；EN: Do not skip missing fields.
   const errors = validateSync(validatedConfig, {
     skipMissingProperties: false,
+    whitelist: true,
+    forbidNonWhitelisted: true,
   });
 
   if (errors.length > 0) {
     throw new Error(errors.toString());
   }
 
+  const throttlerNames = validatedConfig.rateLimit.throttlers.map(
+    (throttler) => throttler.name,
+  );
+
+  if (new Set(throttlerNames).size !== throttlerNames.length) {
+    throw new Error('Rate-limit throttler names must be unique.');
+  }
+
+  if (!throttlerNames.includes('short')) {
+    throw new Error(
+      'The "short" rate-limit throttler is required by credential entrypoints.',
+    );
+  }
+
   return validatedConfig;
 }
 
-// CN: 读取并校验 config.yaml；EN: Load and validate config.yaml.
 export default (): YamlConfig => {
   const configYaml = readFileSync(
     join(__dirname, YAML_CONFIG_FILENAME),
