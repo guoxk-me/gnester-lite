@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { RateLimitConfig } from 'config/config.types';
+import { HttpThrottlerGuard } from './http-throttler.guard';
 import { createThrottlerModuleOptions } from './rate-limit.config';
 
-// CN: 限流模块保护接口免受高频滥用；EN: Rate-limit module protects endpoints from high-frequency abuse.
 @Module({
   imports: [
     ThrottlerModule.forRootAsync({
@@ -19,7 +19,8 @@ import { createThrottlerModuleOptions } from './rate-limit.config';
   providers: [
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      // AI modified: apply the HTTP limiter only where its response-header contract is valid.
+      useClass: HttpThrottlerGuard,
     },
   ],
   exports: [ThrottlerModule],
