@@ -1,4 +1,3 @@
-// CN: 测试文件，验证 csrf common 的行为契约；EN: Test file verifies behavior contracts for csrf common.
 import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NextFunction, Request, Response } from 'express';
@@ -10,38 +9,29 @@ import {
   createCsrfOptions,
 } from './csrf.service';
 
-// CN: 测试分组：createCsrfOptions；EN: Test group: createCsrfOptions.
 describe('createCsrfOptions', () => {
-  const configService: jest.Mocked<Pick<ConfigService, 'get'>> = {
-    get: jest.fn((key: string, defaultValue?: unknown) => defaultValue),
-  };
+  let configService: ConfigService<Record<string, unknown>>;
 
-  // CN: 测试准备，组织或验证测试流程；EN: Test setup organizes or verifies the test flow.
   beforeEach(() => {
     jest.clearAllMocks();
-    configService.get.mockImplementation(
-      (key: string, defaultValue?: unknown) => defaultValue,
-    );
+    configService = new ConfigService<Record<string, unknown>>({});
   });
 
-  // CN: 测试用例：uses the configured header name as the request token contract；EN: Test case: uses the configured header name as the request token contract.
   it('uses the configured header name as the request token contract', () => {
-    configService.get.mockImplementation(
-      (key: string, defaultValue?: unknown) =>
-        key === 'CSRF_HEADER_NAME' ? 'x-xsrf-token' : defaultValue,
-    );
+    configService = new ConfigService<Record<string, unknown>>({
+      CSRF_HEADER_NAME: 'x-xsrf-token',
+    });
     const options = createCsrfOptions(configService, Environment.Development);
 
     expect(
-      options.getCsrfTokenFromRequest({
+      options.getCsrfTokenFromRequest?.({
         headers: {
           'x-xsrf-token': 'request-token',
         },
-      } as Request),
+      } as unknown as Request),
     ).toBe('request-token');
   });
 
-  // CN: 测试用例：binds tokens to the CSRF identifier cookie before falling back to the express session id；EN: Test case: binds tokens to the CSRF identifier cookie before falling back to the express session id.
   it('binds tokens to the CSRF identifier cookie before falling back to the express session id', () => {
     const options = createCsrfOptions(configService, Environment.Development);
 
@@ -51,7 +41,7 @@ describe('createCsrfOptions', () => {
         cookies: {
           'gnester.csrf-id': 'csrf-id',
         },
-      } as Request),
+      } as unknown as Request),
     ).toBe('csrf-id');
     expect(
       options.getSessionIdentifier({
@@ -60,14 +50,12 @@ describe('createCsrfOptions', () => {
     ).toBe('session-id');
   });
 
-  // CN: 测试用例：uses a local-only fallback secret outside production；EN: Test case: uses a local-only fallback secret outside production.
   it('uses a local-only fallback secret outside production', () => {
     const options = createCsrfOptions(configService, Environment.Test);
 
     expect(options.getSecret()).toBe(CSRF_LOCAL_DEVELOPMENT_SECRET);
   });
 
-  // CN: 测试用例：uses secure host-prefixed cookies in production；EN: Test case: uses secure host-prefixed cookies in production.
   it('uses secure host-prefixed cookies in production', () => {
     const options = createCsrfOptions(configService, Environment.Production);
 
@@ -81,28 +69,20 @@ describe('createCsrfOptions', () => {
   });
 });
 
-// CN: 测试分组：CsrfService；EN: Test group: CsrfService.
 describe('CsrfService', () => {
-  const configService: jest.Mocked<Pick<ConfigService, 'get'>> = {
-    get: jest.fn((key: string, defaultValue?: unknown) => defaultValue),
-  };
+  let configService: ConfigService<Record<string, unknown>>;
   let service: CsrfService;
 
-  // CN: 测试准备，组织或验证测试流程；EN: Test setup organizes or verifies the test flow.
   beforeEach(() => {
     jest.clearAllMocks();
-    configService.get.mockImplementation(
-      (key: string, defaultValue?: unknown) => defaultValue,
-    );
-    service = new CsrfService(configService as ConfigService);
+    configService = new ConfigService<Record<string, unknown>>({});
+    service = new CsrfService(configService);
   });
 
-  // CN: 测试用例：reports CSRF protection as enabled by default；EN: Test case: reports CSRF protection as enabled by default.
   it('reports CSRF protection as enabled by default', () => {
     expect(service.isEnabled()).toBe(true);
   });
 
-  // CN: 测试用例：sets a stable identifier cookie before generating a response token；EN: Test case: sets a stable identifier cookie before generating a response token.
   it('sets a stable identifier cookie before generating a response token', () => {
     const request = {
       cookies: {},
@@ -112,7 +92,7 @@ describe('CsrfService', () => {
       cookie: jest.fn(),
     } as unknown as jest.Mocked<Pick<Response, 'cookie'>>;
 
-    const token = service.createToken(request, response as Response);
+    const token = service.createToken(request, response as unknown as Response);
 
     expect(typeof token).toBe('string');
     expect(response.cookie).toHaveBeenCalledWith(
@@ -126,20 +106,17 @@ describe('CsrfService', () => {
     );
   });
 
-  // CN: 测试用例：does not issue tokens when CSRF protection is disabled；EN: Test case: does not issue tokens when CSRF protection is disabled.
   it('does not issue tokens when CSRF protection is disabled', () => {
-    configService.get.mockImplementation(
-      (key: string, defaultValue?: unknown) =>
-        key === 'CSRF_ENABLED' ? false : defaultValue,
-    );
-    service = new CsrfService(configService as ConfigService);
+    configService = new ConfigService<Record<string, unknown>>({
+      CSRF_ENABLED: false,
+    });
+    service = new CsrfService(configService);
 
     expect(() => service.createToken({} as Request, {} as Response)).toThrow(
       ServiceUnavailableException,
     );
   });
 
-  // CN: 测试用例：formats invalid CSRF token errors without leaking implementation details；EN: Test case: formats invalid CSRF token errors without leaking implementation details.
   it('formats invalid CSRF token errors without leaking implementation details', () => {
     const response = {
       status: jest.fn().mockReturnThis(),
@@ -155,7 +132,7 @@ describe('CsrfService', () => {
     service.createErrorHandler()(
       error,
       {} as Request,
-      response as Response,
+      response as unknown as Response,
       next,
     );
 

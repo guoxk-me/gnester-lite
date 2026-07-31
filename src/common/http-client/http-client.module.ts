@@ -4,7 +4,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HttpConfig } from 'config/config.types';
 import { createHttpModuleOptions } from './http-client.config';
 
-// CN: HTTP 客户端模块统一外部请求配置；EN: HTTP client module centralizes outbound request setup.
 @Global()
 @Module({
   imports: [
