@@ -1,19 +1,15 @@
-// CN: 测试文件，验证 cors common 的行为契约；EN: Test file verifies behavior contracts for cors common.
 import { ConfigService } from '@nestjs/config';
 
 import { Environment } from 'config/config.types';
 import { createCorsOptions } from './cors.config';
 
-// CN: 准备或验证 cors common 的 create config service 测试逻辑；EN: Prepares or verifies the create config service test logic for cors common.
 function createConfigService(
   values: Record<string, unknown>,
 ): ConfigService<Record<string, unknown>, false> {
   return new ConfigService(values);
 }
 
-// CN: 测试分组：createCorsOptions；EN: Test group: createCorsOptions.
 describe('createCorsOptions', () => {
-  // CN: 测试用例：uses explicit origins and credential settings for browser app APIs；EN: Test case: uses explicit origins and credential settings for browser app APIs.
   it('uses explicit origins and credential settings for browser app APIs', () => {
     const configService = createConfigService({
       CORS_ENABLED: true,
@@ -37,7 +33,6 @@ describe('createCorsOptions', () => {
     });
   });
 
-  // CN: 测试用例：defaults development CORS to common local frontend origins；EN: Test case: defaults development CORS to common local frontend origins.
   it('defaults development CORS to common local frontend origins', () => {
     const configService = createConfigService({
       CORS_ENABLED: true,
@@ -56,7 +51,6 @@ describe('createCorsOptions', () => {
     );
   });
 
-  // CN: 测试用例：returns false when CORS is explicitly disabled；EN: Test case: returns false when CORS is explicitly disabled.
   it('returns false when CORS is explicitly disabled', () => {
     const configService = createConfigService({
       CORS_ENABLED: false,
@@ -67,7 +61,6 @@ describe('createCorsOptions', () => {
     );
   });
 
-  // CN: 测试用例：rejects enabled production CORS without explicit origins；EN: Test case: rejects enabled production CORS without explicit origins.
   it('rejects enabled production CORS without explicit origins', () => {
     const configService = createConfigService({
       CORS_ENABLED: true,
@@ -78,7 +71,6 @@ describe('createCorsOptions', () => {
     ).toThrow('CORS_ORIGINS is required when CORS is enabled in production.');
   });
 
-  // CN: 测试用例：rejects wildcard origins when credentials are enabled；EN: Test case: rejects wildcard origins when credentials are enabled.
   it('rejects wildcard origins when credentials are enabled', () => {
     const configService = createConfigService({
       CORS_ENABLED: true,
@@ -89,5 +81,22 @@ describe('createCorsOptions', () => {
     expect(() =>
       createCorsOptions(configService, Environment.Development),
     ).toThrow('CORS_CREDENTIALS=true cannot be combined with CORS_ORIGINS=*.');
+  });
+
+  it('rejects non-canonical and non-HTTP origins when validation is bypassed', () => {
+    for (const origin of [
+      'null',
+      'ftp://app.example.com',
+      'https://app.example.com/path',
+    ]) {
+      const configService = createConfigService({
+        CORS_ENABLED: true,
+        CORS_ORIGINS: origin,
+      });
+
+      expect(() =>
+        createCorsOptions(configService, Environment.Development),
+      ).toThrow('CORS_ORIGINS entries must be canonical HTTP(S) origins.');
+    }
   });
 });

@@ -1,6 +1,6 @@
-// CN: 配置文件，生成 cors common 的运行参数；EN: Config file builds runtime settings for cors common.
 import { ConfigService } from '@nestjs/config';
 
+import { assertCanonicalCorsOrigins } from 'config/cors-origin';
 import { Environment } from 'config/config.types';
 
 export interface CorsOptions {
@@ -20,31 +20,40 @@ const DEFAULT_DEVELOPMENT_ORIGINS = [
   'http://127.0.0.1:5173',
 ];
 
-// CN: 生成或校验 cors common 的 create cors options 配置；EN: Builds or validates the create cors options configuration for cors common.
 export function createCorsOptions(
   configService: ConfigService,
   nodeEnv: Environment,
 ): CorsOptions | false {
-  const enabled = configService.get<boolean>('CORS_ENABLED', true);
+  const isCorsEnabled = configService.get<boolean>('CORS_ENABLED', true);
 
-  if (!enabled) {
+  if (!isCorsEnabled) {
     return false;
   }
 
-  const configuredOrigins = parseCsv(configService.get<string>('CORS_ORIGINS'));
-  const credentials = configService.get<boolean>('CORS_CREDENTIALS', true);
-  const origin = resolveOrigins(configuredOrigins, nodeEnv, credentials);
-  const allowedHeaders = parseCsv(
+  const configuredOrigins = commaSeparatedEntries(
+    configService.get<string>('CORS_ORIGINS'),
+  );
+  assertCanonicalCorsOrigins(configuredOrigins);
+  const shouldAllowCredentials = configService.get<boolean>(
+    'CORS_CREDENTIALS',
+    true,
+  );
+  const origin = resolveOrigins(
+    configuredOrigins,
+    nodeEnv,
+    shouldAllowCredentials,
+  );
+  const allowedHeaders = commaSeparatedEntries(
     configService.get<string>('CORS_ALLOWED_HEADERS'),
   );
-  const exposedHeaders = parseCsv(
+  const exposedHeaders = commaSeparatedEntries(
     configService.get<string>('CORS_EXPOSED_HEADERS'),
   );
 
   return {
     origin,
-    credentials,
-    methods: parseCsv(
+    credentials: shouldAllowCredentials,
+    methods: commaSeparatedEntries(
       configService.get<string>(
         'CORS_METHODS',
         'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
@@ -60,11 +69,10 @@ export function createCorsOptions(
   };
 }
 
-// CN: 生成或校验 cors common 的 resolve origins 配置；EN: Builds or validates the resolve origins configuration for cors common.
 function resolveOrigins(
   configuredOrigins: string[],
   nodeEnv: Environment,
-  credentials: boolean,
+  shouldAllowCredentials: boolean,
 ): string | string[] {
   if (configuredOrigins.length === 0) {
     if (nodeEnv === Environment.Production) {
@@ -77,7 +85,7 @@ function resolveOrigins(
   }
 
   if (configuredOrigins.includes('*')) {
-    if (credentials) {
+    if (shouldAllowCredentials) {
       throw new Error(
         'CORS_CREDENTIALS=true cannot be combined with CORS_ORIGINS=*.',
       );
@@ -93,8 +101,7 @@ function resolveOrigins(
   return configuredOrigins;
 }
 
-// CN: 生成或校验 cors common 的 parse csv 配置；EN: Builds or validates the parse csv configuration for cors common.
-function parseCsv(value: string | undefined): string[] {
+function commaSeparatedEntries(value: string | undefined): string[] {
   return (value ?? '')
     .split(',')
     .map((item) => item.trim())
