@@ -24,9 +24,9 @@ import { DemoUploadModule } from './demo-upload/demo-upload.module';
 import { DemoWebsocketModule } from './demo-websocket/demo-websocket.module';
 
 const isTestEnvironment = process.env.NODE_ENV === 'test';
-const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
+const queueExampleImports = isTestEnvironment ? [] : [DemoQueueModule];
 
-// AI modified: isolate the removable demo catalog from the application infrastructure composition.
+// AI modified: isolate the removable example catalog from production features and platform composition.
 @Module({
   imports: [
     DemoAuthorizationModule,
@@ -40,7 +40,7 @@ const queueFeatureImports = isTestEnvironment ? [] : [DemoQueueModule];
     DemoDatabaseModule,
     DemoEventsModule,
     DemoHttpModule,
-    ...queueFeatureImports,
+    ...queueExampleImports,
     DemoRateLimitModule,
     DemoScheduleModule,
     DemoSecurityModule,

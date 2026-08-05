@@ -39,7 +39,7 @@ describe('DemosModule', () => {
     }
   });
 
-  it('aggregates every test-safe demo feature', async () => {
+  it('aggregates every test-safe demo example', async () => {
     await expect(getDemoImportNames('test')).resolves.toEqual(
       testSafeDemoNames,
     );

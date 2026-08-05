@@ -1,3 +1,4 @@
+import { HttpModule, HttpService } from '@nestjs/axios';
 import {
   BullModule,
   type BullRootModuleOptions,
@@ -13,27 +14,38 @@ import {
   MODULE_METADATA,
 } from '@nestjs/common/constants';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import {
   ScheduleModule as NestScheduleModule,
   SchedulerRegistry,
 } from '@nestjs/schedule';
 import { Test } from '@nestjs/testing';
 import type { Cache } from 'cache-manager';
+import { randomBytes } from 'node:crypto';
 
+import { shouldEnableDemos } from 'config/demo-catalog';
 import { AppModule } from './app.module';
-import { CommonCacheModule } from './common/cache/cache.module';
-import { CacheService } from './common/cache/cache.service';
-import { HttpCacheInterceptor } from './common/cache/http-cache.interceptor';
-import { CommonQueueModule } from './common/queue/queue.module';
-import { CommonQueueService } from './common/queue/queue.service';
-import { CommonScheduleModule } from './common/schedule/schedule.module';
-import { CommonScheduleService } from './common/schedule/schedule.service';
-import { DemosModule } from './features/demos.module';
+import { CommonCacheModule } from './platform/infrastructure/cache/cache.module';
+import { CacheService } from './platform/infrastructure/cache/cache.service';
+import { HttpCacheInterceptor } from './platform/infrastructure/cache/http-cache.interceptor';
+import { CommonHealthModule } from './platform/operations/health/health.module';
+import { CommonHttpClientModule } from './platform/infrastructure/http-client/http-client.module';
+import { CommonQueueModule } from './platform/infrastructure/queue/queue.module';
+import { CommonQueueService } from './platform/infrastructure/queue/queue.service';
+import { CommonScheduleModule } from './platform/runtime/schedule/schedule.module';
+import { CommonScheduleService } from './platform/runtime/schedule/schedule.service';
+import { DemoCacheModule } from './examples/demo-cache/demo-cache.module';
+import { DemoEventsModule } from './examples/demo-events/demo-events.module';
+import { DemoHttpModule } from './examples/demo-http/demo-http.module';
+import { DemoQueueModule } from './examples/demo-queue/demo-queue.module';
+import { DemoScheduleModule } from './examples/demo-schedule/demo-schedule.module';
+import { DemosModule } from './examples/demos.module';
 
 @Injectable()
-class GlobalInfrastructureConsumer {
+class ExplicitInfrastructureConsumer {
   constructor(
     readonly cacheService: CacheService,
+    readonly httpService: HttpService,
     readonly queueService: CommonQueueService,
     readonly scheduleService: CommonScheduleService,
     @Inject(CACHE_MANAGER) readonly cacheManager: Cache,
@@ -44,29 +56,112 @@ class GlobalInfrastructureConsumer {
 }
 
 @Module({
-  providers: [GlobalInfrastructureConsumer],
+  // AI modified: the consumer module declares every infrastructure provider it injects.
+  imports: [
+    CommonCacheModule,
+    CommonHttpClientModule,
+    CommonQueueModule,
+    CommonScheduleModule,
+  ],
+  providers: [ExplicitInfrastructureConsumer],
 })
-class GlobalInfrastructureConsumerModule {}
+class ExplicitInfrastructureConsumerModule {}
 
 describe('AppModule infrastructure boundaries', () => {
-  it('keeps cache, queue, and schedule root registration in their common modules', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+
+  afterEach(() => {
+    if (originalNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
+  it('excludes the educational demo catalog from production', () => {
+    expect(shouldEnableDemos('production')).toBe(false);
+    expect(shouldEnableDemos('development')).toBe(true);
+    expect(shouldEnableDemos('test')).toBe(true);
+    expect(shouldEnableDemos('provision')).toBe(true);
+    expect(shouldEnableDemos(undefined)).toBe(true);
+  });
+
+  it('omits DemosModule from the production Nest module graph', async () => {
+    jest.resetModules();
+    const productionEnvironment = {
+      NODE_ENV: 'production',
+      CORS_ORIGINS: 'https://app.example.com',
+      CSRF_ENABLED: 'false',
+      DB_HOST: 'database.internal',
+      DB_PORT: '3306',
+      DB_USERNAME: 'application',
+      DB_PASSWORD: 'runtime-only-password',
+      DB_DATABASE: 'application',
+      REDIS_URL: 'redis://redis.internal:6379',
+      BETTER_AUTH_SECRET: randomBytes(48).toString('base64url'),
+      BETTER_AUTH_URL: 'https://api.example.com',
+      JWT_SECRET: randomBytes(48).toString('base64url'),
+      ENCRYPTION_KEY: randomBytes(32).toString('base64url'),
+      HMAC_SECRET: randomBytes(48).toString('base64url'),
+    };
+    const originalEnvironment = Object.fromEntries(
+      Object.keys(productionEnvironment).map((key) => [key, process.env[key]]),
+    );
+
+    Object.assign(process.env, productionEnvironment);
+
+    try {
+      const modulePath = './app.module';
+      const productionExports = (await import(modulePath)) as {
+        readonly AppModule: object;
+      };
+      const productionImports = getModuleImports(productionExports.AppModule);
+
+      expect(
+        productionImports.some(
+          (importedModule) =>
+            typeof importedModule === 'function' &&
+            importedModule.name === 'DemosModule',
+        ),
+      ).toBe(false);
+    } finally {
+      for (const [key, value] of Object.entries(originalEnvironment)) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+
+  it('keeps root registration inside explicit capability modules', () => {
     expect(
       getDynamicModuleImport(CommonCacheModule, NestCacheModule),
+    ).toBeDefined();
+    expect(
+      getDynamicModuleImport(CommonHttpClientModule, HttpModule),
     ).toBeDefined();
     expect(getDynamicModuleImport(CommonQueueModule, BullModule)).toBeDefined();
     expect(
       getDynamicModuleImport(CommonScheduleModule, NestScheduleModule),
     ).toBeDefined();
+    expect(
+      getDynamicModuleImport(DemoEventsModule, EventEmitterModule),
+    ).toBeDefined();
 
-    expect(Reflect.getMetadata(GLOBAL_MODULE_METADATA, CommonCacheModule)).toBe(
-      true,
-    );
-    expect(Reflect.getMetadata(GLOBAL_MODULE_METADATA, CommonQueueModule)).toBe(
-      true,
-    );
+    expect(
+      Reflect.getMetadata(GLOBAL_MODULE_METADATA, CommonCacheModule),
+    ).toBeUndefined();
+    expect(
+      Reflect.getMetadata(GLOBAL_MODULE_METADATA, CommonHttpClientModule),
+    ).toBeUndefined();
+    expect(
+      Reflect.getMetadata(GLOBAL_MODULE_METADATA, CommonQueueModule),
+    ).toBeUndefined();
     expect(
       Reflect.getMetadata(GLOBAL_MODULE_METADATA, CommonScheduleModule),
-    ).toBe(true);
+    ).toBeUndefined();
     expect(getModuleExports(CommonCacheModule)).toEqual([
       NestCacheModule,
       CacheService,
@@ -86,13 +181,42 @@ describe('AppModule infrastructure boundaries', () => {
     expect(hasImportedModule(appImports, NestCacheModule)).toBe(false);
     expect(hasImportedModule(appImports, BullModule)).toBe(false);
     expect(hasImportedModule(appImports, NestScheduleModule)).toBe(false);
-    expect(countImportedModule(appImports, CommonCacheModule)).toBe(1);
-    expect(countImportedModule(appImports, CommonQueueModule)).toBe(1);
-    expect(countImportedModule(appImports, CommonScheduleModule)).toBe(1);
+    expect(hasImportedModule(appImports, EventEmitterModule)).toBe(false);
+    expect(countImportedModule(appImports, CommonCacheModule)).toBe(0);
+    expect(countImportedModule(appImports, CommonHttpClientModule)).toBe(0);
+    expect(countImportedModule(appImports, CommonQueueModule)).toBe(0);
+    expect(countImportedModule(appImports, CommonScheduleModule)).toBe(0);
     expect(countImportedModule(appImports, DemosModule)).toBe(1);
   });
 
-  it('exposes one shared provider instance to sibling feature modules', async () => {
+  it('makes every feature and readiness module declare its capability imports', () => {
+    expect(
+      countImportedModule(
+        getModuleImports(CommonHealthModule),
+        CommonCacheModule,
+      ),
+    ).toBe(1);
+    expect(
+      countImportedModule(getModuleImports(DemoCacheModule), CommonCacheModule),
+    ).toBe(1);
+    expect(
+      countImportedModule(
+        getModuleImports(DemoHttpModule),
+        CommonHttpClientModule,
+      ),
+    ).toBe(1);
+    expect(
+      countImportedModule(getModuleImports(DemoQueueModule), CommonQueueModule),
+    ).toBe(1);
+    expect(
+      countImportedModule(
+        getModuleImports(DemoScheduleModule),
+        CommonScheduleModule,
+      ),
+    ).toBe(1);
+  });
+
+  it('exposes one provider instance through explicit module imports', async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -102,8 +226,18 @@ describe('AppModule infrastructure boundaries', () => {
             () => ({
               NODE_ENV: 'test',
               REDIS_URL: 'redis://127.0.0.1:6379',
+              app: {
+                name: 'gnester-lite',
+              },
               cache: {
                 ttl: 0,
+              },
+              http: {
+                baseUrl: 'https://example.test',
+                timeout: 1_000,
+                maxRedirects: 0,
+                maxContentLength: 1_024,
+                maxBodyLength: 1_024,
               },
               queue: {
                 enabled: false,
@@ -120,17 +254,15 @@ describe('AppModule infrastructure boundaries', () => {
             }),
           ],
         }),
-        CommonCacheModule,
-        CommonQueueModule,
-        CommonScheduleModule,
-        GlobalInfrastructureConsumerModule,
+        ExplicitInfrastructureConsumerModule,
       ],
     }).compile();
 
     try {
-      const consumer = moduleRef.get(GlobalInfrastructureConsumer);
+      const consumer = moduleRef.get(ExplicitInfrastructureConsumer);
 
       expect(consumer.cacheService).toBe(moduleRef.get(CacheService));
+      expect(consumer.httpService).toBe(moduleRef.get(HttpService));
       expect(consumer.queueService).toBe(moduleRef.get(CommonQueueService));
       expect(consumer.scheduleService).toBe(
         moduleRef.get(CommonScheduleService),
