@@ -7,16 +7,19 @@ import session from 'express-session';
 import helmet from 'helmet';
 
 import { Environment, type RateLimitConfig } from 'config/config.types';
-import { setupAsyncApi } from '../common/asyncapi/asyncapi.config';
-import { createCorsOptions } from '../common/cors/cors.config';
-import { CsrfService } from '../common/csrf/csrf.service';
-import { setupOpenApi } from '../common/openapi/openapi.config';
-import { createHelmetOptions } from '../common/security/helmet-options';
-import { createValidationPipe } from '../common/validation/validation.pipe';
-import { DemoSocketIoAdapter } from '../common/websocket/demo-socket-io.adapter';
+import { BetterAuthService } from '../platform/security/better-auth/better-auth.service';
+import { createBetterAuthRequestMiddleware } from './http/better-auth.middleware';
+import { createCorsOptions } from './http/cors.config';
+import { CsrfService } from '../platform/security/csrf/csrf.service';
+import { createHelmetOptions } from './http/helmet-options';
+import { setupOpenApi } from './http/openapi.config';
+import { SocketIoAdapter } from './http/socket-io.adapter';
+import { createValidationPipe } from './http/validation.pipe';
 
 // AI modified: centralize the order-sensitive bootstrap pipeline so runtime and tests can share one entry point.
-export function configureApplication(app: NestExpressApplication): number {
+export async function configureApplication(
+  app: NestExpressApplication,
+): Promise<number> {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
   const nodeEnv = configService.get<Environment>(
@@ -24,7 +27,7 @@ export function configureApplication(app: NestExpressApplication): number {
     Environment.Development,
   );
   const cookieSecret = configService.get<string>('COOKIE_SECRET') || undefined;
-  const compressionEnabled = configService.get<boolean>(
+  const isCompressionEnabled = configService.get<boolean>(
     'COMPRESSION_ENABLED',
     true,
   );
@@ -33,13 +36,14 @@ export function configureApplication(app: NestExpressApplication): number {
     '1kb',
   );
   const compressionLevel = configService.get<number>('COMPRESSION_LEVEL', 6);
-  const sessionEnabled = configService.get<boolean>('SESSION_ENABLED', true);
+  const isSessionEnabled = configService.get<boolean>('SESSION_ENABLED', true);
   const rateLimitConfig =
     configService.getOrThrow<RateLimitConfig>('rateLimit');
   const isProduction = nodeEnv === Environment.Production;
   const corsOptions = createCorsOptions(configService, nodeEnv);
 
-  app.useWebSocketAdapter(new DemoSocketIoAdapter(app));
+  // AI modified: HTTP and Socket.IO now share the same validated origin policy.
+  app.useWebSocketAdapter(new SocketIoAdapter(app, corsOptions));
   app.set('trust proxy', rateLimitConfig.trustProxy);
   app.use(helmet(createHelmetOptions(nodeEnv)));
 
@@ -47,7 +51,7 @@ export function configureApplication(app: NestExpressApplication): number {
     app.enableCors(corsOptions);
   }
 
-  if (compressionEnabled) {
+  if (isCompressionEnabled) {
     app.use(
       compression({
         threshold: compressionThreshold,
@@ -65,7 +69,7 @@ export function configureApplication(app: NestExpressApplication): number {
 
   app.use(cookieParser(cookieSecret));
 
-  if (sessionEnabled) {
+  if (isSessionEnabled) {
     if (isProduction) {
       throw new Error(
         'SESSION_ENABLED=true uses the demo MemoryStore. Configure a production session store before enabling sessions in production.',
@@ -98,18 +102,27 @@ export function configureApplication(app: NestExpressApplication): number {
     );
   }
 
+  const betterAuthHandler = await app
+    .get(BetterAuthService)
+    .getRequestHandler();
+
+  // AI modified: mount the raw Better Auth handler before restoring Nest body parsers.
+  app.use(createBetterAuthRequestMiddleware(betterAuthHandler));
+  app.useBodyParser('json');
+  app.useBodyParser('urlencoded', { extended: true });
+
   const csrfService = app.get(CsrfService);
   app.use(csrfService.createProtectionMiddleware());
   app.use(csrfService.createErrorHandler());
 
-  app.useGlobalPipes(createValidationPipe(nodeEnv));
+  // AI modified: the custom exception factory owns one stable sanitized contract in every environment.
+  app.useGlobalPipes(createValidationPipe());
   app.enableVersioning({
     type: VersioningType.URI,
     prefix: 'v',
     defaultVersion: '1',
   });
-  setupOpenApi(app, nodeEnv);
-  setupAsyncApi(app, nodeEnv, port);
+  await setupOpenApi(app, nodeEnv);
 
   return port;
 }

@@ -8,11 +8,11 @@ import session from 'express-session';
 import helmet from 'helmet';
 
 import { Environment, type RateLimitConfig } from 'config/config.types';
-import { setupAsyncApi } from '../common/asyncapi/asyncapi.config';
-import { CsrfService } from '../common/csrf/csrf.service';
-import { setupOpenApi } from '../common/openapi/openapi.config';
-import { createHelmetOptions } from '../common/security/helmet-options';
-import { DemoSocketIoAdapter } from '../common/websocket/demo-socket-io.adapter';
+import { BetterAuthService } from '../platform/security/better-auth/better-auth.service';
+import { CsrfService } from '../platform/security/csrf/csrf.service';
+import { createHelmetOptions } from './http/helmet-options';
+import { setupOpenApi } from './http/openapi.config';
+import { SocketIoAdapter } from './http/socket-io.adapter';
 import { configureApplication } from './configure-application';
 
 jest.mock('compression', () => ({
@@ -36,10 +36,7 @@ jest.mock('helmet', () => ({
   __esModule: true,
   default: jest.fn(() => jest.fn()),
 }));
-jest.mock('../common/asyncapi/asyncapi.config', () => ({
-  setupAsyncApi: jest.fn(),
-}));
-jest.mock('../common/openapi/openapi.config', () => ({
+jest.mock('./http/openapi.config', () => ({
   setupOpenApi: jest.fn(),
 }));
 
@@ -48,12 +45,16 @@ describe('configureApplication', () => {
     jest.clearAllMocks();
   });
 
-  it('preserves the complete order-sensitive application pipeline', () => {
+  it('preserves the complete order-sensitive application pipeline', async () => {
     const csrfProtection = jest.fn() as RequestHandler;
     const csrfErrorHandler = jest.fn() as ErrorRequestHandler;
     const csrfService = {
       createProtectionMiddleware: jest.fn(() => csrfProtection),
       createErrorHandler: jest.fn(() => csrfErrorHandler),
+    };
+    const betterAuthHandler = jest.fn().mockResolvedValue(undefined);
+    const betterAuthService = {
+      getRequestHandler: jest.fn().mockResolvedValue(betterAuthHandler),
     };
     const values = new Map<string, unknown>([
       ['PORT', 4100],
@@ -67,7 +68,7 @@ describe('configureApplication', () => {
       [
         'rateLimit',
         {
-          trustProxy: true,
+          trustProxy: 'loopback',
         } satisfies Partial<RateLimitConfig>,
       ],
     ]);
@@ -87,6 +88,7 @@ describe('configureApplication', () => {
     const enableVersioning = jest.fn();
     const set = jest.fn();
     const use = jest.fn();
+    const useBodyParser = jest.fn();
     const useGlobalPipes = jest.fn();
     const useWebSocketAdapter = jest.fn();
     const app = {
@@ -101,15 +103,20 @@ describe('configureApplication', () => {
           return csrfService;
         }
 
+        if (token === BetterAuthService) {
+          return betterAuthService;
+        }
+
         throw new Error('Unexpected provider lookup');
       }),
       set,
       use,
+      useBodyParser,
       useGlobalPipes,
       useWebSocketAdapter,
     } as unknown as NestExpressApplication;
 
-    const port = configureApplication(app);
+    const port = await configureApplication(app);
     const helmetMiddleware = jest.mocked(helmet).mock.results[0]
       ?.value as unknown as RequestHandler;
     const compressionMiddleware = jest.mocked(compression).mock.results[0]
@@ -120,7 +127,7 @@ describe('configureApplication', () => {
       ?.value as unknown as RequestHandler;
 
     expect(port).toBe(4100);
-    expect(set).toHaveBeenCalledWith('trust proxy', true);
+    expect(set).toHaveBeenCalledWith('trust proxy', 'loopback');
     expect(helmet).toHaveBeenCalledWith(
       createHelmetOptions(Environment.Development),
     );
@@ -155,15 +162,21 @@ describe('configureApplication', () => {
       },
     });
     expect(useWebSocketAdapter).toHaveBeenCalledWith(
-      expect.any(DemoSocketIoAdapter),
+      expect.any(SocketIoAdapter),
     );
     expect(use.mock.calls).toEqual([
       [helmetMiddleware],
       [compressionMiddleware],
       [cookieMiddleware],
       [sessionMiddleware],
+      [expect.any(Function)],
       [csrfProtection],
       [csrfErrorHandler],
+    ]);
+    expect(betterAuthService.getRequestHandler).toHaveBeenCalledTimes(1);
+    expect(useBodyParser.mock.calls).toEqual([
+      ['json'],
+      ['urlencoded', { extended: true }],
     ]);
     expect(useGlobalPipes).toHaveBeenCalledWith(expect.any(ValidationPipe));
     expect(enableVersioning).toHaveBeenCalledWith({
@@ -172,11 +185,6 @@ describe('configureApplication', () => {
       defaultVersion: '1',
     });
     expect(setupOpenApi).toHaveBeenCalledWith(app, Environment.Development);
-    expect(setupAsyncApi).toHaveBeenCalledWith(
-      app,
-      Environment.Development,
-      4100,
-    );
 
     const invocationOrder = [
       useWebSocketAdapter.mock.invocationCallOrder[0],
@@ -191,11 +199,13 @@ describe('configureApplication', () => {
       jest.mocked(session).mock.invocationCallOrder[0],
       use.mock.invocationCallOrder[3],
       use.mock.invocationCallOrder[4],
+      useBodyParser.mock.invocationCallOrder[0],
+      useBodyParser.mock.invocationCallOrder[1],
       use.mock.invocationCallOrder[5],
+      use.mock.invocationCallOrder[6],
       useGlobalPipes.mock.invocationCallOrder[0],
       enableVersioning.mock.invocationCallOrder[0],
       jest.mocked(setupOpenApi).mock.invocationCallOrder[0],
-      jest.mocked(setupAsyncApi).mock.invocationCallOrder[0],
     ];
 
     expect(invocationOrder).toEqual(
@@ -203,7 +213,7 @@ describe('configureApplication', () => {
     );
   });
 
-  it('rejects the demo MemoryStore when sessions are enabled in production', () => {
+  it('rejects the demo MemoryStore when sessions are enabled in production', async () => {
     const values = new Map<string, unknown>([
       ['NODE_ENV', Environment.Production],
       ['SESSION_ENABLED', true],
@@ -213,7 +223,7 @@ describe('configureApplication', () => {
       [
         'rateLimit',
         {
-          trustProxy: true,
+          trustProxy: 'loopback',
         } satisfies Partial<RateLimitConfig>,
       ],
     ]);
@@ -243,7 +253,7 @@ describe('configureApplication', () => {
       useWebSocketAdapter: jest.fn(),
     } as unknown as NestExpressApplication;
 
-    expect(() => configureApplication(app)).toThrow(
+    await expect(configureApplication(app)).rejects.toThrow(
       'SESSION_ENABLED=true uses the demo MemoryStore',
     );
     expect(session).not.toHaveBeenCalled();

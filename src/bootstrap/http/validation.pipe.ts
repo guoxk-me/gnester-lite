@@ -1,4 +1,3 @@
-// CN: 管道，转换或校验 validation common 的输入；EN: Pipe transforms or validates input for validation common.
 import {
   BadRequestException,
   type ValidationError,
@@ -6,14 +5,13 @@ import {
   type ValidationPipeOptions,
 } from '@nestjs/common';
 
-import { Environment } from 'config/config.types';
+import { translateKey } from '../../platform/runtime/i18n/i18n.translate';
 
 export interface ValidationErrorDetail {
   readonly field: string;
   readonly reason: string;
 }
 
-// CN: 校验或转换 validation common 的 collect validation errors 输入；EN: Validates or transforms collect validation errors input for validation common.
 function collectValidationErrors(
   errors: ValidationError[],
   parentPath = '',
@@ -22,10 +20,14 @@ function collectValidationErrors(
     const fieldPath = parentPath
       ? `${parentPath}.${error.property}`
       : error.property;
-    const currentErrors = Object.values(error.constraints ?? {}).map(
-      (reason) => ({
+    const currentErrors = Object.entries(error.constraints ?? {}).map(
+      ([constraint, fallback]) => ({
         field: fieldPath,
-        reason,
+        // AI modified: translate by constraint name when i18n context is present.
+        reason: translateKey(`validation.${constraint}`, {
+          args: { property: error.property },
+          defaultValue: fallback,
+        }),
       }),
     );
     const childErrors = collectValidationErrors(
@@ -37,7 +39,6 @@ function collectValidationErrors(
   });
 }
 
-// CN: 校验或转换 validation common 的 validation exception factory 输入；EN: Validates or transforms validation exception factory input for validation common.
 export function validationExceptionFactory(
   errors: ValidationError[],
 ): BadRequestException {
@@ -45,18 +46,18 @@ export function validationExceptionFactory(
 
   return new BadRequestException({
     code: 400,
-    message: 'Validation failed',
-    errors: details.length > 0 ? details : undefined,
+    message: translateKey('errors.VALIDATION_FAILED', {
+      defaultValue: 'Validation failed',
+    }),
+    data: null,
+    errors: details.length > 0 ? details : null,
   });
 }
 
-// CN: 校验或转换 validation common 的 create validation pipe 输入；EN: Validates or transforms create validation pipe input for validation common.
 export function createValidationPipe(
-  nodeEnv: Environment,
   options: ValidationPipeOptions = {},
 ): ValidationPipe {
   return new ValidationPipe({
-    disableErrorMessages: nodeEnv === Environment.Production,
     whitelist: true,
     forbidNonWhitelisted: true,
     forbidUnknownValues: true,
