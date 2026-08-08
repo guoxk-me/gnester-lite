@@ -1,28 +1,44 @@
-// CN: 端到端测试，验证 application e2e 的真实应用流程；EN: E2E test verifies real application flows for application e2e.
-import { INestApplication } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
-import { App } from 'supertest/types';
-import { CommonRateLimitModule } from '../src/common/rate-limit/rate-limit.module';
-import { DemoRateLimitModule } from '../src/features/demo-rate-limit/demo-rate-limit.module';
 
-// CN: 测试分组：Rate limiting (e2e)；EN: Test group: Rate limiting (e2e).
+import { configureApplication } from '../src/bootstrap/configure-application';
+import { CommonCsrfModule } from '../src/platform/security/csrf/csrf.module';
+import { CommonRateLimitModule } from '../src/platform/security/rate-limit/rate-limit.module';
+import { DemoRateLimitModule } from '../src/examples/demo-rate-limit/demo-rate-limit.module';
+import { betterAuthTestProvider } from './better-auth.stub';
+
 describe('Rate limiting (e2e)', () => {
-  let app: INestApplication<App> | undefined;
+  let app: NestExpressApplication | undefined;
 
-  // CN: 测试准备，组织或验证测试流程；EN: Test setup organizes or verifies the test flow.
   beforeEach(async () => {
+    app = await createRateLimitApplication('loopback');
+  });
+
+  afterEach(async () => {
+    await app?.close();
+  });
+
+  async function createRateLimitApplication(
+    trustProxy: string | boolean,
+  ): Promise<NestExpressApplication> {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
           ignoreEnvFile: true,
+          ignoreEnvVars: true,
           isGlobal: true,
           load: [
             () => ({
+              NODE_ENV: 'test',
+              COMPRESSION_ENABLED: false,
+              CORS_ENABLED: false,
+              CSRF_ENABLED: false,
+              SESSION_ENABLED: false,
               rateLimit: {
                 enabled: true,
-                trustProxy: 'loopback',
+                trustProxy,
                 errorMessage: 'Too many requests',
                 throttlers: [
                   {
@@ -35,21 +51,24 @@ describe('Rate limiting (e2e)', () => {
             }),
           ],
         }),
+        CommonCsrfModule,
         CommonRateLimitModule,
         DemoRateLimitModule,
       ],
+      providers: [betterAuthTestProvider],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
-  });
+    const rateLimitApplication =
+      moduleFixture.createNestApplication<NestExpressApplication>({
+        bodyParser: false,
+      });
+    // AI modified: exercise trust proxy and the same middleware pipeline used at runtime.
+    await configureApplication(rateLimitApplication);
+    await rateLimitApplication.init();
 
-  // CN: 测试清理，组织或验证测试流程；EN: Test cleanup organizes or verifies the test flow.
-  afterEach(async () => {
-    await app?.close();
-  });
+    return rateLimitApplication;
+  }
 
-  // CN: 测试用例：limits public demo routes after the configured default budget；EN: Test case: limits public demo routes after the configured default budget.
   it('limits public demo routes after the configured default budget', async () => {
     if (!app) {
       throw new Error('Nest application was not initialized');
@@ -66,7 +85,6 @@ describe('Rate limiting (e2e)', () => {
       .expect(429);
   });
 
-  // CN: 测试用例：uses stricter endpoint overrides for credential-style routes；EN: Test case: uses stricter endpoint overrides for credential-style routes.
   it('uses stricter endpoint overrides for credential-style routes', async () => {
     if (!app) {
       throw new Error('Nest application was not initialized');
@@ -80,7 +98,6 @@ describe('Rate limiting (e2e)', () => {
       .expect(429);
   });
 
-  // CN: 测试用例：allows explicitly skipped endpoints to bypass throttling；EN: Test case: allows explicitly skipped endpoints to bypass throttling.
   it('allows explicitly skipped endpoints to bypass throttling', async () => {
     if (!app) {
       throw new Error('Nest application was not initialized');
@@ -95,5 +112,54 @@ describe('Rate limiting (e2e)', () => {
     await request(app.getHttpServer())
       .get('/demo-rate-limit/health')
       .expect(200);
+  });
+
+  it('separates trusted forwarded clients into independent budgets', async () => {
+    if (!app) {
+      throw new Error('Nest application was not initialized');
+    }
+
+    const firstClientIp = '198.51.100.10';
+    const secondClientIp = '203.0.113.20';
+
+    await request(app.getHttpServer())
+      .get('/demo-rate-limit/default')
+      .set('X-Forwarded-For', firstClientIp)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get('/demo-rate-limit/default')
+      .set('X-Forwarded-For', firstClientIp)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get('/demo-rate-limit/default')
+      .set('X-Forwarded-For', secondClientIp)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get('/demo-rate-limit/default')
+      .set('X-Forwarded-For', firstClientIp)
+      .expect(429);
+    await request(app.getHttpServer())
+      .get('/demo-rate-limit/default')
+      .set('X-Forwarded-For', secondClientIp)
+      .expect(200);
+  });
+
+  it('ignores forwarded identities when no proxy is trusted', async () => {
+    await app?.close();
+    app = await createRateLimitApplication(false);
+    const httpServer = app.getHttpServer();
+
+    await request(httpServer)
+      .get('/demo-rate-limit/default')
+      .set('X-Forwarded-For', '198.51.100.10')
+      .expect(200);
+    await request(httpServer)
+      .get('/demo-rate-limit/default')
+      .set('X-Forwarded-For', '203.0.113.20')
+      .expect(200);
+    await request(httpServer)
+      .get('/demo-rate-limit/default')
+      .set('X-Forwarded-For', '192.0.2.30')
+      .expect(429);
   });
 });

@@ -2,7 +2,7 @@
   "moduleFileExtensions": ["js", "json", "ts"],
   "rootDir": ".",
   "testEnvironment": "node",
-  "testRegex": ".e2e-spec.ts$",
+  "testRegex": "full-app\\.integration-spec\\.ts$",
   "moduleNameMapper": {
     "^config/(.*)$": "<rootDir>/../config/$1",
     "^\\./better-auth\\.loader\\.cjs$": "<rootDir>/fixtures/better-auth-loader.mock.cjs",
