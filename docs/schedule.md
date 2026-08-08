@@ -1,7 +1,5 @@
 # Schedule Guide / 定时任务指南
 
-> CN: 文档文件，说明 schedule 的用途；EN: Documentation file explains the purpose of schedule.
-
 This document is for AI agents and developers who need to add or change
 scheduled jobs safely.
 
@@ -39,13 +37,13 @@ Do not use `UTC+8` or `Beijing`; validation rejects non-IANA values.
 
 ## Key Files / 关键文件
 
-- `src/common/schedule/schedule.module.ts`: owns `ScheduleModule.forRoot()` and
+- `src/platform/runtime/schedule/schedule.module.ts`: owns `ScheduleModule.forRoot()` and
   exports the shared scheduler runtime service.
 - `config/config.yaml`: schedule defaults.
 - `config/configuration.ts`: validates `schedule.enabled` and
   `schedule.timeZone`.
-- `src/common/schedule/schedule.service.ts`: shared runtime helpers.
-- `src/features/demo-schedule/*`: declarative and dynamic job examples.
+- `src/platform/runtime/schedule/schedule.service.ts`: shared runtime helpers.
+- `src/examples/demo-schedule/*`: declarative and dynamic job examples.
 
 ## Current API / 当前接口
 
@@ -72,6 +70,9 @@ scheduler style so the controller layer shows declarative cron, dynamic cron,
 interval, and timeout entrypoints. The dynamic cron routes demonstrate runtime
 registration, start, stop, reschedule, and delete operations. The dynamic
 interval and timeout routes demonstrate runtime registration and deletion.
+
+Every `POST` route above requires the README CSRF cookie-jar/token flow when
+`CSRF_ENABLED=true`.
 
 `GET /demo-schedule/jobs` 返回定时任务开关、时区、cron、interval 和 timeout
 状态。`POST .../run` 路由手动执行每一种 demo 调度方式，让 controller 层示例覆盖
@@ -129,11 +130,16 @@ Rules / 规则：
    测试环境禁用自动运行。
 5. For dynamic jobs, use `CommonScheduleService.addCronJob()`.
    动态任务使用 `CommonScheduleService.addCronJob()`。
+6. Dynamic interval and timeout callbacks may be synchronous or asynchronous.
+   The common service records rejected callbacks, prevents interval overlap,
+   and waits for callbacks already in progress during shutdown.
+   动态 interval 与 timeout 回调可同步或异步；common service 会记录 rejection、
+   阻止 interval 重叠，并在关停时等待已开始的回调。
 
 ## Verify / 验证
 
 ```bash
-pnpm run test -- src/common/schedule src/features/demo-schedule
+pnpm run test -- src/platform/runtime/schedule src/examples/demo-schedule
 pnpm run test
 pnpm run build
 ```

@@ -1,7 +1,5 @@
 # WebSocket Demo / WebSocket 示例
 
-> CN: 文档文件，说明 websocket 的用途；EN: Documentation file explains the purpose of websocket.
-
 This project uses NestJS gateways with the Socket.IO platform package for the
 demo websocket feature.
 
@@ -9,10 +7,12 @@ demo websocket feature.
 
 ## Files / 文件
 
-- `src/features/demo-websocket/demo-websocket.module.ts`
-- `src/features/demo-websocket/demo-websocket.gateway.ts`
-- `src/features/demo-websocket/demo-websocket.service.ts`
-- `src/features/demo-websocket/dto/*.ts`
+- `src/examples/demo-websocket/demo-websocket.module.ts`
+- `src/examples/demo-websocket/demo-websocket.constants.ts`
+- `src/examples/demo-websocket/demo-websocket.gateway.ts`
+- `src/examples/demo-websocket/demo-websocket-asyncapi.service.ts`
+- `src/examples/demo-websocket/demo-websocket.service.ts`
+- `src/examples/demo-websocket/dto/*.ts`
 
 ## Install / 依赖
 
@@ -31,6 +31,15 @@ Gateway 复用主 HTTP server，并监听这个 Socket.IO namespace：
 /demo-websocket
 ```
 
+The AsyncAPI import routes advertise the listener used by this HTTP server.
+When non-production configuration uses `PORT=0`, they publish the assigned TCP
+port after startup. If no listener address is available, the routes fail closed
+instead of returning an unusable `localhost:0` contract.
+
+AsyncAPI 导入路由会发布该 HTTP server 的实际监听端口。非生产环境配置
+`PORT=0` 时，应用启动后会使用系统分配的 TCP 端口；如果监听地址不可用，路由会
+直接失败，而不会返回无法使用的 `localhost:0` 契约。
+
 ## Adapter / 适配器
 
 NestJS WebSocket support is platform-agnostic. This project uses a custom
@@ -42,7 +51,7 @@ Socket.IO adapter，符合 NestJS 官方 adapter 扩展模式。
 
 Files / 文件：
 
-- `src/common/websocket/demo-socket-io.adapter.ts`
+- `src/bootstrap/http/socket-io.adapter.ts`
 - `src/bootstrap/configure-application.ts`
 
 The adapter is registered during bootstrap:
@@ -50,7 +59,8 @@ The adapter is registered during bootstrap:
 Adapter 在启动阶段注册：
 
 ```ts
-app.useWebSocketAdapter(new DemoSocketIoAdapter(app));
+const corsOptions = createCorsOptions(configService, nodeEnv);
+app.useWebSocketAdapter(new SocketIoAdapter(app, corsOptions));
 ```
 
 The adapter centralizes Socket.IO server defaults:
@@ -59,13 +69,17 @@ Adapter 集中管理 Socket.IO server 默认选项：
 
 - `transports: ['websocket']`
 - `serveClient: false`
-- default local CORS origins when a gateway does not provide `cors`
+- the same validated `CORS_*` policy used by HTTP when a gateway does not
+  provide `cors`
+- an Engine.IO `allowRequest` origin check, because CORS response headers alone
+  do not block websocket-only handshakes
 
 - `transports: ['websocket']`
 - `serveClient: false`
-- 当 gateway 未提供 `cors` 时使用默认本地 CORS origins
+- gateway 未提供 `cors` 时复用 HTTP 的 `CORS_*` 配置
+- Engine.IO `allowRequest` 对 websocket-only 握手执行真实 origin 拒绝
 
-Local development origins are allowed explicitly:
+Without explicit `CORS_ORIGINS`, local development resolves to:
 
 本地开发 origin 已显式放行：
 
@@ -74,10 +88,11 @@ Local development origins are allowed explicitly:
 - `http://127.0.0.1:3000`
 - `http://127.0.0.1:5173`
 
-Production deployments should replace this static allow-list with the real
-browser origins or a custom adapter that reads from configuration.
-
-生产部署时应将该静态 allow-list 替换为真实浏览器 origin，或使用从配置读取的自定义 adapter。
+Production validation requires explicit browser origins, which are applied to
+both HTTP and Socket.IO. `*` explicitly allows every Origin. With
+`CORS_ENABLED=false`, browser handshakes must use the same host; clients without
+an `Origin` header remain available for non-browser integrations. A gateway may
+override both layers by supplying its own `allowRequest`.
 
 For multiple load-balanced instances, extend this adapter with the Socket.IO
 Redis adapter. Redis alone is not enough when long polling is enabled; this demo
@@ -108,6 +123,12 @@ headers for non-browser clients.
 Gateway 也接受非浏览器客户端在 handshake headers 中传入
 `Authorization: Bearer <token>`。
 
+Both forms accept at most 4096 token characters and reject whitespace or
+malformed Bearer input before JWT verification.
+
+两种形式最多接受 4096 个 token 字符，并在 JWT 校验前拒绝空白字符或格式错误的
+Bearer 输入。
+
 Anonymous or invalid clients receive:
 
 匿名或无效 token 客户端会收到：
@@ -127,11 +148,13 @@ Then the server disconnects the socket.
 
 Client to server / 客户端到服务端：
 
-- `demo-websocket.scenarios`: returns documented demo scenarios.
+- `demo-websocket.scenarios`: takes no payload and returns documented demo
+  scenarios.
 - `demo-websocket.ping`: validates an authenticated connection and emits
   `demo-websocket.pong`.
 - `demo-websocket.room.join`: joins a validated room name.
-- `demo-websocket.message`: broadcasts a validated message to a room.
+- `demo-websocket.message`: broadcasts a validated message only after the
+  sending socket has joined that room.
 
 Server to client / 服务端到客户端：
 
@@ -139,7 +162,13 @@ Server to client / 服务端到客户端：
 - `demo-websocket.pong`
 - `demo-websocket.room.joined`
 - `demo-websocket.message`
-- `demo-websocket.error`
+- `demo-websocket.message.accepted`
+- `demo-websocket.error`: handshake authentication failures only; the server
+  disconnects after emitting it.
+- `demo-websocket.exception`: guard, validation, handler, and room-membership
+  failures.
+- `demo-websocket.intercepted`: side-channel trace emitted after a handler
+  returns an event response.
 
 Ping example / Ping 示例：
 
@@ -164,11 +193,29 @@ socket.on('demo-websocket.message', (payload) => {
   console.log(payload);
 });
 
+socket.on('demo-websocket.message.accepted', (payload) => {
+  console.log('accepted for room', payload.room);
+});
+
 socket.emit('demo-websocket.message', {
   room: 'demo-room',
   message: 'hello',
 });
 ```
+
+Sending before `demo-websocket.room.joined` returns:
+
+The payload is emitted on `demo-websocket.exception`, not the handshake-only
+`demo-websocket.error` event.
+
+```json
+{
+  "code": "WEBSOCKET_ROOM_MEMBERSHIP_REQUIRED",
+  "message": "Join the room before sending messages"
+}
+```
+
+The server does not create or broadcast the rejected message.
 
 ## Validation / 校验
 
@@ -191,8 +238,14 @@ The pipe keeps the same validation policy as HTTP routes:
 - return structured validation errors through `demo-websocket.exception`.
 
 Room names allow only letters, numbers, `:`, `_`, and `-`.
+Room messages must contain non-whitespace text and are limited to 500
+characters.
+Ping messages are optional; when supplied they must contain non-whitespace text
+and are limited to 120 characters.
 
 房间名只允许字母、数字、`:`, `_`, `-`。
+房间消息必须包含非空白字符，且最多 500 个字符。
+Ping 消息可以省略；一旦提供就必须包含非空白字符，且最多 120 个字符。
 
 ## Exception Filter / 异常过滤器
 
@@ -241,7 +294,8 @@ throw new WsException({
 });
 ```
 
-Unexpected errors are intentionally normalized to avoid leaking internals:
+Unexpected errors are intentionally reduced to a safe shape to avoid leaking
+internals:
 
 未知异常会被归一化，避免向客户端泄漏内部细节：
 
@@ -331,7 +385,9 @@ gateway-scoped interceptor behavior.
 
 - Keep JWT verification in the handshake path before registering connection
   state.
-- Validate every inbound event payload. WebSocket messages are user input.
+- Validate every inbound event payload when the event accepts data. WebSocket
+  messages are user input.
+- Require server-side room membership before accepting a room broadcast.
 - Define connection budgets separately from HTTP rate limiting.
 - For multiple server instances, add the Socket.IO Redis adapter so room
   broadcasts cross process boundaries.
@@ -349,7 +405,7 @@ gateway-scoped interceptor behavior.
 Focused unit tests:
 
 ```bash
-pnpm run test -- src/features/demo-websocket/demo-websocket.service.spec.ts src/features/demo-websocket/demo-websocket.gateway.spec.ts
+pnpm run test -- src/examples/demo-websocket/demo-websocket.service.spec.ts src/examples/demo-websocket/demo-websocket.gateway.spec.ts
 ```
 
 Socket.IO e2e test:

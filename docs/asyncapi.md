@@ -1,27 +1,29 @@
 # AsyncAPI / WebSocket API 文档
 
-> CN: 文档文件，说明 asyncapi 的用途；EN: Documentation file explains the purpose of asyncapi.
+The WebSocket feature owns a hand-maintained AsyncAPI 3.0 contract. No
+documentation package is present in production dependencies: the application
+serves the contract directly, while `@asyncapi/parser` is used only in tests.
 
-Outside production, the template exposes AsyncAPI documents for the Socket.IO
-demo (`nestjs-asyncapi`), plus a small HTML index that links to importable
-JSON/YAML.
-
-非生产环境为 Socket.IO 演示暴露 AsyncAPI 文档（`nestjs-asyncapi`），并提供链到
-可导入 JSON/YAML 的简易 HTML 首页。
+WebSocket 功能模块自行维护 AsyncAPI 3.0 契约。生产依赖不包含文档生成包；应用直接
+提供契约，`@asyncapi/parser` 仅用于测试校验。
 
 ## Layout / 结构
 
-- `src/common/asyncapi/asyncapi.config.ts`: `setupAsyncApi(app, nodeEnv, port)`.
-- Called from `src/bootstrap/configure-application.ts` after OpenAPI setup.
-  在共享启动编排中于 OpenAPI 之后调用。
-- Demo gateway: `src/features/demo-websocket/` (namespace `/demo-websocket`).
-  演示网关命名空间为 `/demo-websocket`。See also `docs/websocket.md`.
+- `src/examples/demo-websocket/demo-websocket-asyncapi.service.ts` generates the
+  document; the feature-owned version-neutral Nest controller serves HTML,
+  JSON, and YAML through the normal router.
+- `src/examples/demo-websocket/demo-websocket-asyncapi.service.spec.ts` validates
+  the document with the official parser and checks channels and schemas against
+  the gateway.
+- `src/examples/demo-websocket/demo-websocket.module.ts` keeps documentation
+  ownership beside the `/demo-websocket` namespace.
+- Runtime authentication, rooms, errors, and adapter behavior are documented in
+  `docs/websocket.md`.
 
 ## Endpoints / 端点
 
-Disabled when `NODE_ENV=production`.
-
-`NODE_ENV=production` 时不注册。
+The endpoints are available in non-production demo environments and are absent
+when `NODE_ENV=production`.
 
 ```text
 http://localhost:3000/async-api
@@ -29,30 +31,27 @@ http://localhost:3000/async-api-json
 http://localhost:3000/async-api-yaml
 ```
 
-| Route | Content |
-|---|---|
-| `/async-api` | Minimal HTML index with links to JSON/YAML |
-| `/async-api-json` | AsyncAPI document as JSON |
-| `/async-api-yaml` | AsyncAPI document as YAML |
+| Route             | Content                                         |
+| ----------------- | ----------------------------------------------- |
+| `/async-api`      | Small index linking to the importable documents |
+| `/async-api-json` | AsyncAPI 3.0 JSON                               |
+| `/async-api-yaml` | AsyncAPI 3.0 YAML                               |
 
-Notes / 说明：
-
-- Server entry targets `localhost:<PORT>` with pathname `/demo-websocket` and
-  `socket.io` protocol; Bearer security is declared for authenticated rooms.
-  服务端条目指向 `localhost:<PORT>`、路径 `/demo-websocket`、协议 `socket.io`，
-  并声明 Bearer。
-- The HTML index is hand-rolled on purpose: the upstream HTML generator had a
-  Node 24 failure path; import endpoints remain the source of truth for tools.
-  HTML 首页为手写，规避上游生成器在 Node 24 上的问题；工具应以 JSON/YAML 为准。
-- Operational WebSocket behavior (auth, rooms, errors) lives in
-  `docs/websocket.md`, not in this file.
-  运行时行为见 `docs/websocket.md`。
+The server entry uses Engine.IO pathname `/socket.io/` and declares the Socket.IO
+namespace separately as `x-socket-io-namespace: /demo-websocket`. Bearer
+authentication is declared for the handshake. Room-message operations state
+that the sender must join the target room first. An optional ping message must
+contain non-whitespace text and is limited to 120 characters when present. The
+payload-free scenarios request is represented by an explicit message with no
+`payload`, so tooling cannot confuse the scenarios response with client input.
+The JSON/YAML documents are the source of truth for tooling.
 
 ## Verify / 验证
 
 ```bash
-pnpm run test -- src/common/asyncapi/asyncapi.config.spec.ts
-# with the app running outside production:
-curl -sS http://localhost:3000/async-api-json | head
-curl -sS http://localhost:3000/async-api-yaml | head
+pnpm run test -- src/examples/demo-websocket/demo-websocket-asyncapi.service.spec.ts
+
+# With the development app running:
+curl -fsS http://localhost:3000/async-api-json
+curl -fsS http://localhost:3000/async-api-yaml
 ```

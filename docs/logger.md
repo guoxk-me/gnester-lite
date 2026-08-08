@@ -1,7 +1,5 @@
 # Logger / 日志
 
-> CN: 文档文件，说明 logger 的用途；EN: Documentation file explains the purpose of logger.
-
 This template uses [nestjs-pino](https://github.com/iamolegga/nestjs-pino)
 (Pino’s recommended Nest integration) for structured application logs and HTTP
 access logs. Sentry remains responsible for error/performance monitoring.
@@ -12,9 +10,9 @@ access logs. Sentry remains responsible for error/performance monitoring.
 
 ## Layout / 结构
 
-- `src/common/logger/logger.module.ts`: wraps `LoggerModule.forRootAsync`.
+- `src/platform/observability/logger/logger.module.ts`: wraps `LoggerModule.forRootAsync`.
   封装 `LoggerModule.forRootAsync`。
-- `src/common/logger/logger.config.ts`: maps `LOGGER_*` / `app.name` to Pino
+- `src/platform/observability/logger/logger.config.ts`: maps `LOGGER_*` / `app.name` to Pino
   options.
   将 `LOGGER_*` / `app.name` 映射为 Pino 配置。
 - `src/main.ts`: `bufferLogs: true` + `app.useLogger(app.get(Logger))`.
@@ -31,10 +29,9 @@ LOGGER_LEVELS
 
 Notes / 说明：
 
-- `LOGGER_JSON` defaults to `true` in production. When `false` outside `test`,
-  logs use `pino-pretty`.
-  `LOGGER_JSON` 生产默认 `true`；在非 `test` 环境为 `false` 时使用
-  `pino-pretty`。
+- `LOGGER_JSON=false` is allowed only outside production/test and uses
+  `pino-pretty` there. Production validation rejects it, and the logger factory
+  independently refuses to resolve the development-only transport.
 - `LOGGER_LEVELS` accepts Nest level names
   (`log|fatal|error|warn|debug|verbose`). The most verbose entry becomes the
   Pino threshold (`verbose`→`trace`, `log`→`info`).
@@ -43,8 +40,18 @@ Notes / 说明：
 - Defaults without `LOGGER_LEVELS`: production `info`, development `debug`,
   test `warn`.
   未设置 `LOGGER_LEVELS` 时：生产 `info`，开发 `debug`，测试 `warn`。
-- `/health` probe traffic skips automatic request/response logging.
-  `/health` 探针请求不写自动 access log。
+- Only exact `/health/live` and `/health/ready` probe paths (with optional
+  query strings) skip automatic request/response logging.
+- Request access logs keep an explicit allowlist of request ID, method, URL
+  pathname, and remote address/port. They omit all request headers and parsed
+  query data; response access logs keep only the status code. This prevents
+  unknown API-key/identity headers, Referer queries, redirect credentials, and
+  query values from being persisted in the log sink. Put safe diagnostic
+  context in explicit structured fields instead.
+  请求访问日志仅保留 request ID、方法、URL 路径和远端地址/端口白名单；所有请求头与
+  已解析查询参数均不会写入日志，响应访问日志仅保留状态码，从而避免未知 API
+  key/身份头、Referer 查询、重定向凭据和查询值被持久化。安全的诊断上下文应使用
+  显式结构化字段。
 
 ## Usage / 用法
 
@@ -66,7 +73,7 @@ For request-scoped bindings, inject nestjs-pino’s `Logger` or
 ## Verify / 验证
 
 ```bash
-pnpm run test -- src/common/logger/logger.config.spec.ts
+pnpm run test -- src/platform/observability/logger/logger.config.spec.ts
 pnpm run lint:check
 pnpm run build
 ```

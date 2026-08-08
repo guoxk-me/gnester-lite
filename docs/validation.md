@@ -1,7 +1,5 @@
 # Validation Guide / 校验指南
 
-> CN: 文档文件，说明 validation 的用途；EN: Documentation file explains the purpose of validation.
-
 This document is for AI agents and developers who need to change request validation safely.
 
 本文档面向需要安全修改请求校验的 AI agent 和开发者。
@@ -35,19 +33,19 @@ Reuse another DTO? -> mapped types
 `src/bootstrap/configure-application.ts` 接入校验：
 
 ```ts
-app.useGlobalPipes(createValidationPipe(nodeEnv));
+app.useGlobalPipes(createValidationPipe());
 ```
 
-`src/common/validation/validation.pipe.ts` owns the shared defaults:
+`src/bootstrap/http/validation.pipe.ts` owns the shared defaults:
 
-`src/common/validation/validation.pipe.ts` 维护通用默认值：
+`src/bootstrap/http/validation.pipe.ts` 维护通用默认值：
 
 ```ts
-whitelist: true
-forbidNonWhitelisted: true
-forbidUnknownValues: true
-transform: true
-stopAtFirstError: true
+whitelist: true;
+forbidNonWhitelisted: true;
+forbidUnknownValues: true;
+transform: true;
+stopAtFirstError: true;
 ```
 
 Validation error shape / 校验错误格式：
@@ -56,20 +54,36 @@ Validation error shape / 校验错误格式：
 {
   "code": 400,
   "message": "Validation failed",
+  "data": null,
   "errors": [{ "field": "name", "reason": "name should not be empty" }]
 }
 ```
 
-Note: only validation errors use this shape. Other HTTP errors still use Nest defaults unless a global exception filter is added.
+Success and failure share this envelope. Successful handlers return the business
+payload in `data`, with `errors: null`. `code` matches the HTTP status.
+`message` and `errors[].reason` are localized via `Accept-Language` (`en` /
+`zh`, fallback `en`).
 
-注意：当前只有校验错误使用该格式。其他 HTTP 异常仍使用 Nest 默认格式，除非新增全局异常过滤器。
+成功与失败共用同一信封。成功时业务载荷在 `data`，`errors` 为 `null`。`code`
+与 HTTP 状态一致。`message` 与 `errors[].reason` 通过 `Accept-Language` 本地化
+（`en` / `zh`，回退 `en`）。
+
+Health probes, SSE streams, and `StreamableFile` downloads opt out with
+`@SkipApiEnvelope()`.
+
+健康检查、SSE 与 `StreamableFile` 下载通过 `@SkipApiEnvelope()` 跳过包装。
+
+The same sanitized structure is returned in every environment. Rejected values,
+DTO instances and validation targets are never included in the response.
+
+所有环境都返回同一脱敏结构；被拒绝的值、DTO 实例和校验 target 不会出现在响应中。
 
 ## Key Files / 关键文件
 
-- `src/common/validation/validation.pipe.ts`: global pipe and error formatting. 全局 pipe 与错误格式。
-- `src/common/validation/validation.pipe.spec.ts`: validation helper tests. 校验工具测试。
-- `src/features/demo-database/dto/*.dto.ts`: DTO examples. DTO 示例。
-- `src/features/demo-database/demo-database.controller.ts`: DTO and pipe usage. DTO 与 pipe 用法。
+- `src/bootstrap/http/validation.pipe.ts`: global pipe and error formatting. 全局 pipe 与错误格式。
+- `src/bootstrap/http/validation.pipe.spec.ts`: validation helper tests. 校验工具测试。
+- `src/examples/demo-database/dto/*.dto.ts`: DTO examples. DTO 示例。
+- `src/examples/demo-database/demo-database.controller.ts`: DTO and pipe usage. DTO 与 pipe 用法。
 - `docs/demo.md`: demo API examples. demo 接口示例。
 
 ## Current Patterns / 当前模式
@@ -78,9 +92,17 @@ Note: only validation errors use this shape. Other HTTP errors still use Nest de
 - Update DTO: `PartialType(CreateDemoDto)`.
 - Mapped types: `PickType()`, `OmitType()`, `IntersectionType()` in `demo-mapped-types.dto.ts`.
 - Query DTO: `ListDemoQueryDto` with `@Type(() => Number)`.
+- Search query DTO: `SearchDemoQueryDto` rejects blank values and enforces the
+  entity name length.
 - Nested array DTO: `BulkCreateDemoDto` with `@ValidateNested()` and `@Type()`.
-- Param DTO: `FindDemoParamsDto` with `@IsNumberString()`.
-- Primitive pipes: `ParseIntPipe`, `ParseBoolPipe`, `ParseArrayPipe`, `ParseUUIDPipe`.
+- Bounded numeric route params use DTOs with `@Type(() => Number)`, `@IsInt()`,
+  and domain-specific `@Min()` / `@Max()`; UUID examples use `ParseUUIDPipe`.
+  Boolean and array query examples use `ParseBoolPipe` and `ParseArrayPipe`.
+  Raw bulk arrays and comma-separated ID queries are additionally capped at 50
+  entries; database IDs must fit the positive signed MySQL `INT` domain.
+- Semantic text fields use `@Matches(/\S/)` when whitespace-only input is not a
+  meaningful value. Body and path representations of the same identifier reuse
+  the same length and character constraints.
 
 ## How To Change / 如何修改
 
@@ -107,8 +129,8 @@ Add nested DTOs / 新增嵌套 DTO：
 
 Change global behavior / 修改全局行为：
 
-1. Edit `src/common/validation/validation.pipe.ts`.
-   修改 `src/common/validation/validation.pipe.ts`。
+1. Edit `src/bootstrap/http/validation.pipe.ts`.
+   修改 `src/bootstrap/http/validation.pipe.ts`。
 2. Update `validation.pipe.spec.ts` if error formatting changes.
    如果错误格式变化，同步更新 `validation.pipe.spec.ts`。
 3. Do not loosen `whitelist` or `forbidNonWhitelisted` unless required by the API contract.

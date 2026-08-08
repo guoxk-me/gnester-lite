@@ -1,34 +1,38 @@
 # Demo Guide / 示例指南
 
-> CN: 文档文件，说明 demo 的用途；EN: Documentation file explains the purpose of demo.
+This document records the removable demo modules under `src/examples/`.
 
-This document records the demo feature modules under `src/features/`.
-
-本文档记录 `src/features/` 下的 demo 示例模块，方便开发者和 AI agent 快速理解这些示例在演示什么。
+本文档记录 `src/examples/` 下可整体移除的 Demo，方便开发者和 AI agent 快速理解这些示例在演示什么。
 
 ## Runtime Setup / 运行入口
 
-`src/features/demos.module.ts` aggregates the removable demo catalog, and
-`src/app.module.ts` imports that catalog once. The complete `DemoQueueModule`
-(routes, providers, and workers) is omitted when `NODE_ENV=test`. See
-`docs/project-notes.zh-en.md` for the complete module list.
+`src/examples/demos.module.ts` aggregates the removable demo catalog.
+Development imports the full catalog. Production excludes `DemosModule`
+entirely, so no demo route or worker exists. Test imports the catalog but omits
+`DemoQueueModule`. `NODE_ENV=provision` includes every demo and queue worker only
+for guarded, disposable integration. See `docs/project-notes.zh-en.md` for the
+complete module list.
 
-`src/features/demos.module.ts` 聚合可整体移除的示例目录，根模块只导入一次；
-`NODE_ENV=test` 时不加载整个 `DemoQueueModule`（路由、provider 与 worker）。
-完整模块清单见
-`docs/project-notes.zh-en.md`。
+`src/examples/demos.module.ts` 聚合可整体移除的示例目录。生产环境完全排除
+`DemosModule`；测试环境仅排除 `DemoQueueModule`；`provision` 只在有安全门的隔离
+集成中启用完整 demo 与 worker。
 
 The database demo intentionally focuses on database scenarios only. It does not demonstrate API versioning, interceptors, cache, or scheduled jobs.
 
 数据库 demo 只关注数据库场景，不演示接口版本、拦截器、缓存或定时任务。
 
+All `POST`, `PUT`, `PATCH`, and `DELETE` request sketches below require the
+cookie-jar plus `x-csrf-token` flow from the README while
+`CSRF_ENABLED=true`. Route snippets show the body contract; they do not bypass
+global middleware.
+
 ## Demo Config / 配置示例
 
 Files / 文件：
 
-- `src/features/demo-config/demo-config.module.ts`
-- `src/features/demo-config/demo-config.controller.ts`
-- `src/features/demo-config/demo-config.service.ts`
+- `src/examples/demo-config/demo-config.module.ts`
+- `src/examples/demo-config/demo-config.controller.ts`
+- `src/examples/demo-config/demo-config.service.ts`
 
 Route / 路由：
 
@@ -57,17 +61,17 @@ What it shows / 演示点：
 
 Files / 文件：
 
-- `src/common/auth/auth.module.ts`
-- `src/common/auth/auth.guard.ts`
-- `src/common/auth/guards/local-auth.guard.ts`
-- `src/common/auth/guards/jwt-auth.guard.ts`
-- `src/common/auth/strategies/jwt.strategy.ts`
-- `src/common/auth/decorators/public.decorator.ts`
-- `src/common/auth/decorators/current-user.decorator.ts`
-- `src/features/demo-auth/demo-auth.module.ts`
-- `src/features/demo-auth/demo-auth.controller.ts`
-- `src/features/demo-auth/demo-auth.service.ts`
-- `src/features/demo-auth/local.strategy.ts`
+- `src/platform/security/auth/auth.module.ts`
+- `src/platform/security/auth/auth.guard.ts`
+- `src/examples/demo-auth/local-auth.guard.ts`
+- `src/platform/security/auth/guards/jwt-auth.guard.ts`
+- `src/platform/security/auth/strategies/jwt.strategy.ts`
+- `src/platform/security/auth/decorators/public.decorator.ts`
+- `src/platform/security/auth/decorators/current-user.decorator.ts`
+- `src/examples/demo-auth/demo-auth.module.ts`
+- `src/examples/demo-auth/demo-auth.controller.ts`
+- `src/examples/demo-auth/demo-auth.service.ts`
+- `src/examples/demo-auth/local.strategy.ts`
 
 Routes / 路由：
 
@@ -106,8 +110,13 @@ What it shows / 演示点：
   `JwtAuthGuard` + `JwtStrategy` 校验 `Authorization: Bearer <token>` 并把用户写入 `request.user`。
 - The hand-rolled `AuthGuard` remains for other demos (for example authorization) that still use it.
   手写 `AuthGuard` 仍保留，供其他仍在使用它的演示（例如 authorization）。
-- `@Public()` marks login and scenario routes as public.
-  `@Public()` 标记登录和场景说明路由为公开接口。
+- `demo-auth` applies guards only to login and profile; its scenario catalog
+  has no authentication guard. `demo-authorization` instead applies
+  `AuthGuard` at controller level and uses `@Public()` on its scenario catalog
+  as a real, explicit escape hatch.
+  `demo-auth` 只在登录与 profile 路由挂载守卫，其场景目录没有鉴权守卫；
+  `demo-authorization` 则在 controller 级挂载 `AuthGuard`，并在场景目录使用
+  `@Public()` 形成真实、显式的例外。
 - `@CurrentUser()` exposes the verified JWT payload to controllers.
   `@CurrentUser()` 将已校验的 JWT payload 暴露给 controller。
 - Passwords are verified with salted hashes, not plaintext comparison.
@@ -117,12 +126,12 @@ What it shows / 演示点：
 
 Files / 文件：
 
-- `src/common/security/helmet-options.ts`
+- `src/bootstrap/http/helmet-options.ts`
 - `src/bootstrap/configure-application.ts`
-- `src/features/demo-security/demo-security.module.ts`
-- `src/features/demo-security/demo-security.controller.ts`
-- `src/features/demo-security/demo-security.service.ts`
-- `src/features/demo-security/dto/*.ts`
+- `src/examples/demo-security/demo-security.module.ts`
+- `src/examples/demo-security/demo-security.controller.ts`
+- `src/examples/demo-security/demo-security.service.ts`
+- `src/examples/demo-security/dto/*.ts`
 
 Route / 路由：
 
@@ -178,12 +187,12 @@ What it shows / 演示点：
 Files / 文件：
 
 - `src/instrument.ts`
-- `src/common/sentry/sentry.module.ts`
-- `src/common/sentry/with-sentry-isolation.ts`
-- `src/features/demo-sentry/demo-sentry.module.ts`
-- `src/features/demo-sentry/demo-sentry.controller.ts`
-- `src/features/demo-sentry/demo-sentry.service.ts`
-- `src/features/demo-sentry/dto/*.ts`
+- `src/platform/observability/sentry/sentry.module.ts`
+- `src/platform/observability/sentry/with-sentry-isolation.ts`
+- `src/examples/demo-sentry/demo-sentry.module.ts`
+- `src/examples/demo-sentry/demo-sentry.controller.ts`
+- `src/examples/demo-sentry/demo-sentry.service.ts`
+- `src/examples/demo-sentry/dto/*.ts`
 - `docs/sentry.md`
 
 Routes / 路由：
@@ -210,12 +219,12 @@ What it shows / 演示点：
 
 Files / 文件：
 
-- `src/common/csrf/csrf.module.ts`
-- `src/common/csrf/csrf.service.ts`
-- `src/features/demo-csrf/demo-csrf.module.ts`
-- `src/features/demo-csrf/demo-csrf.controller.ts`
-- `src/features/demo-csrf/demo-csrf.service.ts`
-- `src/features/demo-csrf/dto/*.ts`
+- `src/platform/security/csrf/csrf.module.ts`
+- `src/platform/security/csrf/csrf.service.ts`
+- `src/examples/demo-csrf/demo-csrf.module.ts`
+- `src/examples/demo-csrf/demo-csrf.controller.ts`
+- `src/examples/demo-csrf/demo-csrf.service.ts`
+- `src/examples/demo-csrf/dto/*.ts`
 
 Routes / 路由：
 
@@ -251,6 +260,9 @@ Content-Type: application/json
 }
 ```
 
+`recipient` must contain non-whitespace text and is limited to 120 characters.
+`recipient` 必须包含非空白字符，且最多 120 个字符。
+
 What it shows / 演示点：
 
 - `CsrfService` wraps `csrf-csrf` behind a Nest provider so bootstrap code and
@@ -262,8 +274,9 @@ What it shows / 演示点：
 - Browser clients fetch a token first, then submit it in `x-csrf-token` for
   unsafe methods. 浏览器客户端先获取 token，再在 unsafe method 中通过
   `x-csrf-token` 提交。
-- Missing or invalid tokens return a stable `CSRF_TOKEN_INVALID` 403 response.
-  token 缺失或无效时返回稳定的 `CSRF_TOKEN_INVALID` 403 响应。
+- Missing or invalid tokens return a stable enveloped 403
+  (`code: 403`, localized `message`, `data: null`).
+  token 缺失或无效时返回统一信封的 403（`code: 403`、可本地化 `message`、`data: null`）。
 - The overview endpoint documents when CSRF is needed and when bearer-token APIs
   usually do not need it. overview 接口说明哪些场景需要 CSRF，以及为什么纯 bearer-token API 通常不需要。
 
@@ -271,13 +284,13 @@ What it shows / 演示点：
 
 Files / 文件：
 
-- `src/common/crypto/crypto.module.ts`
-- `src/common/crypto/symmetric-encryption.service.ts`
-- `src/common/crypto/secure-token.service.ts`
-- `src/common/crypto/hmac-signature.service.ts`
-- `src/features/demo-crypto/demo-crypto.module.ts`
-- `src/features/demo-crypto/demo-crypto.controller.ts`
-- `src/features/demo-crypto/demo-crypto.service.ts`
+- `src/platform/security/crypto/crypto.module.ts`
+- `src/platform/security/crypto/symmetric-encryption.service.ts`
+- `src/platform/security/crypto/secure-token.service.ts`
+- `src/platform/security/crypto/hmac-signature.service.ts`
+- `src/examples/demo-crypto/demo-crypto.module.ts`
+- `src/examples/demo-crypto/demo-crypto.controller.ts`
+- `src/examples/demo-crypto/demo-crypto.service.ts`
 
 Routes / 路由：
 
@@ -312,16 +325,38 @@ Environment / 环境变量：
 
 Files / 文件：
 
-- `src/features/demo-database/demo-database.module.ts`
-- `src/features/demo-database/demo-database.controller.ts`
-- `src/features/demo-database/demo-database.service.ts`
-- `src/features/demo-database/entities/demo.entity.ts`
-- `src/features/demo-database/dto/bulk-create-demo.dto.ts`
-- `src/features/demo-database/dto/create-demo.dto.ts`
-- `src/features/demo-database/dto/demo-mapped-types.dto.ts`
-- `src/features/demo-database/dto/find-demo-params.dto.ts`
-- `src/features/demo-database/dto/list-demo-query.dto.ts`
-- `src/features/demo-database/dto/update-demo.dto.ts`
+- `src/examples/demo-database/demo-database.module.ts`
+- `src/examples/demo-database/demo-database.controller.ts`
+- `src/examples/demo-database/demo-database.service.ts`
+- `src/examples/demo-database/entities/demo.entity.ts`
+- `src/examples/demo-database/migrations/1760000000000-CreateDemoTable.ts`
+- `src/examples/demo-database/dto/bulk-create-demo.dto.ts`
+- `src/examples/demo-database/dto/create-demo.dto.ts`
+- `src/examples/demo-database/dto/demo-mapped-types.dto.ts`
+- `src/examples/demo-database/dto/list-demo-query.dto.ts`
+- `src/examples/demo-database/dto/search-demo-query.dto.ts`
+- `src/examples/demo-database/dto/update-demo.dto.ts`
+
+### Migration Opt-in / 迁移按环境启用
+
+The `demo` table migration is owned by `demo-database`, not by the production
+application migration directory. TypeORM migration discovery includes it in
+`development`, `test`, and guarded `provision`. The `production` data source
+does not discover it, so running production migrations against a new database
+does not create the Demo table.
+
+`demo` 表迁移归 `demo-database` Feature 所有，不属于生产应用迁移目录。
+`development`、`test` 和受安全门保护的 `provision` 会发现它；`production`
+数据源不会发现，因此全新生产库不会创建 Demo 表。
+
+Exclusion is not deletion. A production database that ran the migration in an
+older release keeps its `demo` table and migration-history row. The migration
+class/name remains `CreateDemoTable1760000000000` so existing TypeORM history is
+recognized whenever Demo migrations are enabled; no table is automatically
+dropped.
+
+排除发现不等于删除：旧生产库中已经存在的 `demo` 表和迁移记录会继续保留，系统不会
+自动执行 drop。
 
 Entity / 实体：
 
@@ -333,9 +368,11 @@ Demo {
 }
 ```
 
-`name` has max length `20`; `description` is required.
+`name` and `description` must contain non-whitespace text. `name` has max
+length `20`; `description` has max length `255`.
 
-`name` 最大长度为 `20`；`description` 为必填。
+`name` 与 `description` 都必须包含非空白字符；`name` 最多 20 个字符，
+`description` 最多 255 个字符。
 
 ### APIs / 接口
 
@@ -368,6 +405,9 @@ Content-Type: application/json
   }
 ]
 ```
+
+Both raw-array and wrapped bulk-create forms require 1–50 records per request.
+原始数组和包裹 DTO 两种批量创建形式每次都只接受 1–50 条记录。
 
 Create with audit metadata / 使用审计元数据创建：
 
@@ -415,11 +455,19 @@ Find all / 查询全部：
 GET /demo-database
 ```
 
+The legacy unpaged list and name-search routes return at most 100 rows in
+ascending ID order. Use `/demo-database/page` to traverse the complete table.
+旧版非分页列表与名称搜索接口均按 ID 升序最多返回 100 行；如需遍历完整数据，请使用
+`/demo-database/page`。
+
 Find page / 分页查询：
 
 ```http
 GET /demo-database/page?page=1&limit=10&order=ASC
 ```
+
+Page numbers are limited to 10,000 and page size to 100 so offset pagination
+stays within the demo contract.
 
 Find by ids / 按 ID 批量查询：
 
@@ -427,11 +475,26 @@ Find by ids / 按 ID 批量查询：
 GET /demo-database/by-ids?ids=1,2,3
 ```
 
+`ids` accepts 1–50 comma-separated integers in the signed MySQL `INT` primary
+key domain (`1`–`2147483647`). The same range applies to every `:id` path.
+`ids` 接受 1–50 个以逗号分隔、位于 MySQL 有符号 `INT` 主键范围内的整数
+（`1`–`2147483647`）；所有 `:id` 路径使用相同范围。
+
 Search by name / 按名称搜索：
 
 ```http
 GET /demo-database/search?keyword=hello
 ```
+
+`keyword` must contain a non-whitespace character and is limited to 20
+characters. Search is a literal substring match: `%`, `_`, and `!` in the input
+match those characters instead of becoming SQL `LIKE` wildcards. The query uses
+`ESCAPE '!'`, including `!!` for a literal `!`, so behavior does not depend on
+MySQL's backslash SQL mode.
+
+`keyword` 必须包含非空白字符，且最多 20 个字符。搜索采用字面子串语义：输入中的
+`%`、`_` 和 `!` 都按字符本身匹配，不会成为 SQL `LIKE` 通配符。查询明确使用
+`ESCAPE '!'`，其中字面 `!` 写成 `!!`，因此行为不依赖 MySQL 的反斜杠 SQL 模式。
 
 Count rows / 统计行数：
 
@@ -502,12 +565,12 @@ DELETE /demo-database/1
 
 Files / 文件：
 
-- `src/common/http-client/http-client.module.ts`
-- `src/common/http-client/http-client.config.ts`
-- `src/features/demo-http/demo-http.module.ts`
-- `src/features/demo-http/demo-http.controller.ts`
-- `src/features/demo-http/demo-http.service.ts`
-- `src/features/demo-http/dto/*.ts`
+- `src/platform/infrastructure/http-client/http-client.module.ts`
+- `src/platform/infrastructure/http-client/http-client.config.ts`
+- `src/examples/demo-http/demo-http.module.ts`
+- `src/examples/demo-http/demo-http.controller.ts`
+- `src/examples/demo-http/demo-http.service.ts`
+- `src/examples/demo-http/dto/*.ts`
 
 Routes / 路由：
 
@@ -536,12 +599,22 @@ What it shows / 演示点：
   `HttpService.get<T>()` 与 `HttpService.post<T>()` 演示对配置的 `http.baseUrl`（默认 JSONPlaceholder）做带类型的 JSON 调用。
 - `ListDemoHttpPostsQueryDto` validates optional list filters on `GET /demo-http/posts`.
   `ListDemoHttpPostsQueryDto` 校验 `GET /demo-http/posts` 的可选列表过滤参数。
-- `ParseIntPipe` parses `GET /demo-http/posts/:id` path params.
-  `ParseIntPipe` 解析 `GET /demo-http/posts/:id` 路径参数。
+- Post and user IDs must be positive safe integers. A params DTO validates
+  `GET /demo-http/posts/:id` with the same range.
+  Post 与 user ID 必须是正安全整数；params DTO 以相同范围校验
+  `GET /demo-http/posts/:id`。
+- Request and upstream response contracts require nonblank `title` and `body`;
+  their limits are 500 and 10,000 characters respectively.
+  请求与上游响应契约都要求 `title`、`body` 非空白，长度上限分别为 500 和
+  10,000 个字符。
 - `firstValueFrom()` converts `HttpService` Observables into Promise-returning Nest service methods.
   `firstValueFrom()` 将 `HttpService` 返回的 Observable 转成 Nest service 常用的 Promise。
 - `axiosRef` is shown for low-level Axios access (`GET /demo-http/provider-status`), while still hidden behind the service boundary.
   `axiosRef` 演示底层 Axios 访问（`GET /demo-http/provider-status`），但仍封装在 service 边界内。
+- The provider-status response removes URL userinfo, query parameters, and
+  fragments before exposing the configured endpoint as diagnostics.
+  provider-status 响应在展示诊断端点前会移除 URL userinfo、query 参数与
+  fragment。
 - Axios timeout and upstream HTTP failures are translated into Nest exceptions (`GatewayTimeoutException` / `BadGatewayException`).
   Axios 超时与上游 HTTP 失败会转换成 Nest 异常（`GatewayTimeoutException` / `BadGatewayException`）。
 
@@ -549,13 +622,13 @@ What it shows / 演示点：
 
 Files / 文件：
 
-- `src/features/demo-events/demo-events.module.ts`
-- `src/features/demo-events/demo-events.controller.ts`
-- `src/features/demo-events/demo-events.service.ts`
-- `src/features/demo-events/demo-events.listener.ts`
-- `src/features/demo-events/demo-events-log.service.ts`
-- `src/features/demo-events/events/demo-user-registered.event.ts`
-- `src/features/demo-events/events/demo-cache-invalidation-requested.event.ts`
+- `src/examples/demo-events/demo-events.module.ts`
+- `src/examples/demo-events/demo-events.controller.ts`
+- `src/examples/demo-events/demo-events.service.ts`
+- `src/examples/demo-events/demo-events.listener.ts`
+- `src/examples/demo-events/demo-events-log.service.ts`
+- `src/examples/demo-events/events/demo-user-registered.event.ts`
+- `src/examples/demo-events/events/demo-cache-invalidation-requested.event.ts`
 
 Configuration / 配置：
 
@@ -612,20 +685,25 @@ What it shows / 演示点：
   `@OnEvent('demo-events.**')` 演示通配符监听。
 - Event payloads are explicit classes instead of anonymous objects.
   事件载荷使用明确 class，而不是匿名对象。
-- The demo stores records in memory only; production audit logs, emails, cache
-  invalidation, and queue handoff should call real infrastructure services.
-  示例只把记录存在内存里；生产审计、邮件、缓存失效和队列转交应调用真实基础设施服务。
+- Registration emails are limited to 254 characters. Display names, cache keys,
+  and invalidation reasons must contain non-whitespace text and retain their
+  documented field limits.
+  注册邮箱最多 254 个字符；显示名、缓存键和失效原因必须包含非空白字符，
+  并遵守各字段声明的长度限制。
+- The demo keeps only the newest 100 records in memory; production audit logs,
+  emails, cache invalidation, and queue handoff should call real infrastructure
+  services. 示例只在内存中保留最新 100 条记录；生产审计、邮件、缓存失效和队列转交应调用真实基础设施服务。
 
 ## Demo Upload / 文件上传示例
 
 Files / 文件：
 
-- `src/features/demo-upload/demo-upload.module.ts`
-- `src/features/demo-upload/demo-upload.controller.ts`
-- `src/features/demo-upload/demo-upload.service.ts`
-- `src/features/demo-upload/demo-upload.http.ts`
-- `src/features/demo-upload/demo-upload.storage.ts`
-- `src/features/demo-upload/dto/*.ts`
+- `src/examples/demo-upload/demo-upload.module.ts`
+- `src/examples/demo-upload/demo-upload.controller.ts`
+- `src/examples/demo-upload/demo-upload.service.ts`
+- `src/examples/demo-upload/demo-upload.http.ts`
+- `src/examples/demo-upload/demo-upload.storage.ts`
+- `src/examples/demo-upload/dto/*.ts`
 
 Routes / 路由：
 
@@ -664,6 +742,7 @@ chunk=<binary chunk>
 ```http
 GET /demo-upload/chunked/{uploadId}
 POST /demo-upload/chunked/{uploadId}/complete
+DELETE /demo-upload/chunked/{uploadId}
 ```
 
 What it shows / 演示点：
@@ -673,30 +752,47 @@ What it shows / 演示点：
 - `demo-upload.http.ts` owns Multer limits and `ParseFilePipeBuilder` file
   validation. `demo-upload.http.ts` 负责 Multer 限制和
   `ParseFilePipeBuilder` 文件校验。
+- File routes accept at most 3 one-MiB file parts and reject text fields.
+  The form-only route accepts at most 20 text fields of 64 KiB each; every
+  multipart route also has an explicit total-part limit.
+- Every uploaded `originalName`, including chunk parts, must contain
+  non-whitespace text and is limited to 120 characters. Chunked-session
+  `originalName` follows the same rule; an optional checksum is exactly 64
+  lowercase hexadecimal SHA-256 characters.
+  所有上传文件（含分片）的 `originalName` 必须包含非空白字符且最多 120 个字符；
+  分片会话的 `originalName` 使用相同规则，可选 checksum 必须是 64 位小写
+  十六进制 SHA-256。
 - `demo-upload.service.ts` owns upload session rules: chunk count, chunk size,
   missing chunks, final size, and optional SHA-256 checksum. `service` 负责上传
   会话规则：分片数量、分片大小、缺失分片、最终大小和可选 SHA-256 校验。
 - `demo-upload.storage.ts` owns the temporary filesystem strategy for chunk files
   and assembled demo files. `storage` 负责临时分片文件和合并后示例文件的文件系统策略。
-- The demo stores chunk sessions in memory and writes files under the OS temp
-  directory. Production systems should use durable metadata storage, object
-  storage, lifecycle cleanup, authorization, and quota enforcement. 示例把分片会话存在
-  内存里，并写入系统临时目录；生产系统应使用持久元数据、对象存储、生命周期清理、授权和配额控制。
-- In the full application, unsafe POST/PUT requests are protected by global CSRF
-  middleware. Fetch `GET /demo-csrf/token` first for browser cookie/session
-  clients. 在完整应用中，POST/PUT 会经过全局 CSRF 防护；浏览器 cookie/session
-  客户端应先请求 `GET /demo-csrf/token`。
+- Active and completed uploads have 15-minute TTLs; clients can cancel uploads.
+  A process accepts at most 25 active sessions and 100 MiB of reserved upload
+  bytes. Per-upload sequencing closes finalize/cancel/chunk races, while
+  per-process leases remove abandoned instance directories after the orphan
+  retention window.
+- Temporary base, instance, and upload directories are forced to mode `0700`;
+  lease, chunk, staging, and completed files are forced to `0600` independently
+  of the process umask.
+- Session metadata remains in process memory and files remain on one instance's
+  temporary disk. Multi-instance routing, durable metadata/object storage,
+  distributed leases, authorization, and production quota policy remain
+  application responsibilities.
+- In the full application, all unsafe methods are protected by global CSRF
+  middleware. Use the README cookie-jar/token recipe. 完整应用中的所有非安全
+  HTTP 方法都经过全局 CSRF 防护，请使用 README 的 cookie-jar/token 流程。
 
 ## Demo Streaming Files / 文件流响应示例
 
 Files / 文件：
 
-- `src/features/demo-streaming-files/demo-streaming-files.module.ts`
-- `src/features/demo-streaming-files/demo-streaming-files.controller.ts`
-- `src/features/demo-streaming-files/demo-streaming-files.service.ts`
-- `src/features/demo-streaming-files/demo-streaming-files.http.ts`
-- `src/features/demo-streaming-files/demo-streaming-files.types.ts`
-- `src/features/demo-streaming-files/dto/*.ts`
+- `src/examples/demo-streaming-files/demo-streaming-files.module.ts`
+- `src/examples/demo-streaming-files/demo-streaming-files.controller.ts`
+- `src/examples/demo-streaming-files/demo-streaming-files.service.ts`
+- `src/examples/demo-streaming-files/demo-streaming-files.http.ts`
+- `src/examples/demo-streaming-files/demo-streaming-files.types.ts`
+- `src/examples/demo-streaming-files/dto/*.ts`
 
 Routes / 路由：
 
@@ -719,6 +815,179 @@ What it shows / 演示点：
 - The controller delegates to the service and HTTP adapter; it does not create
   file streams or compose response headers itself. controller 只委托 service 和 HTTP
   adapter，不直接创建文件流或拼响应头。
+
+## Demo Authorization / 授权端到端示例
+
+Prerequisites / 前置条件：
+
+- Start the development app with MySQL and Redis available.
+- Keep `CSRF_ENABLED=true`; install `jq` for the shell examples.
+- The built-in user is `admin@example.com` / `admin12345`.
+
+Login and call the role-, permission-, and policy-protected APIs:
+
+```bash
+COOKIE_JAR="$(mktemp)"
+TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/demo-csrf/token)"
+CSRF_TOKEN="$(printf '%s' "$TOKEN_RESPONSE" | jq -r .csrfToken)"
+LOGIN_RESPONSE="$(curl -fsS -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
+  -H 'content-type: application/json' \
+  -H "x-csrf-token: $CSRF_TOKEN" \
+  -d '{"username":"admin@example.com","password":"admin12345"}' \
+  http://localhost:3000/demo-auth/login)"
+ACCESS_TOKEN="$(printf '%s' "$LOGIN_RESPONSE" | jq -r .accessToken)"
+
+curl -fsS -H "authorization: Bearer $ACCESS_TOKEN" \
+  http://localhost:3000/demo-authorization/admin-report
+curl -fsS -H "authorization: Bearer $ACCESS_TOKEN" \
+  http://localhost:3000/demo-authorization/audit-log
+curl -fsS -H "authorization: Bearer $ACCESS_TOKEN" \
+  http://localhost:3000/demo-authorization/users/demo-admin/profile
+```
+
+Expected / 预期：the report identifies `demo-admin`, the audit response contains
+`demo.authorization.checked`, and the profile has `self-or-admin` visibility.
+Without a bearer token the protected routes return `401`; an authenticated
+identity that lacks the required role, permission, or ownership policy returns
+`403`. Invalid login credentials return `401`, and repeated failures can return
+`429`.
+
+## Demo Cookies / Cookie 端到端示例
+
+Prerequisites / 前置条件：start the development app with CSRF enabled. Reuse a
+single cookie jar so the CSRF identifier and demo cookie survive between calls.
+
+```bash
+COOKIE_JAR="$(mktemp)"
+TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/demo-csrf/token)"
+CSRF_TOKEN="$(printf '%s' "$TOKEN_RESPONSE" | jq -r .csrfToken)"
+
+curl -fsS -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
+  -H 'content-type: application/json' \
+  -H "x-csrf-token: $CSRF_TOKEN" \
+  -d '{"theme":"dark","locale":"zh-CN"}' \
+  http://localhost:3000/demo-cookies/preferences
+curl -fsS -b "$COOKIE_JAR" \
+  http://localhost:3000/demo-cookies/demo_preferences
+```
+
+Expected / 预期：the mutation returns `name: demo_preferences` and the read
+returns `found: true` with the stored JSON value. Omitting the CSRF header or
+identifier cookies returns `403`. `POST /demo-cookies/session` additionally
+requires `COOKIE_SECRET`; without it the route returns `503`.
+Cookie-derived GET responses set `Cache-Control: private, no-store`.
+
+## Demo CORS / CORS 端到端示例
+
+Prerequisites / 前置条件：restart development with
+`CORS_ORIGINS=http://localhost:5173`, `CORS_CREDENTIALS=true`, and
+`CORS_EXPOSED_HEADERS=X-Demo-Cors-Trace`.
+
+```bash
+curl -i -H 'Origin: http://localhost:5173' \
+  http://localhost:3000/demo-cors/public-resource
+
+curl -i -X OPTIONS \
+  -H 'Origin: http://localhost:5173' \
+  -H 'Access-Control-Request-Method: GET' \
+  http://localhost:3000/demo-cors/credentialed-resource
+```
+
+Expected / 预期：the GET includes
+`Access-Control-Allow-Origin: http://localhost:5173`,
+`Access-Control-Allow-Credentials: true`, and exposes
+`X-Demo-Cors-Trace`; the preflight returns the configured success status and
+methods. A request from an origin outside the allow-list receives no matching
+allow-origin header. Startup rejects wildcard origins combined with
+credentials. Socket.IO inherits this same validated policy.
+The credentialed resource also sets `Cache-Control: private, no-store` because
+`hasSession` is browser-specific.
+
+## Demo Session / Session 端到端示例
+
+Prerequisites / 前置条件：development only, with `SESSION_ENABLED=true`,
+`SESSION_SECRET` set, and CSRF enabled. The built-in MemoryStore is deliberately
+rejected in production.
+
+```bash
+COOKIE_JAR="$(mktemp)"
+TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/demo-csrf/token)"
+CSRF_TOKEN="$(printf '%s' "$TOKEN_RESPONSE" | jq -r .csrfToken)"
+
+curl -fsS -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
+  -H 'content-type: application/json' \
+  -H "x-csrf-token: $CSRF_TOKEN" \
+  -d '{"userId":"demo-user","displayName":"Demo User","role":"member"}' \
+  http://localhost:3000/demo-session/login
+curl -fsS -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
+  -H "x-csrf-token: $CSRF_TOKEN" \
+  -X POST http://localhost:3000/demo-session/visits
+curl -fsS -b "$COOKIE_JAR" http://localhost:3000/demo-session
+```
+
+Expected / 预期：the same session cookie preserves the user and increments the
+visit count. Flash and cart routes follow the same cookie/CSRF pattern. Without
+the session cookie a new anonymous state is created; with
+`SESSION_ENABLED=false`, session-dependent routes return `503`; missing CSRF
+returns `403`.
+Session status, flash, and cart GET responses set
+`Cache-Control: private, no-store`.
+Login display names and flash messages must contain non-whitespace text. Cart
+item `:sku` paths use the same 1–64 character `[a-zA-Z0-9:_-]+` contract as
+cart request bodies. Session rotation on anonymous login preserves the bounded
+anonymous cart, visit counter, and unread flash queue. Each session accepts at
+most 20 unread flash messages and 50 distinct cart SKUs, with a cumulative
+quantity of at most 99 per SKU; attempts beyond those limits return `409`
+without partially changing the session.
+登录显示名与 flash 消息必须包含非空白字符；购物车 `:sku` 路径与请求体使用相同的
+1–64 位 `[a-zA-Z0-9:_-]+` 契约。匿名登录时的 session 轮换会保留有界的匿名购物车、
+访问计数和未读 flash 队列。每个 session 最多保存 20 条未读 flash、50 个不同 SKU，
+每个 SKU 的累计数量最多为 99；超出限制返回 `409`，且不会部分修改 session。
+
+## Demo SSE / SSE 端到端示例
+
+Prerequisites / 前置条件：start the development app and use a client that does
+not buffer the response.
+
+```bash
+curl -N http://localhost:3000/demo-sse/job-progress
+```
+
+Expected / 预期：the finite stream emits named `job.progress` events with stable
+IDs and progress from `0` through `100`, then closes. Browsers can use:
+
+```js
+const stream = new EventSource('http://localhost:3000/demo-sse/notifications');
+stream.addEventListener('notification', (event) => {
+  const notification = JSON.parse(event.data);
+  document.title = notification.title;
+});
+stream.onerror = () => {
+  // EventSource reconnects using the server-provided retry value.
+};
+```
+
+The endpoints set
+`Cache-Control: private, no-cache, no-store, must-revalidate, max-age=0, no-transform`
+and `X-Accel-Buffering: no`. Unknown SSE routes return `404`; a disconnected
+client triggers stream finalization. Production proxies must preserve streaming
+and disable response buffering/compression for `text/event-stream`.
+
+The repeating notification, activity, metrics, and heartbeat examples close
+after 100 events per connection. This bounds server-side backlog for slow
+clients; browser `EventSource` reconnects using the advertised retry delay.
+通知、活动、指标与心跳示例在每个连接发送 100 个事件后关闭，以限制慢客户端造成的
+服务端积压；浏览器 `EventSource` 会按流中声明的重试间隔重新连接。
+
+The demo streams are cold and connection-local: each new
+`/demo-sse/activity-feed` connection starts again at `activity-0`. These IDs are
+stable only within that connection; the demo does not persist events or replay
+from `Last-Event-ID`. Use a shared durable event store and an explicit replay
+cursor when production clients require resume semantics.
+
+示例流是冷流且仅属于当前连接：每次新建 `/demo-sse/activity-feed` 连接都会从
+`activity-0` 重新开始。ID 只在单次连接内稳定；示例不会持久化事件，也不会按
+`Last-Event-ID` 重放。生产环境若需要断线续传，应使用共享持久事件存储和明确的重放游标。
 
 ## Verify / 验证
 
