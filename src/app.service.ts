@@ -1,10 +1,15 @@
 import { Injectable } from '@nestjs/common';
+import { I18nService } from 'nestjs-i18n';
 
-// CN: 根服务承载首页响应逻辑；EN: Root service holds the home response logic.
 @Injectable()
 export class AppService {
-  // CN: 返回根接口的欢迎文本；EN: Returns the welcome text for the root endpoint.
+  constructor(private readonly i18n: I18nService) {}
+
   getHello(): string {
-    return 'Hello World!';
+    const message = this.i18n.t('common.HELLO', {
+      defaultValue: 'Hello World!',
+    });
+
+    return typeof message === 'string' ? message : 'Hello World!';
   }
 }

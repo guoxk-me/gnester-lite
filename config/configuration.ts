@@ -50,6 +50,23 @@ class ScheduleVariables {
   timeZone!: string;
 }
 
+class ShutdownVariables {
+  @IsInt()
+  @Min(0)
+  @Max(60_000)
+  readinessPropagationDelayMs!: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(300_000)
+  applicationCloseTimeoutMs!: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(30_000)
+  telemetryCloseTimeoutMs!: number;
+}
+
 class QueueVariables {
   @IsBoolean()
   enabled!: boolean;
@@ -164,6 +181,11 @@ class YamlVariables {
   @ValidateNested()
   @Type(() => ScheduleVariables)
   schedule!: ScheduleVariables;
+
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ShutdownVariables)
+  shutdown!: ShutdownVariables;
 
   @IsObject()
   @ValidateNested()

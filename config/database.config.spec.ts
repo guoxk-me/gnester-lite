@@ -51,21 +51,53 @@ describe('databaseConfig', () => {
     const config = createDatabaseOptions();
 
     expect(config.entities).toEqual(['dist/**/*.entity.js']);
-    expect(config.migrations).toEqual(['dist/src/migrations/*.js']);
+    expect(config.migrations).toEqual([
+      'dist/src/migrations/*.js',
+      'dist/src/examples/demo-database/migrations/*.js',
+    ]);
   });
 
   it('uses source-only globs for the ts-node TypeORM data source', () => {
     const config = createDatabaseCliOptions(false);
 
     expect(config.entities).toEqual(['src/**/*.entity.ts']);
-    expect(config.migrations).toEqual(['src/migrations/*.ts']);
+    expect(config.migrations).toEqual([
+      'src/migrations/*.ts',
+      'src/examples/demo-database/migrations/*.ts',
+    ]);
   });
 
   it('uses emitted-only globs for the compiled TypeORM data source', () => {
     const config = createDatabaseCliOptions(true);
 
     expect(config.entities).toEqual(['dist/**/*.entity.js']);
-    expect(config.migrations).toEqual(['dist/src/migrations/*.js']);
+    expect(config.migrations).toEqual([
+      'dist/src/migrations/*.js',
+      'dist/src/examples/demo-database/migrations/*.js',
+    ]);
+  });
+
+  it('excludes Demo migrations from every production data source mode', () => {
+    configureProductionDatabase();
+
+    expect(createDatabaseOptions().migrations).toEqual([
+      'dist/src/migrations/*.js',
+    ]);
+    expect(createDatabaseCliOptions(false).migrations).toEqual([
+      'src/migrations/*.ts',
+    ]);
+    expect(createDatabaseCliOptions(true).migrations).toEqual([
+      'dist/src/migrations/*.js',
+    ]);
+  });
+
+  it('includes Demo migrations in the guarded provision environment', () => {
+    process.env.NODE_ENV = 'provision';
+
+    expect(createDatabaseCliOptions(true).migrations).toEqual([
+      'dist/src/migrations/*.js',
+      'dist/src/examples/demo-database/migrations/*.js',
+    ]);
   });
 
   it('keeps the database driver fixed to mysql', () => {

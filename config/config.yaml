@@ -9,6 +9,12 @@ schedule:
   enabled: false
   timeZone: Asia/Shanghai
 
+shutdown:
+  # AI modified: leave a bounded window for readiness propagation, work drain, and telemetry close.
+  readinessPropagationDelayMs: 5000
+  applicationCloseTimeoutMs: 10000
+  telemetryCloseTimeoutMs: 2000
+
 queue:
   enabled: true
   prefix: gnester-lite

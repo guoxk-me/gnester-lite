@@ -26,6 +26,14 @@
       {
         "include": "../config/*.yaml",
         "outDir": "./dist/config"
+      },
+      {
+        "include": "**/*.cjs",
+        "outDir": "./dist/src"
+      },
+      {
+        "include": "platform/runtime/i18n/locales/**/*",
+        "outDir": "./dist/src"
       }
     ]
   }

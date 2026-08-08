@@ -17,6 +17,7 @@ import {
   Matches,
   Max,
   Min,
+  MinLength,
   validateSync,
 } from 'class-validator';
 import { csrfIdentifierCookieName, csrfTokenCookieName } from './cookie-name';
@@ -262,6 +263,19 @@ class EnvironmentVariables {
   CSRF_HEADER_NAME: string = 'x-csrf-token';
 
   @IsString()
+  @MinLength(32)
+  @IsOptional()
+  BETTER_AUTH_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  BETTER_AUTH_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  BETTER_AUTH_TRUSTED_ORIGINS?: string;
+
+  @IsString()
   @IsOptional()
   JWT_SECRET?: string;
 
@@ -335,6 +349,7 @@ export function validate(
 
   validateProductionInfrastructure(validatedConfig);
   validateCorsConfig(validatedConfig);
+  validateBetterAuthConfig(validatedConfig);
   validateCookieSecurity(validatedConfig);
   validateLoggerConfig(validatedConfig);
 
@@ -369,12 +384,30 @@ export function validate(
     );
   }
 
+  if (
+    validatedConfig.NODE_ENV === Environment.Production &&
+    !validatedConfig.BETTER_AUTH_SECRET
+  ) {
+    throw new Error('BETTER_AUTH_SECRET is required in production.');
+  }
+
+  if (
+    validatedConfig.NODE_ENV === Environment.Production &&
+    !validatedConfig.BETTER_AUTH_URL
+  ) {
+    throw new Error('BETTER_AUTH_URL is required in production.');
+  }
+
   validateJwtClaims(validatedConfig);
 
   if (validatedConfig.NODE_ENV === Environment.Production) {
     // AI modified: fail startup before weak or checked-in placeholder secrets reach crypto consumers.
     validateProductionSecret('JWT_SECRET', validatedConfig.JWT_SECRET);
     validateProductionSecret('HMAC_SECRET', validatedConfig.HMAC_SECRET);
+    validateProductionSecret(
+      'BETTER_AUTH_SECRET',
+      validatedConfig.BETTER_AUTH_SECRET,
+    );
 
     if (validatedConfig.CSRF_ENABLED) {
       validateProductionSecret('CSRF_SECRET', validatedConfig.CSRF_SECRET);
@@ -553,7 +586,7 @@ function jwtTtlSeconds(ttl: string): number {
 }
 
 function validateProductionSecret(
-  name: 'JWT_SECRET' | 'HMAC_SECRET' | 'CSRF_SECRET',
+  name: 'JWT_SECRET' | 'HMAC_SECRET' | 'CSRF_SECRET' | 'BETTER_AUTH_SECRET',
   secret: string | undefined,
 ): void {
   if (!secret || Buffer.byteLength(secret, 'utf8') < 32) {
@@ -617,6 +650,10 @@ function validateProductionSecretSeparation(
   const secretMaterials = [
     ['JWT_SECRET', Buffer.from(config.JWT_SECRET ?? '', 'utf8')],
     ['HMAC_SECRET', Buffer.from(config.HMAC_SECRET ?? '', 'utf8')],
+    [
+      'BETTER_AUTH_SECRET',
+      Buffer.from(config.BETTER_AUTH_SECRET ?? '', 'utf8'),
+    ],
     ...(config.CSRF_ENABLED
       ? [
           [
@@ -708,6 +745,72 @@ function validateCorsConfig(config: EnvironmentVariables): void {
       throw new Error(`${name} entries must be valid HTTP header names.`);
     }
   }
+}
+
+function validateBetterAuthConfig(config: EnvironmentVariables): void {
+  if (config.BETTER_AUTH_URL) {
+    let parsedURL: URL;
+
+    try {
+      parsedURL = new URL(config.BETTER_AUTH_URL);
+    } catch {
+      throw new Error('BETTER_AUTH_URL must be a canonical HTTP(S) origin.');
+    }
+
+    if (
+      !['http:', 'https:'].includes(parsedURL.protocol) ||
+      parsedURL.origin !== config.BETTER_AUTH_URL
+    ) {
+      throw new Error('BETTER_AUTH_URL must be a canonical HTTP(S) origin.');
+    }
+
+    if (
+      config.NODE_ENV === Environment.Production &&
+      (parsedURL.protocol !== 'https:' ||
+        isLoopbackBetterAuthHostname(parsedURL.hostname))
+    ) {
+      throw new Error(
+        'BETTER_AUTH_URL must use a non-loopback HTTPS origin in production.',
+      );
+    }
+  }
+
+  const trustedOrigins = commaSeparatedEntries(
+    config.BETTER_AUTH_TRUSTED_ORIGINS,
+  );
+
+  if (trustedOrigins.includes('*')) {
+    throw new Error(
+      'BETTER_AUTH_TRUSTED_ORIGINS must not contain a wildcard origin.',
+    );
+  }
+
+  assertCanonicalCorsOrigins(trustedOrigins);
+
+  if (config.NODE_ENV === Environment.Production) {
+    for (const origin of trustedOrigins) {
+      const parsedOrigin = new URL(origin);
+
+      if (
+        parsedOrigin.protocol !== 'https:' ||
+        isLoopbackBetterAuthHostname(parsedOrigin.hostname)
+      ) {
+        throw new Error(
+          'BETTER_AUTH_TRUSTED_ORIGINS must use non-loopback HTTPS origins in production.',
+        );
+      }
+    }
+  }
+}
+
+function isLoopbackBetterAuthHostname(hostname: string): boolean {
+  const unbracketedHostname = hostname.replace(/^\[(.*)]$/, '$1');
+
+  return (
+    /(?:^|\.)localhost$/.test(unbracketedHostname) ||
+    unbracketedHostname === '::1' ||
+    /^127(?:\.\d{1,3}){3}$/.test(unbracketedHostname)
+  );
 }
 
 function commaSeparatedEntries(value: string | undefined): string[] {

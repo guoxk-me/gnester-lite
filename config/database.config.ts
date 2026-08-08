@@ -1,11 +1,35 @@
 import { registerAs } from '@nestjs/config';
 import { DatabaseOptions, DbConnection } from './config.types';
+import { shouldEnableDemos } from './demo-catalog';
 
 const RUNTIME_ENTITY_GLOBS = ['dist/**/*.entity.js'];
 // AI modified: Nest preserves the src/ prefix, so production must discover the emitted migrations there.
-const RUNTIME_MIGRATION_GLOBS = ['dist/src/migrations/*.js'];
+const RUNTIME_APPLICATION_MIGRATION_GLOBS = ['dist/src/migrations/*.js'];
+const RUNTIME_DEMO_MIGRATION_GLOBS = [
+  'dist/src/examples/demo-database/migrations/*.js',
+];
 const SOURCE_ENTITY_GLOBS = ['src/**/*.entity.ts'];
-const SOURCE_MIGRATION_GLOBS = ['src/migrations/*.ts'];
+const SOURCE_APPLICATION_MIGRATION_GLOBS = ['src/migrations/*.ts'];
+const SOURCE_DEMO_MIGRATION_GLOBS = [
+  'src/examples/demo-database/migrations/*.ts',
+];
+
+function databaseMigrationGlobs(isCompiled: boolean): string[] {
+  const applicationMigrationGlobs = isCompiled
+    ? RUNTIME_APPLICATION_MIGRATION_GLOBS
+    : SOURCE_APPLICATION_MIGRATION_GLOBS;
+
+  if (!shouldEnableDemos(process.env.NODE_ENV)) {
+    return [...applicationMigrationGlobs];
+  }
+
+  const demoMigrationGlobs = isCompiled
+    ? RUNTIME_DEMO_MIGRATION_GLOBS
+    : SOURCE_DEMO_MIGRATION_GLOBS;
+
+  // AI modified: Demo schema follows the same non-production boundary as DemosModule.
+  return [...applicationMigrationGlobs, ...demoMigrationGlobs];
+}
 
 function databaseBooleanValue(
   name: string,
@@ -98,7 +122,7 @@ function createDataSourceOptions(): DatabaseOptions {
     password: databaseEnvValue('PASSWORD', '', isProduction),
     database: databaseEnvValue('DATABASE', 'test', isProduction),
     entities: RUNTIME_ENTITY_GLOBS,
-    migrations: RUNTIME_MIGRATION_GLOBS,
+    migrations: databaseMigrationGlobs(true),
     synchronize: !isProduction && synchronize,
     autoLoadEntities: databaseBooleanValue(
       'DB_AUTO_LOAD_ENTITIES',
@@ -119,9 +143,7 @@ export function createDatabaseCliOptions(
 ): DatabaseOptions {
   // AI modified: compiled TypeORM must never load source migrations beside emitted copies.
   const entities = isCompiled ? RUNTIME_ENTITY_GLOBS : SOURCE_ENTITY_GLOBS;
-  const migrations = isCompiled
-    ? RUNTIME_MIGRATION_GLOBS
-    : SOURCE_MIGRATION_GLOBS;
+  const migrations = databaseMigrationGlobs(isCompiled);
 
   return {
     ...createDataSourceOptions(),

@@ -17,6 +17,8 @@ const productionEnv = {
   DB_DATABASE: 'application',
   REDIS_URL: 'rediss://redis.internal:6379',
   CORS_ORIGINS: 'https://app.example.com',
+  BETTER_AUTH_SECRET: randomBytes(48).toString('base64url'),
+  BETTER_AUTH_URL: 'https://api.example.com',
 };
 
 describe('crypto environment validation', () => {

@@ -5,7 +5,6 @@ import { AppModule } from './app.module';
 
 const logger = new Logger('Repl');
 
-// CN: REPL 入口，初始化 DI 容器供终端交互调试；EN: REPL entry boots the DI container for interactive debugging.
 async function bootstrap(): Promise<void> {
   const replServer = await repl(AppModule);
   // AI modified: keep command history across watch-mode reloads.

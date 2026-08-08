@@ -1,23 +1,27 @@
-// CN: Sentry 必须在其它模块之前初始化；EN: Sentry must initialize before other modules.
 import * as Sentry from '@sentry/nestjs';
+
+import {
+  loadProjectEnvironmentFiles,
+  sentryBootstrapEnvironment,
+  shouldInitializeSentry,
+} from 'config/environment-files';
+import { sentryPrivacyOptions } from './platform/observability/sentry/sentry-privacy';
+
+// AI modified: instrumentation needs the same dotenv inputs before Nest creates ConfigModule.
+loadProjectEnvironmentFiles();
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const sentryDsn = process.env.SENTRY_DSN?.trim();
-const isSentryEnabled = process.env.SENTRY_ENABLED !== 'false';
-const configuredSampleRate = process.env.SENTRY_TRACES_SAMPLE_RATE;
-const tracesSampleRate =
-  configuredSampleRate === undefined || configuredSampleRate === ''
-    ? nodeEnv === 'production'
-      ? 0.1
-      : 1
-    : Number(configuredSampleRate);
+const { isEnabled: isSentryEnabled, tracesSampleRate } =
+  sentryBootstrapEnvironment(process.env);
 
 // AI modified: skip init without DSN or in test so the template stays runnable offline.
-if (sentryDsn && isSentryEnabled && nodeEnv !== 'test') {
+if (shouldInitializeSentry(nodeEnv, sentryDsn, isSentryEnabled)) {
   Sentry.init({
     dsn: sentryDsn,
     environment: nodeEnv,
     tracesSampleRate,
-    sendDefaultPii: false,
+    // AI modified: apply the shared deny-by-default request and trace privacy contract.
+    ...sentryPrivacyOptions,
   });
 }

@@ -1,12 +1,19 @@
 import 'reflect-metadata';
 import configuration, { validateYamlConfig } from './configuration';
 
+const shutdownConfig = {
+  readinessPropagationDelayMs: 5000,
+  applicationCloseTimeoutMs: 10000,
+  telemetryCloseTimeoutMs: 2000,
+};
+
 describe('configuration', () => {
   it('uses Beijing time for scheduled jobs by default', () => {
     const config = configuration();
 
     expect(config.schedule.enabled).toBe(false);
     expect(config.schedule.timeZone).toBe('Asia/Shanghai');
+    expect(config.shutdown).toEqual(shutdownConfig);
     expect(config.queue).toEqual({
       enabled: true,
       prefix: 'gnester-lite',
@@ -59,6 +66,7 @@ describe('configuration', () => {
           enabled: false,
           timeZone: 'UTC+8',
         },
+        shutdown: shutdownConfig,
         queue: {
           enabled: true,
           prefix: 'gnester-lite',
@@ -103,6 +111,7 @@ describe('configuration', () => {
           enabled: false,
           timeZone: 'Asia/Shanghai',
         },
+        shutdown: shutdownConfig,
         queue: {
           enabled: true,
           prefix: 'gnester-lite',
@@ -147,6 +156,7 @@ describe('configuration', () => {
           enabled: false,
           timeZone: 'Asia/Shanghai',
         },
+        shutdown: shutdownConfig,
         queue: {
           enabled: true,
           prefix: 'gnester-lite',
@@ -191,6 +201,7 @@ describe('configuration', () => {
           enabled: false,
           timeZone: 'Asia/Shanghai',
         },
+        shutdown: shutdownConfig,
         queue: {
           enabled: true,
           prefix: 'gnester-lite',
@@ -269,6 +280,15 @@ describe('configuration', () => {
     expect(() =>
       validateYamlConfig({
         ...validConfig,
+        shutdown: {
+          ...validConfig.shutdown,
+          applicationCloseTimeoutMs: 1.5,
+        },
+      } as unknown as Record<string, unknown>),
+    ).toThrow();
+    expect(() =>
+      validateYamlConfig({
+        ...validConfig,
         rateLimit: {
           ...validConfig.rateLimit,
           throttlers: validConfig.rateLimit.throttlers.map(
@@ -278,6 +298,25 @@ describe('configuration', () => {
         },
       } as unknown as Record<string, unknown>),
     ).toThrow();
+  });
+
+  it('rejects shutdown configurations without time to close the application or telemetry', () => {
+    const validConfig = configuration();
+
+    for (const field of [
+      'applicationCloseTimeoutMs',
+      'telemetryCloseTimeoutMs',
+    ] as const) {
+      expect(() =>
+        validateYamlConfig({
+          ...validConfig,
+          shutdown: {
+            ...validConfig.shutdown,
+            [field]: 0,
+          },
+        } as unknown as Record<string, unknown>),
+      ).toThrow();
+    }
   });
 
   it.each(['schedule', 'queue', 'rateLimit'] as const)(

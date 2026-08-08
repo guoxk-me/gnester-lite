@@ -13,6 +13,7 @@ import { CommonCsrfModule } from './platform/security/csrf/csrf.module';
 import { CommonHealthModule } from './platform/operations/health/health.module';
 import { CommonLoggerModule } from './platform/observability/logger/logger.module';
 import { CommonRateLimitModule } from './platform/security/rate-limit/rate-limit.module';
+import { CommonI18nModule } from './platform/runtime/i18n/i18n.module';
 import { CommonSentryModule } from './platform/observability/sentry/sentry.module';
 import { DemosModule } from './examples/demos.module';
 
@@ -34,6 +35,7 @@ const demoImports = shouldEnableDemos(process.env.NODE_ENV)
     TypeOrmModule.forRootAsync(databaseConfig.asProvider()),
     CommonBetterAuthModule,
     CommonSentryModule,
+    CommonI18nModule,
     CommonCsrfModule,
     CommonHealthModule,
     CommonLoggerModule,

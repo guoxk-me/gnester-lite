@@ -66,6 +66,7 @@ describe('template delivery contracts', () => {
 
   it('does not ship active reusable secrets or production credentials', () => {
     for (const variableName of [
+      'BETTER_AUTH_SECRET',
       'JWT_SECRET',
       'CSRF_SECRET',
       'ENCRYPTION_KEY',
@@ -99,9 +100,9 @@ describe('template delivery contracts', () => {
   });
 
   it.each([
-    'src/features/demo-cache/dto/update-demo-cache.dto.ts',
-    'src/features/demo-database/dto/demo-mapped-types.dto.ts',
-    'src/features/demo-database/dto/update-demo.dto.ts',
+    'src/examples/demo-cache/dto/update-demo-cache.dto.ts',
+    'src/examples/demo-database/dto/demo-mapped-types.dto.ts',
+    'src/examples/demo-database/dto/update-demo.dto.ts',
   ])('uses Swagger-aware mapped types in %s', (relativePath) => {
     const source = readFileSync(join(__dirname, '..', relativePath), 'utf8');
 

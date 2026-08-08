@@ -22,6 +22,12 @@ export interface ScheduleConfig {
   readonly timeZone: string;
 }
 
+export interface ShutdownConfig {
+  readonly readinessPropagationDelayMs: number;
+  readonly applicationCloseTimeoutMs: number;
+  readonly telemetryCloseTimeoutMs: number;
+}
+
 export interface QueueConfig {
   readonly enabled: boolean;
   readonly prefix: string;
@@ -57,6 +63,7 @@ export interface YamlConfig {
   readonly app: AppConfig;
   readonly cache: CacheConfig;
   readonly schedule: ScheduleConfig;
+  readonly shutdown: ShutdownConfig;
   readonly queue: QueueConfig;
   readonly http: HttpConfig;
   readonly rateLimit: RateLimitConfig;

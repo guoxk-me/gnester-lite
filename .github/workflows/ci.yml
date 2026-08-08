@@ -26,6 +26,7 @@ jobs:
       CSRF_ENABLED: 'false'
       SENTRY_ENABLED: 'false'
       CORS_ORIGINS: https://app.example.com
+      BETTER_AUTH_URL: https://auth-smoke.example.com
       MYSQL_ROOT_PASSWORD: gnester-ci-root-password
       GNESTER_ALLOW_DESTRUCTIVE_INTEGRATION: 'true'
     services:
@@ -69,7 +70,7 @@ jobs:
 
       - name: Generate ephemeral test secrets
         shell: bash
-        run: node -e "const { randomBytes } = require('node:crypto'); for (const [name, size] of [['JWT_SECRET', 48], ['CSRF_SECRET', 48], ['ENCRYPTION_KEY', 32], ['HMAC_SECRET', 48]]) process.stdout.write(name + '=' + randomBytes(size).toString('base64url') + '\n')" >> "$GITHUB_ENV"
+        run: node -e "const { randomBytes } = require('node:crypto'); for (const [name, size] of [['BETTER_AUTH_SECRET', 48], ['JWT_SECRET', 48], ['CSRF_SECRET', 48], ['ENCRYPTION_KEY', 32], ['HMAC_SECRET', 48]]) process.stdout.write(name + '=' + randomBytes(size).toString('base64url') + '\n')" >> "$GITHUB_ENV"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -101,6 +102,10 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      # AI modified: enforce source-layer and production module ownership after compilation.
+      - name: Verify architecture boundaries
+        run: pnpm run verify:architecture
+
       - name: Verify build artifact
         run: pnpm run verify:artifact
 
@@ -110,6 +115,10 @@ jobs:
       # AI modified: code documentation generation is a required delivery contract.
       - name: Generate code documentation
         run: pnpm run compodoc
+
+      # AI modified: prevent process supervisors from drifting below the application shutdown budget.
+      - name: Verify shutdown timing contract
+        run: pnpm run verify:shutdown-contract
 
       - name: Verify Docker Compose and production image
         run: |

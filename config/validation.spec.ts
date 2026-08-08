@@ -20,6 +20,8 @@ function createProductionEnv(
     DB_DATABASE: 'application',
     REDIS_URL: 'rediss://redis.internal:6379',
     CORS_ORIGINS: 'https://app.example.com',
+    BETTER_AUTH_SECRET: randomBytes(48).toString('base64url'),
+    BETTER_AUTH_URL: 'https://api.example.com',
     JWT_SECRET: randomBytes(48).toString('base64url'),
     CSRF_SECRET: randomBytes(48).toString('base64url'),
     ENCRYPTION_KEY: randomBytes(32).toString('base64url'),
@@ -205,6 +207,65 @@ describe('environment validation', () => {
     });
 
     expect(config.CSRF_ENABLED).toBe(false);
+  });
+
+  it('requires Better Auth deployment identity in production', () => {
+    expect(() =>
+      validate({
+        ...productionEnv,
+        BETTER_AUTH_SECRET: undefined,
+      }),
+    ).toThrow('BETTER_AUTH_SECRET is required in production.');
+    expect(() =>
+      validate({
+        ...productionEnv,
+        BETTER_AUTH_URL: undefined,
+      }),
+    ).toThrow('BETTER_AUTH_URL is required in production.');
+  });
+
+  it('rejects unsafe Better Auth URL and trusted-origin policies', () => {
+    expect(() =>
+      validate({
+        ...baseEnv,
+        BETTER_AUTH_URL: 'https://api.example.com/auth',
+      }),
+    ).toThrow('BETTER_AUTH_URL must be a canonical HTTP(S) origin.');
+    expect(() =>
+      validate({
+        ...baseEnv,
+        BETTER_AUTH_TRUSTED_ORIGINS: '*',
+      }),
+    ).toThrow(
+      'BETTER_AUTH_TRUSTED_ORIGINS must not contain a wildcard origin.',
+    );
+    expect(() =>
+      validate({
+        ...productionEnv,
+        BETTER_AUTH_URL: 'http://api.example.com',
+      }),
+    ).toThrow(
+      'BETTER_AUTH_URL must use a non-loopback HTTPS origin in production.',
+    );
+    expect(() =>
+      validate({
+        ...productionEnv,
+        BETTER_AUTH_TRUSTED_ORIGINS: 'http://app.example.com',
+      }),
+    ).toThrow(
+      'BETTER_AUTH_TRUSTED_ORIGINS must use non-loopback HTTPS origins in production.',
+    );
+  });
+
+  it('rejects production loopback origins even over HTTPS', () => {
+    expect(() =>
+      validate({
+        ...productionEnv,
+        BETTER_AUTH_URL: 'https://127.0.0.1:3000',
+      }),
+    ).toThrow(
+      'BETTER_AUTH_URL must use a non-loopback HTTPS origin in production.',
+    );
   });
 
   it('rejects weak production secrets and repository placeholders', () => {
