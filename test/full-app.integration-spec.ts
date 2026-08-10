@@ -12,9 +12,11 @@ import type { Repository } from 'typeorm';
 
 import { AppModule } from '../src/app.module';
 import { configureApplication } from '../src/bootstrap/configure-application';
+import type { ApiEnvelope } from '../src/contracts/api-envelope';
 import { CacheService } from '../src/platform/infrastructure/cache/cache.service';
 import { getQueueWorkerConnectionOptions } from '../src/platform/infrastructure/queue/queue-connection';
 import type { AccessTokenDto } from '../src/examples/demo-auth/dto/access-token.dto';
+import type { DemoAuthProfileDto } from '../src/examples/demo-auth/dto/demo-auth-profile.dto';
 import { DemoCacheService } from '../src/examples/demo-cache/demo-cache.service';
 import { DEMO_QUEUE } from '../src/examples/demo-queue/demo-queue.constants';
 import { DemoQueueService } from '../src/examples/demo-queue/demo-queue.service';
@@ -94,10 +96,39 @@ describe('full application infrastructure', () => {
       throw new Error('The full application did not finish bootstrapping.');
     }
 
-    await request(httpServer).get('/v1').expect(200, 'Hello World!');
-    await request(httpServer).get('/health/live').expect(200);
+    // AI modified: exercise the localized wire envelope while leaving probe contracts raw.
+    await request(httpServer).get('/v1').expect(200, {
+      code: 200,
+      message: 'Success',
+      data: 'Hello World!',
+      errors: null,
+    });
+    await request(httpServer)
+      .get('/v1')
+      .set('Accept-Language', 'zh-CN, zh;q=0.9, en;q=0.8')
+      .expect(200, {
+        code: 200,
+        message: '成功',
+        data: '你好，世界！',
+        errors: null,
+      });
+    await request(httpServer)
+      .get('/health/live')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toHaveProperty('status', 'ok');
+        expect(body).not.toHaveProperty('code');
+      });
     await request(httpServer).get('/health/ready').expect(200);
-    await request(httpServer).get('/demo-auth/profile').expect(401);
+    await request(httpServer)
+      .get('/demo-auth/profile')
+      .set('Accept-Language', 'zh-CN')
+      .expect(401, {
+        code: 401,
+        message: '未授权',
+        data: null,
+        errors: null,
+      });
 
     const loginResponse = await request(httpServer)
       .post('/demo-auth/login')
@@ -106,14 +137,22 @@ describe('full application infrastructure', () => {
         password: 'admin12345',
       })
       .expect(200);
-    const accessToken = (loginResponse.body as AccessTokenDto).accessToken;
+    const loginEnvelope = loginResponse.body as ApiEnvelope<AccessTokenDto>;
+    const accessToken = loginEnvelope.data?.accessToken;
+
+    if (!accessToken) {
+      throw new Error('Demo login did not return an access token envelope.');
+    }
 
     await request(httpServer)
       .get('/demo-auth/profile')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200)
-      .expect(({ body }) => {
-        expect(body).toMatchObject({
+      .expect((response) => {
+        const profileEnvelope =
+          response.body as ApiEnvelope<DemoAuthProfileDto>;
+
+        expect(profileEnvelope.data).toMatchObject({
           sub: 'demo-admin',
           username: 'admin@example.com',
         });
@@ -155,11 +194,13 @@ describe('full application infrastructure', () => {
         .get('/demo-database/search')
         .query({ keyword: '!%_' })
         .expect(200)
-        .expect(({ body }) => {
-          expect(body).toContainEqual(
+        .expect((response) => {
+          const searchEnvelope = response.body as ApiEnvelope<Demo[]>;
+
+          expect(searchEnvelope.data).toContainEqual(
             expect.objectContaining({ name: literalSearchName }),
           );
-          expect(body).not.toContainEqual(
+          expect(searchEnvelope.data).not.toContainEqual(
             expect.objectContaining({ name: wildcardDecoyName }),
           );
         });

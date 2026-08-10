@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
-import { ApiEnvelopeInterceptor } from './api-envelope.interceptor';
+import {
+  ApiEnvelopeBoundaryGuard,
+  ApiEnvelopeInterceptor,
+} from './api-envelope.interceptor';
 import { ApiExceptionFilter } from './api-exception.filter';
 import { I18nCatalogModule } from './i18n-catalog.module';
 
@@ -9,6 +12,10 @@ import { I18nCatalogModule } from './i18n-catalog.module';
 @Module({
   imports: [I18nCatalogModule],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ApiEnvelopeBoundaryGuard,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: ApiEnvelopeInterceptor,

@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import session from 'express-session';
 import helmet from 'helmet';
+import { I18nService } from 'nestjs-i18n';
 
 import { Environment, type RateLimitConfig } from 'config/config.types';
 import { BetterAuthService } from '../platform/security/better-auth/better-auth.service';
@@ -56,6 +57,9 @@ describe('configureApplication', () => {
     const betterAuthService = {
       getRequestHandler: jest.fn().mockResolvedValue(betterAuthHandler),
     };
+    const i18nService = {
+      translate: jest.fn(),
+    };
     const values = new Map<string, unknown>([
       ['PORT', 4100],
       ['NODE_ENV', Environment.Development],
@@ -105,6 +109,10 @@ describe('configureApplication', () => {
 
         if (token === BetterAuthService) {
           return betterAuthService;
+        }
+
+        if (token === I18nService) {
+          return i18nService;
         }
 
         throw new Error('Unexpected provider lookup');

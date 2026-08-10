@@ -22,6 +22,9 @@ const openApiMetadata =
 const applyCsrfOpenApiContract =
   openApiConfigModule.applyCsrfOpenApiContract ??
   openApiConfigModule.default.applyCsrfOpenApiContract;
+const applyI18nOpenApiContract =
+  openApiConfigModule.applyI18nOpenApiContract ??
+  openApiConfigModule.default.applyI18nOpenApiContract;
 
 function referencesSchema(schema, expectedReference) {
   if (!schema || typeof schema !== 'object') {
@@ -100,6 +103,160 @@ function getSchemaProperties(document, schema, visitedReferences = new Set()) {
   }
 
   return properties;
+}
+
+function getEnvelopeDataSchema(document, path, method, status) {
+  const responseSchema = getResponseSchema(document, path, method, status);
+
+  return getSchemaProperties(document, responseSchema).data;
+}
+
+function isRawResponseOperation(path, operation) {
+  if (
+    operation['x-skip-api-envelope'] === true ||
+    path === '/api/auth' ||
+    path.startsWith('/api/auth/')
+  ) {
+    return true;
+  }
+
+  return Object.entries(operation.responses ?? {}).some(
+    ([status, response]) =>
+      status.startsWith('2') &&
+      response &&
+      !('$ref' in response) &&
+      Boolean(response.content?.['text/event-stream']),
+  );
+}
+
+// AI modified: binary responses stay native, but errors on download operations still require the envelope.
+function isNativeMediaResponse(response) {
+  const content = response.content;
+
+  if (!content || Object.keys(content).length === 0) {
+    return false;
+  }
+
+  const jsonMediaContract = content['application/json'];
+
+  if (!jsonMediaContract) {
+    return true;
+  }
+
+  const responseSchema = jsonMediaContract.schema;
+
+  return Boolean(
+    responseSchema &&
+    !('$ref' in responseSchema) &&
+    responseSchema.format === 'binary',
+  );
+}
+
+// AI modified: validate the final response root and language header for every generated operation, including decorator-added errors.
+function assertI18nOpenApiContract(document) {
+  const httpMethods = [
+    'delete',
+    'get',
+    'head',
+    'options',
+    'patch',
+    'post',
+    'put',
+    'trace',
+  ];
+
+  for (const [path, pathContract] of Object.entries(document.paths)) {
+    for (const method of httpMethods) {
+      const operation = pathContract[method];
+
+      if (!operation) {
+        continue;
+      }
+
+      if (isRawResponseOperation(path, operation)) {
+        continue;
+      }
+
+      const languageHeaders = operation.parameters?.filter(
+        (parameter) =>
+          !('$ref' in parameter) &&
+          parameter.in === 'header' &&
+          parameter.name.toLowerCase() === 'accept-language',
+      );
+
+      assertContract(
+        languageHeaders?.length === 1 &&
+          languageHeaders[0].required === false &&
+          languageHeaders[0].schema?.type === 'string' &&
+          !languageHeaders[0].schema.enum,
+        `OpenAPI ${method.toUpperCase()} ${path} must expose Accept-Language exactly once.`,
+      );
+
+      for (const [status, response] of Object.entries(
+        operation.responses ?? {},
+      )) {
+        if (!response || '$ref' in response) {
+          continue;
+        }
+
+        if (status === '204') {
+          assertContract(
+            !response.content,
+            `OpenAPI ${method.toUpperCase()} ${path} 204 response must not declare a body.`,
+          );
+          continue;
+        }
+
+        if (isNativeMediaResponse(response)) {
+          continue;
+        }
+
+        const schema = response.content?.['application/json']?.schema;
+        const properties = getSchemaProperties(document, schema);
+        const contentLanguageHeader = response.headers?.['Content-Language'];
+        const varyHeader = response.headers?.Vary;
+
+        assertContract(
+          schema?.type === 'object' &&
+            Array.isArray(schema.required) &&
+            ['code', 'message', 'data', 'errors'].every((propertyName) =>
+              schema.required.includes(propertyName),
+            ) &&
+            properties.code?.type === 'integer' &&
+            properties.message?.type === 'string' &&
+            properties.data &&
+            properties.errors?.type === 'array' &&
+            properties.errors.nullable === true,
+          `OpenAPI ${method.toUpperCase()} ${path} ${status} must declare the API envelope.`,
+        );
+        assertContract(
+          contentLanguageHeader &&
+            !('$ref' in contentLanguageHeader) &&
+            contentLanguageHeader.schema?.type === 'string' &&
+            varyHeader &&
+            !('$ref' in varyHeader) &&
+            varyHeader.schema?.type === 'string',
+          `OpenAPI ${method.toUpperCase()} ${path} ${status} must declare Content-Language and Vary response headers.`,
+        );
+      }
+    }
+  }
+
+  const healthProperties = getSchemaProperties(
+    document,
+    getResponseSchema(document, '/health/live', 'get', 200),
+  );
+
+  assertContract(
+    healthProperties.status && !healthProperties.code,
+    'OpenAPI health probes must retain the native Terminus contract.',
+  );
+  assertContract(
+    Object.keys(document.paths).every(
+      (path) => path !== '/api/auth' && !path.startsWith('/api/auth/'),
+    ),
+    'OpenAPI must not claim Better Auth raw-handler routes as Nest envelope routes.',
+  );
 }
 
 function assertContract(condition, message) {
@@ -305,6 +462,8 @@ try {
     getHeaderName: () => 'x-csrf-token',
     isEnabled: () => true,
   });
+  applyI18nOpenApiContract(document);
+  assertI18nOpenApiContract(document);
   const expectedOperationIds = getExpectedOperationIds(httpControllers);
   const documentedOperationIds = new Set(getDocumentedOperationIds(document));
 
@@ -370,15 +529,16 @@ try {
     throw new Error('OpenAPI login errors must document 400, 401, and 429.');
   }
 
-  const profileSchema =
-    document.paths['/demo-auth/profile']?.get?.responses?.['200']?.content?.[
-      'application/json'
-    ]?.schema;
+  const profileSchema = getEnvelopeDataSchema(
+    document,
+    '/demo-auth/profile',
+    'get',
+    200,
+  );
 
   if (
     !profileSchema ||
-    !('$ref' in profileSchema) ||
-    profileSchema.$ref !== '#/components/schemas/DemoAuthProfileDto'
+    !referencesSchema(profileSchema, '#/components/schemas/DemoAuthProfileDto')
   ) {
     throw new Error(
       'OpenAPI profile response must reference DemoAuthProfileDto.',
@@ -400,10 +560,12 @@ try {
     );
   }
 
-  const cartSchema =
-    document.paths['/demo-session/cart']?.get?.responses?.['200']?.content?.[
-      'application/json'
-    ]?.schema;
+  const cartSchema = getEnvelopeDataSchema(
+    document,
+    '/demo-session/cart',
+    'get',
+    200,
+  );
 
   if (
     !cartSchema ||
@@ -509,7 +671,7 @@ try {
   for (const [path, expectedReference] of serializationResponses) {
     assertContract(
       referencesSchema(
-        getResponseSchema(document, path, 'get', 200),
+        getEnvelopeDataSchema(document, path, 'get', 200),
         expectedReference,
       ),
       `OpenAPI ${path} response does not match the serialized wire DTO.`,
@@ -519,7 +681,12 @@ try {
   const publicProfileProperties = Object.keys(
     getSchemaProperties(
       document,
-      getResponseSchema(document, '/demo-serialization/profile', 'get', 200),
+      getEnvelopeDataSchema(
+        document,
+        '/demo-serialization/profile',
+        'get',
+        200,
+      ),
     ),
   ).sort();
   const expectedPublicProfileProperties = [
@@ -540,7 +707,7 @@ try {
   const adminProfileProperties = Object.keys(
     getSchemaProperties(
       document,
-      getResponseSchema(
+      getEnvelopeDataSchema(
         document,
         '/demo-serialization/profile/admin',
         'get',
@@ -557,7 +724,12 @@ try {
 
   const serializedPageProperties = getSchemaProperties(
     document,
-    getResponseSchema(document, '/demo-serialization/page/plain', 'get', 200),
+    getEnvelopeDataSchema(
+      document,
+      '/demo-serialization/page/plain',
+      'get',
+      200,
+    ),
   );
 
   assertContract(

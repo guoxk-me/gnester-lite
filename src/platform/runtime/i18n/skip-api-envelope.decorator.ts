@@ -1,7 +1,14 @@
-import { SetMetadata } from '@nestjs/common';
+import { applyDecorators, SetMetadata } from '@nestjs/common';
+import { ApiExtension } from '@nestjs/swagger';
 
-import { SKIP_API_ENVELOPE_KEY } from './i18n.constants';
+import {
+  SKIP_API_ENVELOPE_KEY,
+  SKIP_API_ENVELOPE_OPENAPI_EXTENSION,
+} from './i18n.constants';
 
-// AI modified: health probes, SSE, and binary downloads keep their native payloads.
+// AI modified: one marker now drives runtime and generated OpenAPI native-response boundaries.
 export const SkipApiEnvelope = (): MethodDecorator & ClassDecorator =>
-  SetMetadata(SKIP_API_ENVELOPE_KEY, true);
+  applyDecorators(
+    SetMetadata(SKIP_API_ENVELOPE_KEY, true),
+    ApiExtension(SKIP_API_ENVELOPE_OPENAPI_EXTENSION, true),
+  );

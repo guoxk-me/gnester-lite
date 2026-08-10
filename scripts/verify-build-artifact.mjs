@@ -1,4 +1,4 @@
-import { access, readdir } from 'node:fs/promises';
+import { access, readFile, readdir } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 
 const projectRoot = process.cwd();
@@ -30,6 +30,53 @@ async function listFiles(directory) {
 
 for (const requiredArtifact of requiredArtifacts) {
   await access(join(projectRoot, requiredArtifact));
+}
+
+const sourceLocaleDirectory = join(
+  projectRoot,
+  'src/platform/runtime/i18n/locales',
+);
+const outputLocaleDirectory = join(
+  outputDirectory,
+  'src/platform/runtime/i18n/locales',
+);
+const sourceLocaleFiles = (await listFiles(sourceLocaleDirectory)).filter(
+  (filePath) => filePath.endsWith('.json'),
+);
+const outputLocaleFiles = (await listFiles(outputLocaleDirectory)).filter(
+  (filePath) => filePath.endsWith('.json'),
+);
+const sourceLocalePaths = sourceLocaleFiles
+  .map((filePath) => relative(sourceLocaleDirectory, filePath))
+  .sort();
+const outputLocalePaths = outputLocaleFiles
+  .map((filePath) => relative(outputLocaleDirectory, filePath))
+  .sort();
+
+// AI modified: discover catalogs dynamically so every present and future locale asset is copied byte-for-byte.
+if (JSON.stringify(outputLocalePaths) !== JSON.stringify(sourceLocalePaths)) {
+  throw new Error(
+    `Production locale assets differ from source catalogs.\nSource: ${sourceLocalePaths.join(', ')}\nOutput: ${outputLocalePaths.join(', ')}`,
+  );
+}
+
+const changedLocalePaths = (
+  await Promise.all(
+    sourceLocalePaths.map(async (localePath) => {
+      const [sourceContents, outputContents] = await Promise.all([
+        readFile(join(sourceLocaleDirectory, localePath)),
+        readFile(join(outputLocaleDirectory, localePath)),
+      ]);
+
+      return sourceContents.equals(outputContents) ? null : localePath;
+    }),
+  )
+).filter((localePath) => localePath !== null);
+
+if (changedLocalePaths.length > 0) {
+  throw new Error(
+    `Production locale assets do not match source: ${changedLocalePaths.join(', ')}`,
+  );
 }
 
 const outputFiles = await listFiles(outputDirectory);

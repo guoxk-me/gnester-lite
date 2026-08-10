@@ -23,10 +23,10 @@ Common endpoints / 常用端点：
 
 Runtime boundary / 运行时边界：
 
-- Nest starts with `bodyParser: false`. The auth-only middleware passes the raw
-  request stream directly to Better Auth before JSON or URL-encoded parsing.
-  Declared bodies over 1 MiB are rejected; the production ingress must enforce
-  the same cap for streamed requests without a content length.
+- Nest starts with `bodyParser: false`. The auth-only middleware buffers at
+  most 1 MiB of raw bytes without JSON or URL-encoded parsing, then lets Better
+  Auth replay that bounded body. Both declared-length and chunked uploads are
+  enforced; rejected streams are drained before the localized 413 is sent.
 - The private client-IP header is overwritten from Express `request.ip`, so
   Better Auth uses the same validated `trust proxy` result as the Nest
   throttler. Its built-in limiter follows `rateLimit.enabled` and remains
@@ -159,6 +159,15 @@ a pure bearer-token API.
 `/api/auth/*` is the deliberate exception to this project middleware: Better
 Auth performs its own origin and CSRF checks at that raw-handler boundary. Do
 not add a broad prefix match such as `/api/authentication` to the exception.
+Because this handler runs before Nest controllers, responses produced by Better
+Auth keep its native JSON/localization contract. The project-owned bounded-body
+layer is narrower: an oversized `/api/auth/*` body returns the shared localized
+application envelope before Better Auth runs.
+
+`/api/auth/*` 在 Nest controller 之前处理，因此 Better Auth 自身生成的响应保留
+原生 JSON/本地化契约；项目自有的有界 body 层是例外，声明长度和 chunked
+传输都执行 1 MiB 上限，超限时在进入 Better Auth 前返回共享的本地化
+envelope。
 
 生产环境启用 CSRF 时必须使用 secure cookie。任何
 `CSRF_COOKIE_SAME_SITE=none` 或已启用 session 的

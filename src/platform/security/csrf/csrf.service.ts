@@ -167,7 +167,7 @@ export class CsrfService {
   createErrorHandler(): ErrorRequestHandler {
     return (
       error: unknown,
-      _request: Request,
+      request: Request,
       response: Response,
       next: NextFunction,
     ) => {
@@ -178,9 +178,7 @@ export class CsrfService {
         error.code === 'CSRF_TOKEN_INVALID'
       ) {
         const lang = resolveSupportedLanguage(
-          typeof _request.headers?.['accept-language'] === 'string'
-            ? _request.headers['accept-language']
-            : undefined,
+          request.headers?.['accept-language'],
         );
         const translated = this.i18n.t('errors.CSRF_TOKEN_INVALID', {
           lang,
@@ -188,6 +186,8 @@ export class CsrfService {
         });
 
         // AI modified: Express CSRF short-circuits Nest filters; emit the shared envelope here.
+        response.vary('Accept-Language');
+        response.setHeader('Content-Language', lang);
         response.status(403).json({
           code: 403,
           message:

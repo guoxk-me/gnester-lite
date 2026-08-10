@@ -37,7 +37,18 @@ let verificationError;
 try {
   // AI modified: exercise the emitted production entry instead of repeating its bootstrap steps in a test module.
   await waitForHealthyApplication(port);
-  await expectTextResponse(`http://127.0.0.1:${port}/v1`, 'Hello World!');
+  // AI modified: production smoke locks both the envelope shape and weighted language negotiation.
+  await expectApiEnvelopeResponse(
+    `http://127.0.0.1:${port}/v1`,
+    'Success',
+    'Hello World!',
+  );
+  await expectApiEnvelopeResponse(
+    `http://127.0.0.1:${port}/v1`,
+    '成功',
+    '你好，世界！',
+    'zh-CN, zh;q=0.9, en;q=0.8',
+  );
   // AI modified: exercise the real ESM Better Auth handler, MySQL schema, and opaque cookie session.
   await verifyBetterAuth(port, betterAuthEmail, (createdUserId) => {
     // AI modified: retain the exact smoke-owned record ID so cleanup cannot delete a pre-existing user after an email collision.
@@ -440,15 +451,43 @@ async function waitForDrainingApplication(applicationPort) {
   );
 }
 
-async function expectTextResponse(url, expectedBody) {
+async function expectApiEnvelopeResponse(
+  url,
+  expectedMessage,
+  expectedData,
+  acceptLanguage,
+) {
   const response = await fetch(url, {
+    headers: acceptLanguage
+      ? {
+          'accept-language': acceptLanguage,
+        }
+      : undefined,
     signal: AbortSignal.timeout(2_000),
   });
-  const responseBody = await response.text();
+  const responseText = await response.text();
+  let responseBody;
 
-  if (!response.ok || responseBody !== expectedBody) {
+  try {
+    responseBody = JSON.parse(responseText);
+  } catch {
+    throw new Error('Production route did not return a JSON API envelope.');
+  }
+
+  if (
+    !response.ok ||
+    typeof responseBody !== 'object' ||
+    responseBody === null ||
+    Array.isArray(responseBody) ||
+    JSON.stringify(Object.keys(responseBody).sort()) !==
+      JSON.stringify(['code', 'data', 'errors', 'message']) ||
+    responseBody.code !== 200 ||
+    responseBody.message !== expectedMessage ||
+    responseBody.data !== expectedData ||
+    responseBody.errors !== null
+  ) {
     throw new Error(
-      `Production route verification failed with HTTP ${response.status}.`,
+      `Production route envelope verification failed with HTTP ${response.status}: ${responseText}`,
     );
   }
 }

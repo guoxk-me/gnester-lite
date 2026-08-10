@@ -68,10 +68,14 @@ payload in `data`, with `errors: null`. `code` matches the HTTP status.
 与 HTTP 状态一致。`message` 与 `errors[].reason` 通过 `Accept-Language` 本地化
 （`en` / `zh`，回退 `en`）。
 
-Health probes, SSE streams, and `StreamableFile` downloads opt out with
-`@SkipApiEnvelope()`.
+Health probes opt out with `@SkipApiEnvelope()`. SSE streams and
+`StreamableFile` download bodies bypass wrapping automatically; JSON failures
+from download operations still use the envelope, and `204 No Content` responses
+have no wire body.
 
-健康检查、SSE 与 `StreamableFile` 下载通过 `@SkipApiEnvelope()` 跳过包装。
+健康检查通过 `@SkipApiEnvelope()` 跳过包装；SSE 与 `StreamableFile` 下载 body
+会自动绕过包装，但下载操作的 JSON 错误仍使用 envelope；`204 No Content`
+响应在线路上没有 body。
 
 The same sanitized structure is returned in every environment. Rejected values,
 DTO instances and validation targets are never included in the response.
