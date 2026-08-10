@@ -1,0 +1,143 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USERNAME: gnester
+      DB_PASSWORD: gnester
+      DB_DATABASE: gnester_test
+      DB_SYNCHRONIZE: 'false'
+      DB_AUTO_LOAD_ENTITIES: 'true'
+      REDIS_URL: redis://127.0.0.1:6379
+      SESSION_ENABLED: 'false'
+      CSRF_ENABLED: 'false'
+      SENTRY_ENABLED: 'false'
+      CORS_ORIGINS: https://app.example.com
+      BETTER_AUTH_URL: https://auth-smoke.example.com
+      MYSQL_ROOT_PASSWORD: gnester-ci-root-password
+      GNESTER_ALLOW_DESTRUCTIVE_INTEGRATION: 'true'
+    services:
+      mysql:
+        image: mysql:8.4@sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: gnester_test
+          MYSQL_USER: gnester
+          MYSQL_PASSWORD: gnester
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.1.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Generate ephemeral test secrets
+        shell: bash
+        run: node -e "const { randomBytes } = require('node:crypto'); for (const [name, size] of [['BETTER_AUTH_SECRET', 48], ['JWT_SECRET', 48], ['CSRF_SECRET', 48], ['ENCRYPTION_KEY', 32], ['HMAC_SECRET', 48]]) process.stdout.write(name + '=' + randomBytes(size).toString('base64url') + '\n')" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # AI modified: reject mutable external container references before any image is pulled.
+      - name: Immutable container image references
+        run: pnpm run verify:container-references
+
+      # AI modified: installation warnings cannot silently bypass peer compatibility.
+      - name: Peer dependency compatibility
+        run: pnpm run peers:check
+
+      - name: Format
+        run: pnpm run format:check
+
+      - name: Lint
+        run: pnpm run lint:check
+
+      # AI modified: one gate now checks production and every TypeScript test file.
+      - name: Production and test type check
+        run: pnpm run typecheck
+
+      - name: Unit tests and coverage
+        run: pnpm run test:cov
+
+      - name: Destructive integration safety contract
+        run: pnpm run test:integration-policy
+
+      - name: Build
+        run: pnpm run build
+
+      # AI modified: enforce source-layer and production module ownership after compilation.
+      - name: Verify architecture boundaries
+        run: pnpm run verify:architecture
+
+      - name: Verify build artifact
+        run: pnpm run verify:artifact
+
+      - name: Verify OpenAPI contract
+        run: pnpm run verify:openapi
+
+      # AI modified: code documentation generation is a required delivery contract.
+      - name: Generate code documentation
+        run: pnpm run compodoc
+
+      # AI modified: prevent process supervisors from drifting below the application shutdown budget.
+      - name: Verify shutdown timing contract
+        run: pnpm run verify:shutdown-contract
+
+      - name: Verify Docker Compose and production image
+        run: |
+          docker compose config --quiet
+          docker build --tag gnester-lite:ci .
+          pnpm run verify:docker-image
+
+      - name: E2E tests
+        run: pnpm run test:e2e
+
+      - name: Verify migration round trip
+        run: pnpm run verify:migrations
+
+      - name: Full application integration
+        run: pnpm run test:full-app
+
+      # AI modified: execute the built production entry after migrations and real dependency checks.
+      - name: Production entry smoke test
+        run: pnpm run verify:production-start
+
+      - name: Audit production dependencies
+        run: pnpm run audit:prod

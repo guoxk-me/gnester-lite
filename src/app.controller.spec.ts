@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { I18nService } from 'nestjs-i18n';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -10,10 +11,18 @@ describe('AppController', () => {
 
     const app: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
-      providers: [AppService],
+      providers: [
+        AppService,
+        {
+          provide: I18nService,
+          useValue: {
+            t: jest.fn(() => 'Hello World!'),
+          },
+        },
+      ],
     }).compile();
 
-    appController = app.get<AppController>(AppController);
+    appController = app.get(AppController);
   });
 
   describe('root', () => {

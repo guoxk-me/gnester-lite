@@ -17,9 +17,56 @@ export interface CacheConfig {
   readonly ttl: number;
 }
 
+export interface ScheduleConfig {
+  readonly enabled: boolean;
+  readonly timeZone: string;
+}
+
+export interface ShutdownConfig {
+  readonly readinessPropagationDelayMs: number;
+  readonly applicationCloseTimeoutMs: number;
+  readonly telemetryCloseTimeoutMs: number;
+}
+
+export interface QueueConfig {
+  readonly enabled: boolean;
+  readonly prefix: string;
+  readonly defaultAttempts: number;
+  readonly backoffDelay: number;
+  readonly removeOnComplete: number;
+  readonly removeOnFail: number;
+}
+
+export interface HttpConfig {
+  readonly baseUrl: string;
+  readonly timeout: number;
+  readonly maxRedirects: number;
+  readonly maxContentLength: number;
+  readonly maxBodyLength: number;
+}
+
+export interface RateLimitThrottlerConfig {
+  readonly name: string;
+  readonly ttl: number;
+  readonly limit: number;
+  readonly blockDuration?: number;
+}
+
+export interface RateLimitConfig {
+  readonly enabled: boolean;
+  readonly trustProxy: string;
+  readonly errorMessage: string;
+  readonly throttlers: RateLimitThrottlerConfig[];
+}
+
 export interface YamlConfig {
   readonly app: AppConfig;
   readonly cache: CacheConfig;
+  readonly schedule: ScheduleConfig;
+  readonly shutdown: ShutdownConfig;
+  readonly queue: QueueConfig;
+  readonly http: HttpConfig;
+  readonly rateLimit: RateLimitConfig;
 }
 
 export interface DatabaseOptions {

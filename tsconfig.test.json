@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // AI modified: tests receive Jest globals through a separate strict compiler boundary.
+    "types": ["node", "jest", "multer"],
+    "declaration": false,
+    "noEmit": true,
+    "sourceMap": false
+  },
+  "include": [
+    "src/**/*.d.ts",
+    "src/**/*.spec.ts",
+    "config/**/*.spec.ts",
+    "test/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist", "documentation", "src/metadata.ts"]
+}

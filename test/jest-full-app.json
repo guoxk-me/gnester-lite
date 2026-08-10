@@ -1,0 +1,15 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": "full-app\\.integration-spec\\.ts$",
+  "moduleNameMapper": {
+    "^config/(.*)$": "<rootDir>/../config/$1",
+    "^\\./better-auth\\.loader\\.cjs$": "<rootDir>/fixtures/better-auth-loader.mock.cjs",
+    "^better-auth$": "<rootDir>/fixtures/better-auth.mock.cjs",
+    "^better-auth/node$": "<rootDir>/fixtures/better-auth-node.mock.cjs"
+  },
+  "transform": {
+    "^.+\\.(t|j)s?$": ["@swc/jest"]
+  }
+}

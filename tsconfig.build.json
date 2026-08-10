@@ -1,4 +1,15 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+  "compilerOptions": {
+    // AI modified: production type checking must not accept Jest-only globals.
+    "types": ["node", "multer"]
+  },
+  "exclude": [
+    "node_modules",
+    "test",
+    "dist",
+    "documentation",
+    "src/metadata.ts",
+    "**/*spec.ts"
+  ]
 }

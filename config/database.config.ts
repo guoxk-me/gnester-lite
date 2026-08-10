@@ -1,12 +1,38 @@
 import { registerAs } from '@nestjs/config';
 import { DatabaseOptions, DbConnection } from './config.types';
+import { shouldEnableDemos } from './demo-catalog';
 
 const RUNTIME_ENTITY_GLOBS = ['dist/**/*.entity.js'];
-const RUNTIME_MIGRATION_GLOBS = ['dist/migrations/*.js'];
-const CLI_ENTITY_GLOBS = ['src/**/*.entity.ts', ...RUNTIME_ENTITY_GLOBS];
-const CLI_MIGRATION_GLOBS = ['src/migrations/*.ts', ...RUNTIME_MIGRATION_GLOBS];
+// AI modified: Nest preserves the src/ prefix, so production must discover the emitted migrations there.
+const RUNTIME_APPLICATION_MIGRATION_GLOBS = ['dist/src/migrations/*.js'];
+const RUNTIME_DEMO_MIGRATION_GLOBS = [
+  'dist/src/examples/demo-database/migrations/*.js',
+];
+const SOURCE_ENTITY_GLOBS = ['src/**/*.entity.ts'];
+const SOURCE_APPLICATION_MIGRATION_GLOBS = ['src/migrations/*.ts'];
+const SOURCE_DEMO_MIGRATION_GLOBS = [
+  'src/examples/demo-database/migrations/*.ts',
+];
 
-function parseBoolean(
+function databaseMigrationGlobs(isCompiled: boolean): string[] {
+  const applicationMigrationGlobs = isCompiled
+    ? RUNTIME_APPLICATION_MIGRATION_GLOBS
+    : SOURCE_APPLICATION_MIGRATION_GLOBS;
+
+  if (!shouldEnableDemos(process.env.NODE_ENV)) {
+    return [...applicationMigrationGlobs];
+  }
+
+  const demoMigrationGlobs = isCompiled
+    ? RUNTIME_DEMO_MIGRATION_GLOBS
+    : SOURCE_DEMO_MIGRATION_GLOBS;
+
+  // AI modified: Demo schema follows the same non-production boundary as DemosModule.
+  return [...applicationMigrationGlobs, ...demoMigrationGlobs];
+}
+
+function databaseBooleanValue(
+  name: string,
   value: string | undefined,
   defaultValue: boolean,
 ): boolean {
@@ -14,33 +40,97 @@ function parseBoolean(
     return defaultValue;
   }
 
-  return value.toLowerCase() === 'true';
+  const lowerCaseValue = value.toLowerCase();
+
+  if (lowerCaseValue === 'true') {
+    return true;
+  }
+
+  if (lowerCaseValue === 'false') {
+    return false;
+  }
+
+  throw new Error(`${name} must be true or false.`);
 }
 
 function getDatabaseEnvValue(key: string): string | undefined {
   return process.env[`DB_${key}`];
 }
 
+function databaseEnvValue(
+  key: 'HOST' | 'USERNAME' | 'PASSWORD' | 'DATABASE',
+  defaultValue: string,
+  isProduction: boolean,
+): string {
+  const value = getDatabaseEnvValue(key);
+
+  if (isProduction && (!value || value.trim().length === 0)) {
+    throw new Error(`DB_${key} is required in production.`);
+  }
+
+  return value ?? defaultValue;
+}
+
+function databaseIntegerValue(
+  key: 'PORT' | 'RETRY_ATTEMPTS' | 'RETRY_DELAY',
+  defaultValue: number,
+  minimum: number,
+  maximum: number,
+  isProduction: boolean = false,
+): number {
+  const value = getDatabaseEnvValue(key);
+
+  if (isProduction && value === undefined) {
+    throw new Error(`DB_${key} is required in production.`);
+  }
+
+  if (value === undefined) {
+    return defaultValue;
+  }
+
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`DB_${key} must be an integer.`);
+  }
+
+  const integerValue = Number(value);
+
+  if (
+    !Number.isSafeInteger(integerValue) ||
+    integerValue < minimum ||
+    integerValue > maximum
+  ) {
+    throw new Error(`DB_${key} must be between ${minimum} and ${maximum}.`);
+  }
+
+  return integerValue;
+}
+
 function createDataSourceOptions(): DatabaseOptions {
   const isProduction = process.env.NODE_ENV === 'production';
-  const synchronize = parseBoolean(getDatabaseEnvValue('SYNCHRONIZE'), false);
+  const synchronize = databaseBooleanValue(
+    'DB_SYNCHRONIZE',
+    getDatabaseEnvValue('SYNCHRONIZE'),
+    false,
+  );
 
   return {
     type: DbConnection.MYSQL,
-    host: getDatabaseEnvValue('HOST') || 'localhost',
-    port: parseInt(getDatabaseEnvValue('PORT') || '3306', 10),
-    username: getDatabaseEnvValue('USERNAME') || 'root',
-    password: getDatabaseEnvValue('PASSWORD') || '',
-    database: getDatabaseEnvValue('DATABASE') || 'test',
+    // AI modified: production DataSource creation fails closed even when the Nest config validator is bypassed by TypeORM CLI.
+    host: databaseEnvValue('HOST', 'localhost', isProduction),
+    port: databaseIntegerValue('PORT', 3306, 1, 65_535, isProduction),
+    username: databaseEnvValue('USERNAME', 'root', isProduction),
+    password: databaseEnvValue('PASSWORD', '', isProduction),
+    database: databaseEnvValue('DATABASE', 'test', isProduction),
     entities: RUNTIME_ENTITY_GLOBS,
-    migrations: RUNTIME_MIGRATION_GLOBS,
+    migrations: databaseMigrationGlobs(true),
     synchronize: !isProduction && synchronize,
-    autoLoadEntities: parseBoolean(
+    autoLoadEntities: databaseBooleanValue(
+      'DB_AUTO_LOAD_ENTITIES',
       getDatabaseEnvValue('AUTO_LOAD_ENTITIES'),
       true,
     ),
-    retryAttempts: parseInt(getDatabaseEnvValue('RETRY_ATTEMPTS') || '10', 10),
-    retryDelay: parseInt(getDatabaseEnvValue('RETRY_DELAY') || '3000', 10),
+    retryAttempts: databaseIntegerValue('RETRY_ATTEMPTS', 10, 0, 100),
+    retryDelay: databaseIntegerValue('RETRY_DELAY', 3000, 0, 300_000),
   };
 }
 
@@ -48,11 +138,17 @@ export function createDatabaseOptions(): DatabaseOptions {
   return createDataSourceOptions();
 }
 
-export function createDatabaseCliOptions(): DatabaseOptions {
+export function createDatabaseCliOptions(
+  isCompiled = __filename.endsWith('.js'),
+): DatabaseOptions {
+  // AI modified: compiled TypeORM must never load source migrations beside emitted copies.
+  const entities = isCompiled ? RUNTIME_ENTITY_GLOBS : SOURCE_ENTITY_GLOBS;
+  const migrations = databaseMigrationGlobs(isCompiled);
+
   return {
     ...createDataSourceOptions(),
-    entities: CLI_ENTITY_GLOBS,
-    migrations: CLI_MIGRATION_GLOBS,
+    entities,
+    migrations,
   };
 }
 

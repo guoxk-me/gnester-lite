@@ -1,47 +1,47 @@
 import { Module } from '@nestjs/common';
-import { CacheModule } from '@nestjs/cache-manager';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ScheduleModule } from '@nestjs/schedule';
+import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import KeyvRedis from '@keyv/redis';
 import configuration from 'config/configuration';
 import { databaseConfig } from 'config/database.config';
+import { shouldEnableDemos } from 'config/demo-catalog';
+import { environmentFilePaths } from 'config/environment-files';
 import { validate } from 'config/validation';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { CommonCacheModule } from './common/cache/cache.module';
-import { DemoCacheModule } from './features/demo-cache/demo-cache.module';
-import { DemoConfigModule } from './features/demo-config/demo-config.module';
-import { DemoDatabaseModule } from './features/demo-database/demo-database.module';
-import { DemoSerializationModule } from './features/demo-serialization/demo-serialization.module';
-import { DemoVersioningModule } from './features/demo-versioning/demo-versioning.module';
+import { CommonBetterAuthModule } from './platform/security/better-auth/better-auth.module';
+import { CommonCsrfModule } from './platform/security/csrf/csrf.module';
+import { CommonHealthModule } from './platform/operations/health/health.module';
+import { CommonLoggerModule } from './platform/observability/logger/logger.module';
+import { CommonRateLimitModule } from './platform/security/rate-limit/rate-limit.module';
+import { CommonI18nModule } from './platform/runtime/i18n/i18n.module';
+import { CommonSentryModule } from './platform/observability/sentry/sentry.module';
+import { DemosModule } from './examples/demos.module';
 
+const demoImports = shouldEnableDemos(process.env.NODE_ENV)
+  ? [DemosModule]
+  : [];
+
+// AI modified: compose the platform and removable demo catalog at explicit module boundaries.
 @Module({
   imports: [
     ConfigModule.forRoot({
       load: [configuration],
       ignoreEnvFile: false,
-      envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`, '.env'],
+      envFilePath: environmentFilePaths(),
       isGlobal: true,
       cache: true,
       validate,
     }),
     TypeOrmModule.forRootAsync(databaseConfig.asProvider()),
-    CacheModule.registerAsync({
-      isGlobal: true,
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        ttl: configService.getOrThrow<number>('cache.ttl'),
-        stores: [new KeyvRedis(configService.getOrThrow<string>('REDIS_URL'))],
-      }),
-    }),
-    CommonCacheModule,
-    DemoCacheModule,
-    DemoConfigModule,
-    DemoDatabaseModule,
-    DemoSerializationModule,
-    DemoVersioningModule,
-    ScheduleModule.forRoot(),
+    CommonBetterAuthModule,
+    CommonSentryModule,
+    CommonI18nModule,
+    CommonCsrfModule,
+    CommonHealthModule,
+    CommonLoggerModule,
+    CommonRateLimitModule,
+    // AI modified: optional infrastructure is composed inside the feature that consumes it.
+    ...demoImports,
   ],
   controllers: [AppController],
   providers: [AppService],

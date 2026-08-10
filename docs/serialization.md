@@ -22,9 +22,9 @@ Response shaping or hiding fields? -> class-transformer + ClassSerializerInterce
 
 ## Demo Scope / Demo 范围
 
-The demo lives in `src/features/demo-serialization`.
+The demo lives in `src/examples/demo-serialization`.
 
-Demo 位于 `src/features/demo-serialization`。
+Demo 位于 `src/examples/demo-serialization`。
 
 It shows common response cases:
 
@@ -47,20 +47,20 @@ It shows common response cases:
 
 ## Key Files / 关键文件
 
-- `src/features/demo-serialization/demo-serialization.module.ts`: feature module.
+- `src/examples/demo-serialization/demo-serialization.module.ts`: feature module.
   功能模块。
-- `src/features/demo-serialization/demo-serialization.controller.ts`: routes and serialization options.
+- `src/examples/demo-serialization/demo-serialization.controller.ts`: routes and serialization options.
   路由与序列化配置。
-- `src/features/demo-serialization/demo-serialization.service.ts`: sample data.
+- `src/examples/demo-serialization/demo-serialization.service.ts`: sample data.
   示例数据。
-- `src/features/demo-serialization/dto/demo-serialization-user.dto.ts`: field-level serialization rules.
+- `src/examples/demo-serialization/dto/demo-serialization-user.dto.ts`: field-level serialization rules.
   字段级序列化规则。
-- `src/features/demo-serialization/dto/demo-serialization-page.dto.ts`: nested array serialization.
+- `src/examples/demo-serialization/dto/demo-serialization-page.dto.ts`: nested array serialization.
   嵌套数组序列化。
-- `src/features/demo-serialization/demo-serialization.controller.spec.ts`: executable contracts.
+- `src/examples/demo-serialization/demo-serialization.controller.spec.ts`: executable contracts.
   可执行契约测试。
-- `src/app.module.ts`: imports `DemoSerializationModule`.
-  接入 `DemoSerializationModule`。
+- `src/examples/demos.module.ts`: imports `DemoSerializationModule`.
+  在示例目录中接入 `DemoSerializationModule`。
 
 ## Routes / 路由
 
@@ -116,7 +116,7 @@ Add a plain-object endpoint / 新增普通对象接口：
 ## Verify / 验证
 
 ```bash
-pnpm run test -- src/features/demo-serialization/demo-serialization.controller.spec.ts
+pnpm run test -- src/examples/demo-serialization/demo-serialization.controller.spec.ts
 pnpm run test
 pnpm run build
 ```

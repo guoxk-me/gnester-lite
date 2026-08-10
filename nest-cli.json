@@ -3,11 +3,37 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
+    "builder": {
+      "type": "swc",
+      "options": {
+        "filenames": ["src", "config"],
+        "stripLeadingPaths": false,
+        "swcrcPath": ".swcrc.build"
+      }
+    },
+    "typeCheck": true,
     "deleteOutDir": true,
+    "plugins": [
+      {
+        "name": "@nestjs/swagger",
+        "options": {
+          "classValidatorShim": true,
+          "introspectComments": true
+        }
+      }
+    ],
     "assets": [
       {
         "include": "../config/*.yaml",
         "outDir": "./dist/config"
+      },
+      {
+        "include": "**/*.cjs",
+        "outDir": "./dist/src"
+      },
+      {
+        "include": "platform/runtime/i18n/locales/**/*",
+        "outDir": "./dist/src"
       }
     ]
   }

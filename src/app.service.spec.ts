@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { I18nService } from 'nestjs-i18n';
+
 import { AppService } from './app.service';
 
 describe('AppService', () => {
@@ -8,7 +10,15 @@ describe('AppService', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AppService],
+      providers: [
+        AppService,
+        {
+          provide: I18nService,
+          useValue: {
+            t: jest.fn(() => 'Hello World!'),
+          },
+        },
+      ],
     }).compile();
 
     service = module.get(AppService);

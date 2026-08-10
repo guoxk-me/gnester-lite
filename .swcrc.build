@@ -1,0 +1,21 @@
+{
+  "$schema": "https://swc.rs/schema.json",
+  "exclude": [".*\\.spec\\.ts$"],
+  "sourceMaps": false,
+  "jsc": {
+    "parser": {
+      "syntax": "typescript",
+      "decorators": true,
+      "dynamicImport": true
+    },
+    "transform": {
+      "legacyDecorator": true,
+      "decoratorMetadata": true
+    },
+    "baseUrl": "./"
+  },
+  "module": {
+    "type": "commonjs"
+  },
+  "minify": false
+}
