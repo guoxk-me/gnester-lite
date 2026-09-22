@@ -1,7 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { BadRequestException, type ArgumentMetadata } from '@nestjs/common';
+import {
+  type ArgumentMetadata,
+  HttpStatus,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import type { ValidationError } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import {
@@ -158,7 +162,7 @@ describe('validation pipe helpers', () => {
       ),
     ).rejects.toMatchObject({
       response: {
-        code: 400,
+        code: HttpStatus.UNPROCESSABLE_ENTITY,
         message: 'Validation failed',
         data: null,
         errors: [
@@ -185,9 +189,9 @@ describe('validation pipe helpers', () => {
       );
       throw new Error('Expected validation to fail');
     } catch (error) {
-      expect(error).toBeInstanceOf(BadRequestException);
+      expect(error).toBeInstanceOf(UnprocessableEntityException);
       expect(
-        JSON.stringify((error as BadRequestException).getResponse()),
+        JSON.stringify((error as UnprocessableEntityException).getResponse()),
       ).not.toContain(secretSentinel);
     }
   });
@@ -212,9 +216,9 @@ describe('validation pipe helpers', () => {
       } as ValidationError,
     ]);
 
-    expect(exception).toBeInstanceOf(BadRequestException);
+    expect(exception).toBeInstanceOf(UnprocessableEntityException);
     expect(exception.getResponse()).toEqual({
-      code: 400,
+      code: HttpStatus.UNPROCESSABLE_ENTITY,
       message: 'Validation failed',
       data: null,
       errors: [
@@ -244,7 +248,7 @@ describe('validation pipe helpers', () => {
       ),
     ).rejects.toMatchObject({
       response: {
-        code: 400,
+        code: HttpStatus.UNPROCESSABLE_ENTITY,
         message: '校验失败',
         data: null,
         errors: [

@@ -1,8 +1,9 @@
 import {
-  BadRequestException,
+  HttpStatus,
   type ValidationError,
   ValidationPipe,
   type ValidationPipeOptions,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 
 import {
@@ -89,11 +90,12 @@ function collectValidationErrors(
 
 export function validationExceptionFactory(
   errors: ValidationError[],
-): BadRequestException {
+): UnprocessableEntityException {
   const details = collectValidationErrors(errors);
 
-  return new BadRequestException({
-    code: 400,
+  // AI modified: validation failures are semantically valid requests with unprocessable content.
+  return new UnprocessableEntityException({
+    code: HttpStatus.UNPROCESSABLE_ENTITY,
     message: translateKey('errors.VALIDATION_FAILED', {
       defaultValue: 'Validation failed',
     }),

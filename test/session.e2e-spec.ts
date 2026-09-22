@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -140,6 +141,7 @@ describe('Express session lifecycle (e2e)', () => {
     }
 
     const secretSentinel = 'validation-http-private-value';
+    // AI modified: DTO validation follows the shared 422 API contract.
     const response = await request(app.getHttpServer())
       .post('/api/demo-session/login')
       .send({
@@ -147,10 +149,10 @@ describe('Express session lifecycle (e2e)', () => {
         displayName: 'Demo User',
         unexpected: secretSentinel,
       })
-      .expect(400);
+      .expect(HttpStatus.UNPROCESSABLE_ENTITY);
 
     expect(response.body).toMatchObject({
-      code: 400,
+      code: HttpStatus.UNPROCESSABLE_ENTITY,
       message: 'Validation failed',
       data: null,
       errors: [

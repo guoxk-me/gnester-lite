@@ -129,18 +129,19 @@ describe('localized HTTP contract (e2e)', () => {
       throw new Error('Nest application was not initialized');
     }
 
+    // AI modified: localized DTO validation keeps the shared 422 API contract.
     await request(app.getHttpServer())
       .post('/i18n-fixture/validation')
       .set('Accept-Language', 'zh')
       .send({ choice: 'gamma' })
-      .expect(HttpStatus.BAD_REQUEST)
+      .expect(HttpStatus.UNPROCESSABLE_ENTITY)
       .expect('Content-Language', 'zh')
       .expect('Vary', /Accept-Language/)
       .expect(({ body }) => {
         const envelope = body as unknown as ApiEnvelope<null>;
 
         expect(envelope).toMatchObject({
-          code: HttpStatus.BAD_REQUEST,
+          code: HttpStatus.UNPROCESSABLE_ENTITY,
           message: '校验失败',
           data: null,
         });
