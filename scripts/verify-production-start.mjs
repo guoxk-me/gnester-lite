@@ -383,10 +383,10 @@ async function waitForHealthyApplication(applicationPort) {
 
     try {
       const [livenessResponse, readinessResponse] = await Promise.all([
-        fetch(`http://127.0.0.1:${applicationPort}/health/live`, {
+        fetch(`http://127.0.0.1:${applicationPort}/api/health/live`, {
           signal: AbortSignal.timeout(1_000),
         }),
-        fetch(`http://127.0.0.1:${applicationPort}/health/ready`, {
+        fetch(`http://127.0.0.1:${applicationPort}/api/health/ready`, {
           signal: AbortSignal.timeout(1_000),
         }),
       ]);
@@ -423,10 +423,10 @@ async function waitForDrainingApplication(applicationPort) {
 
     try {
       const [livenessResponse, readinessResponse] = await Promise.all([
-        fetch(`http://127.0.0.1:${applicationPort}/health/live`, {
+        fetch(`http://127.0.0.1:${applicationPort}/api/health/live`, {
           signal: AbortSignal.timeout(1_000),
         }),
-        fetch(`http://127.0.0.1:${applicationPort}/health/ready`, {
+        fetch(`http://127.0.0.1:${applicationPort}/api/health/ready`, {
           signal: AbortSignal.timeout(1_000),
         }),
       ]);

@@ -263,8 +263,8 @@ describe('createPinoLoggerParams', () => {
 describe('shouldIgnoreRequestLog', () => {
   it.each([
     ['/health', false],
-    ['/health/live', true],
-    ['/health/ready?verbose=true', true],
+    ['/api/health/live', true],
+    ['/api/health/ready?verbose=true', true],
     ['/health/anything', false],
     ['/demo-auth/scenarios?probe=/health', false],
     ['/v1/orders/health-history', false],
@@ -272,5 +272,20 @@ describe('shouldIgnoreRequestLog', () => {
     ['not a valid URL%', false],
   ])('matches only the health probe pathname for %s', (url, expected) => {
     expect(shouldIgnoreRequestLog({ url } as IncomingMessage)).toBe(expected);
+  });
+
+  it('uses a configured API prefix', () => {
+    expect(
+      shouldIgnoreRequestLog(
+        { url: '/service/health/live' } as IncomingMessage,
+        'service',
+      ),
+    ).toBe(true);
+    expect(
+      shouldIgnoreRequestLog(
+        { url: '/api/health/live' } as IncomingMessage,
+        'service',
+      ),
+    ).toBe(false);
   });
 });

@@ -103,7 +103,7 @@ export class DemoCookiesService {
     const options = this.createBaseCookieOptions({
       httpOnly: true,
       maxAge: SESSION_COOKIE_MAX_AGE,
-      path: '/demo-cookies',
+      path: this.getSignedSessionCookiePath(),
       signed: true,
     });
 
@@ -128,7 +128,7 @@ export class DemoCookiesService {
     // AI modified: Express 5 must not try to sign the empty clear-cookie value when no request secret exists.
     const options = this.createBaseCookieOptions({
       httpOnly: true,
-      path: '/demo-cookies',
+      path: this.getSignedSessionCookiePath(),
     });
 
     return {
@@ -146,6 +146,13 @@ export class DemoCookiesService {
         signed: true,
       },
     };
+  }
+
+  private getSignedSessionCookiePath(): string {
+    // AI modified: scope the cookie to the externally reachable prefixed controller path.
+    const apiPrefix = this.configService.get<string>('app.apiPrefix', 'api');
+
+    return `/${apiPrefix}/demo-cookies`;
   }
 
   private createBaseCookieOptions(

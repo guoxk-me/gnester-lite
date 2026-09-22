@@ -113,15 +113,15 @@ describe('full application infrastructure', () => {
         errors: null,
       });
     await request(httpServer)
-      .get('/health/live')
+      .get('/api/health/live')
       .expect(200)
       .expect(({ body }) => {
         expect(body).toHaveProperty('status', 'ok');
         expect(body).not.toHaveProperty('code');
       });
-    await request(httpServer).get('/health/ready').expect(200);
+    await request(httpServer).get('/api/health/ready').expect(200);
     await request(httpServer)
-      .get('/demo-auth/profile')
+      .get('/api/demo-auth/profile')
       .set('Accept-Language', 'zh-CN')
       .expect(401, {
         code: 401,
@@ -131,7 +131,7 @@ describe('full application infrastructure', () => {
       });
 
     const loginResponse = await request(httpServer)
-      .post('/demo-auth/login')
+      .post('/api/demo-auth/login')
       .send({
         username: 'admin@example.com',
         password: 'admin12345',
@@ -145,7 +145,7 @@ describe('full application infrastructure', () => {
     }
 
     await request(httpServer)
-      .get('/demo-auth/profile')
+      .get('/api/demo-auth/profile')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200)
       .expect((response) => {
@@ -191,7 +191,7 @@ describe('full application infrastructure', () => {
     try {
       // AI modified: execute against MySQL so `%`, `_`, and the custom escape stay literal beyond query-builder mocks.
       await request(httpServer)
-        .get('/demo-database/search')
+        .get('/api/demo-database/search')
         .query({ keyword: '!%_' })
         .expect(200)
         .expect((response) => {

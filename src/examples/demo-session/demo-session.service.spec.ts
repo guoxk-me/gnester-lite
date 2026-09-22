@@ -40,15 +40,15 @@ describe('DemoSessionService', () => {
       expect.arrayContaining([
         expect.objectContaining({
           name: 'login state',
-          route: '/demo-session/login',
+          route: '/api/demo-session/login',
         }),
         expect.objectContaining({
           name: 'flash messages',
-          route: '/demo-session/flash',
+          route: '/api/demo-session/flash',
         }),
         expect.objectContaining({
           name: 'anonymous shopping cart',
-          route: '/demo-session/cart',
+          route: '/api/demo-session/cart',
         }),
       ]),
     );

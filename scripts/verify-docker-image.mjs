@@ -29,7 +29,7 @@ const healthcheckCommand = imageHealthcheck.Test.join(' ');
 
 if (
   !healthcheckCommand.includes('process.env.PORT') ||
-  !healthcheckCommand.includes('/health/ready')
+  !healthcheckCommand.includes('/api/health/ready')
 ) {
   throw new Error(
     'Production healthcheck must use PORT and the readiness endpoint.',

@@ -32,6 +32,9 @@ describe('Express session lifecycle (e2e)', () => {
               SESSION_COOKIE_MAX_AGE: 86_400_000,
               SESSION_COOKIE_SECURE: false,
               SESSION_COOKIE_SAME_SITE: 'lax',
+              app: {
+                apiPrefix: 'api',
+              },
               rateLimit: {
                 enabled: false,
                 trustProxy: false,
@@ -73,7 +76,7 @@ describe('Express session lifecycle (e2e)', () => {
 
     const agent = request.agent(app.getHttpServer());
     const visitResponse = await agent
-      .post('/demo-session/visits')
+      .post('/api/demo-session/visits')
       .expect(201)
       .expect(({ body }) => {
         expect(body).toMatchObject({
@@ -91,7 +94,7 @@ describe('Express session lifecycle (e2e)', () => {
     expect(sessionCookie).not.toContain('; Secure');
 
     await agent
-      .post('/demo-session/cart/items')
+      .post('/api/demo-session/cart/items')
       .send({
         sku: 'demo_sku',
         name: 'Demo Item',
@@ -99,7 +102,7 @@ describe('Express session lifecycle (e2e)', () => {
       })
       .expect(201);
     await agent
-      .post('/demo-session/flash')
+      .post('/api/demo-session/flash')
       .send({
         level: 'success',
         message: 'Anonymous state preserved',
@@ -107,7 +110,7 @@ describe('Express session lifecycle (e2e)', () => {
       .expect(201);
 
     await agent
-      .get('/demo-session')
+      .get('/api/demo-session')
       .expect(200)
       .expect('Cache-Control', 'private, no-store')
       .expect(({ body }) => {
@@ -138,7 +141,7 @@ describe('Express session lifecycle (e2e)', () => {
 
     const secretSentinel = 'validation-http-private-value';
     const response = await request(app.getHttpServer())
-      .post('/demo-session/login')
+      .post('/api/demo-session/login')
       .send({
         userId: 'user_1',
         displayName: 'Demo User',
@@ -168,22 +171,22 @@ describe('Express session lifecycle (e2e)', () => {
     const httpServer = app.getHttpServer();
     const agent = request.agent(httpServer);
     const anonymousResponse = await agent
-      .post('/demo-session/visits')
+      .post('/api/demo-session/visits')
       .expect(201);
     const anonymousCookie = requireSessionCookie(anonymousResponse);
     const anonymousCookiePair = readSessionCookiePair(anonymousCookie);
 
     await agent
-      .post('/demo-session/cart/items')
+      .post('/api/demo-session/cart/items')
       .send({ sku: 'before_login', quantity: 3 })
       .expect(201);
     await agent
-      .post('/demo-session/flash')
+      .post('/api/demo-session/flash')
       .send({ message: 'Welcome back' })
       .expect(201);
 
     const loginResponse = await agent
-      .post('/demo-session/login')
+      .post('/api/demo-session/login')
       .send({
         userId: 'user_1',
         displayName: 'Demo User',
@@ -214,7 +217,7 @@ describe('Express session lifecycle (e2e)', () => {
     expect(authenticatedCookiePair).not.toBe(anonymousCookiePair);
 
     await request(httpServer)
-      .get('/demo-session')
+      .get('/api/demo-session')
       .set('Cookie', anonymousCookiePair)
       .expect(200)
       .expect(({ body }) => {
@@ -229,7 +232,7 @@ describe('Express session lifecycle (e2e)', () => {
       });
 
     await agent
-      .get('/demo-session')
+      .get('/api/demo-session')
       .expect(200)
       .expect(({ body }) => {
         expect(body).toMatchObject({
@@ -239,7 +242,7 @@ describe('Express session lifecycle (e2e)', () => {
         });
       });
 
-    await agent.delete('/demo-session').expect(200).expect({
+    await agent.delete('/api/demo-session').expect(200).expect({
       authenticated: false,
       user: null,
       visits: 0,
@@ -249,7 +252,7 @@ describe('Express session lifecycle (e2e)', () => {
     });
 
     await request(httpServer)
-      .get('/demo-session')
+      .get('/api/demo-session')
       .set('Cookie', authenticatedCookiePair)
       .expect(200)
       .expect(({ body }) => {

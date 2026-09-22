@@ -119,6 +119,13 @@ export async function configureApplication(
 
   // AI modified: the custom exception factory owns one stable sanitized contract in every environment.
   app.useGlobalPipes(createValidationPipe());
+  // AI modified: keep the landing route public while grouping every API route under the configured prefix.
+  app.setGlobalPrefix(
+    configService.getOrThrow<string>('app.apiPrefix', { infer: true }),
+    {
+      exclude: ['/'],
+    },
+  );
   app.enableVersioning({
     type: VersioningType.URI,
     prefix: 'v',

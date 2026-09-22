@@ -24,6 +24,8 @@ describe('Cookies (e2e)', () => {
     app = moduleFixture.createNestApplication();
     // AI modified: reproduce the real no-secret cookie-parser path used by the default application.
     app.use(cookieParser());
+    // AI modified: verify cookie scope against the route exposed by the global API prefix.
+    app.setGlobalPrefix('api');
     await app.init();
   });
 
@@ -37,7 +39,7 @@ describe('Cookies (e2e)', () => {
     }
 
     const response = await request(app.getHttpServer())
-      .delete('/demo-cookies/session')
+      .delete('/api/demo-cookies/session')
       .expect(200);
 
     expect(response.body).toMatchObject({
@@ -46,7 +48,7 @@ describe('Cookies (e2e)', () => {
       signed: true,
     });
     expect(response.headers['set-cookie']?.[0]).toContain(
-      'demo_session=; Path=/demo-cookies',
+      'demo_session=; Path=/api/demo-cookies',
     );
   });
 });

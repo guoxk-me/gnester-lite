@@ -32,7 +32,7 @@ export class DemoSessionService {
       {
         name: 'read current session state',
         method: 'GET',
-        route: '/demo-session',
+        route: '/api/demo-session',
         useCase:
           'Return the current user, visit count, flash queue, and cart stored in this browser session.',
         nestPattern:
@@ -41,7 +41,7 @@ export class DemoSessionService {
       {
         name: 'login state',
         method: 'POST',
-        route: '/demo-session/login',
+        route: '/api/demo-session/login',
         useCase:
           'Store a lightweight authenticated user profile after login or an OAuth callback.',
         nestPattern:
@@ -50,7 +50,7 @@ export class DemoSessionService {
       {
         name: 'per-user visit counter',
         method: 'POST',
-        route: '/demo-session/visits',
+        route: '/api/demo-session/visits',
         useCase:
           'Track short-lived per-browser counters without creating database rows.',
         nestPattern:
@@ -59,7 +59,7 @@ export class DemoSessionService {
       {
         name: 'flash messages',
         method: 'POST / GET',
-        route: '/demo-session/flash',
+        route: '/api/demo-session/flash',
         useCase:
           'Show one-time success or error messages after redirects or form submissions.',
         nestPattern:
@@ -68,7 +68,7 @@ export class DemoSessionService {
       {
         name: 'anonymous shopping cart',
         method: 'GET / POST / DELETE',
-        route: '/demo-session/cart',
+        route: '/api/demo-session/cart',
         useCase:
           'Keep cart contents for anonymous users before checkout or account login.',
         nestPattern:
@@ -77,7 +77,7 @@ export class DemoSessionService {
       {
         name: 'logout',
         method: 'DELETE',
-        route: '/demo-session',
+        route: '/api/demo-session',
         useCase:
           'Destroy all server-side session state and force a clean anonymous session.',
         nestPattern:

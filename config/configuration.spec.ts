@@ -11,6 +11,10 @@ describe('configuration', () => {
   it('uses Beijing time for scheduled jobs by default', () => {
     const config = configuration();
 
+    expect(config.app).toEqual({
+      name: 'gnester-lite',
+      apiPrefix: 'api',
+    });
     expect(config.schedule.enabled).toBe(false);
     expect(config.schedule.timeZone).toBe('Asia/Shanghai');
     expect(config.shutdown).toEqual(shutdownConfig);
@@ -58,6 +62,7 @@ describe('configuration', () => {
       validateYamlConfig({
         app: {
           name: 'gnester-lite',
+          apiPrefix: 'api',
         },
         cache: {
           ttl: 0,
@@ -103,6 +108,7 @@ describe('configuration', () => {
       validateYamlConfig({
         app: {
           name: 'gnester-lite',
+          apiPrefix: 'api',
         },
         cache: {
           ttl: 0,
@@ -148,6 +154,7 @@ describe('configuration', () => {
       validateYamlConfig({
         app: {
           name: 'gnester-lite',
+          apiPrefix: 'api',
         },
         cache: {
           ttl: 0,
@@ -193,6 +200,7 @@ describe('configuration', () => {
       validateYamlConfig({
         app: {
           name: 'gnester-lite',
+          apiPrefix: 'api',
         },
         cache: {
           ttl: 0,
@@ -360,6 +368,7 @@ describe('configuration', () => {
       validateYamlConfig({
         ...validConfig,
         app: {
+          ...validConfig.app,
           name: 'orders-api_v2.stage',
         },
         queue: {
@@ -383,7 +392,27 @@ describe('configuration', () => {
       validateYamlConfig({
         ...validConfig,
         app: {
+          ...validConfig.app,
           name: applicationName,
+        },
+      } as unknown as Record<string, unknown>),
+    ).toThrow();
+  });
+
+  it.each([
+    ['empty', ''],
+    ['leading-slash', '/api'],
+    ['nested', 'api/v1'],
+    ['query-like', 'api?version=1'],
+  ])('rejects an %s API prefix', (_scenario, apiPrefix) => {
+    const validConfig = configuration();
+
+    expect(() =>
+      validateYamlConfig({
+        ...validConfig,
+        app: {
+          ...validConfig.app,
+          apiPrefix,
         },
       } as unknown as Record<string, unknown>),
     ).toThrow();

@@ -26,7 +26,7 @@ export class DemoCryptoService {
       {
         name: 'Authenticated encryption',
         method: 'POST',
-        route: '/demo-crypto/encrypt-secret',
+        route: '/api/demo-crypto/encrypt-secret',
         useCase:
           'Encrypt a recoverable third-party token or private setting before database storage.',
         nestPattern:
@@ -35,7 +35,7 @@ export class DemoCryptoService {
       {
         name: 'One-time token storage',
         method: 'POST',
-        route: '/demo-crypto/one-time-token',
+        route: '/api/demo-crypto/one-time-token',
         useCase:
           'Issue a reset, invite, or verification token once while storing only a digest.',
         nestPattern:
@@ -44,7 +44,7 @@ export class DemoCryptoService {
       {
         name: 'HMAC payload signature',
         method: 'POST',
-        route: '/demo-crypto/webhook-signature',
+        route: '/api/demo-crypto/webhook-signature',
         useCase:
           'Sign webhook or internal callback payloads so receivers can reject tampering.',
         nestPattern:

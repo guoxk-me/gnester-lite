@@ -41,7 +41,7 @@ describe('DemoAuthController', () => {
       {
         name: 'Passport local login + JWT bearer API',
         method: 'POST / GET',
-        route: '/demo-auth/login -> /demo-auth/profile',
+        route: '/api/demo-auth/login -> /api/demo-auth/profile',
         useCase: 'Protect stateless API requests with access tokens.',
         nestPattern:
           'Use LocalAuthGuard and JwtAuthGuard with Passport strategies.',

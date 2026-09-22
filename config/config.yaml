@@ -1,5 +1,6 @@
 app:
   name: gnester-lite
+  apiPrefix: api
 
 cache:
   ttl: 0

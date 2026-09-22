@@ -79,7 +79,7 @@ describe('DemoSessionController', () => {
       {
         name: 'login state',
         method: 'POST',
-        route: '/demo-session/login',
+        route: '/api/demo-session/login',
         useCase: 'Store login state.',
         nestPattern: 'Use @Session().',
       },
