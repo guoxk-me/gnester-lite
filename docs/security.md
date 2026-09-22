@@ -126,7 +126,7 @@ that authenticate through cookies or sessions.
 
 - Implementation: `csrf-csrf`, registered globally in
   `src/bootstrap/configure-application.ts`.
-- Token endpoint demo: `GET /demo-csrf/token`.
+- Token endpoint demo: `GET /api/demo-csrf/token`.
 - Unsafe methods (`POST`, `PUT`, `PATCH`, `DELETE`) must send the token in
   the `CSRF_HEADER_NAME` header (default `x-csrf-token`). Development OpenAPI
   uses the configured name and only declares this requirement while CSRF is
@@ -140,14 +140,14 @@ Typical flow / 典型流程：
 
 ```bash
 COOKIE_JAR="$(mktemp)"
-TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/demo-csrf/token)"
+TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/api/demo-csrf/token)"
 CSRF_TOKEN="$(printf '%s' "$TOKEN_RESPONSE" | node -pe 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).data.csrfToken')"
 
 curl -fsS -b "$COOKIE_JAR" \
   -H 'content-type: application/json' \
   -H "x-csrf-token: $CSRF_TOKEN" \
   -d '{"recipient":"alice@example.com","amount":25}' \
-  http://localhost:3000/demo-csrf/transfer-preview
+  http://localhost:3000/api/demo-csrf/transfer-preview
 ```
 
 The middleware in this template protects every unsafe HTTP method while
@@ -254,9 +254,9 @@ Common scenarios / 常用场景：
 
 Demo endpoints / 示例接口：
 
-- `GET /demo-rate-limit/default`: global throttler behavior.
-- `POST /demo-rate-limit/login`: stricter route-level override.
-- `GET /demo-rate-limit/health`: explicit `@SkipHttpThrottle()` bypass.
+- `GET /api/demo-rate-limit/default`: global throttler behavior.
+- `POST /api/demo-rate-limit/login`: stricter route-level override.
+- `GET /api/demo-rate-limit/health`: explicit `@SkipHttpThrottle()` bypass.
 
 The built-in throttler storage is in memory. For multiple production instances,
 use a Redis-compatible throttler storage so all instances share the same request

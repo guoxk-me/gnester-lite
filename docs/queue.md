@@ -43,14 +43,14 @@ template queue behavior:
 
 `DemoQueueModule` registers the `demo` queue and exposes:
 
-- `POST /demo-queue/email`
-- `POST /demo-queue/long-task`
-- `POST /demo-queue/subtasks`
-- `GET /demo-queue/status`
-- `POST /demo-queue/pause`
-- `POST /demo-queue/resume`
+- `POST /api/demo-queue/email`
+- `POST /api/demo-queue/long-task`
+- `POST /api/demo-queue/subtasks`
+- `GET /api/demo-queue/status`
+- `POST /api/demo-queue/pause`
+- `POST /api/demo-queue/resume`
 
-`POST /demo-queue/email` creates a fast job:
+`POST /api/demo-queue/email` creates a fast job:
 
 All queue mutations require the README CSRF cookie-jar/token flow when
 `CSRF_ENABLED=true`.
@@ -67,7 +67,7 @@ Email addresses are limited to 254 characters. Subjects must contain
 non-whitespace text and are limited to 120 characters; optional bodies are
 limited to 2,000 characters.
 
-`POST /demo-queue/long-task` creates a simulated long-running job that updates
+`POST /api/demo-queue/long-task` creates a simulated long-running job that updates
 progress across multiple steps:
 
 ```json
@@ -78,7 +78,7 @@ progress across multiple steps:
 }
 ```
 
-`POST /demo-queue/subtasks` creates a BullMQ flow. Child jobs run first, and the
+`POST /api/demo-queue/subtasks` creates a BullMQ flow. Child jobs run first, and the
 parent workflow job completes after all children complete:
 
 ```json

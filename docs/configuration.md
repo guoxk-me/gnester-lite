@@ -90,6 +90,7 @@ YAML:
 ```yaml
 app:
   name: gnester-lite
+  apiPrefix: api
 
 cache:
   ttl: 0
@@ -127,6 +128,13 @@ non-whitespace character.
 `app.name` 与 `queue.prefix` 会成为 Redis 命名空间片段：必须至少包含一个字母或
 数字，只能使用字母、数字、`-`、`_`、`.`，且最长 64 个字符。
 `rateLimit.errorMessage` 必须至少包含一个非空白字符。
+
+`app.apiPrefix` places Nest-managed routes under one slash-free URL segment.
+The root controller remains outside this prefix, so its default-version route
+is `/v1`; version-neutral health routes are exposed under `/api/health/*`.
+
+`app.apiPrefix` 将 Nest 管理的路由归入一个不含斜杠的 URL 段。根控制器不使用该
+前缀，因此默认版本路由仍为 `/v1`；版本中立的健康检查位于 `/api/health/*`。
 
 The complete environment list and local-safe examples live in `.env.example`.
 The main groups are:

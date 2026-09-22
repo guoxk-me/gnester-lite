@@ -37,7 +37,7 @@ Files / 文件：
 Route / 路由：
 
 ```http
-GET /demo-config
+GET /api/demo-config
 ```
 
 Example response / 示例响应：
@@ -76,15 +76,15 @@ Files / 文件：
 Routes / 路由：
 
 ```http
-GET /demo-auth/scenarios
-POST /demo-auth/login
-GET /demo-auth/profile
+GET /api/demo-auth/scenarios
+POST /api/demo-auth/login
+GET /api/demo-auth/profile
 ```
 
 Demo login / 示例登录：
 
 ```http
-POST /demo-auth/login
+POST /api/demo-auth/login
 Content-Type: application/json
 
 {
@@ -96,7 +96,7 @@ Content-Type: application/json
 Protected profile / 受保护 profile：
 
 ```http
-GET /demo-auth/profile
+GET /api/demo-auth/profile
 Authorization: Bearer <accessToken>
 ```
 
@@ -136,7 +136,7 @@ Files / 文件：
 Route / 路由：
 
 ```http
-GET /demo-security
+GET /api/demo-security
 ```
 
 Example response shape / 示例响应结构：
@@ -198,9 +198,9 @@ Files / 文件：
 Routes / 路由：
 
 ```http
-GET /demo-sentry/scenarios
-GET /demo-sentry/status
-GET /demo-sentry/debug-sentry
+GET /api/demo-sentry/scenarios
+GET /api/demo-sentry/status
+GET /api/demo-sentry/debug-sentry
 ```
 
 What it shows / 演示点：
@@ -229,15 +229,15 @@ Files / 文件：
 Routes / 路由：
 
 ```http
-GET /demo-csrf
-GET /demo-csrf/token
-POST /demo-csrf/transfer-preview
+GET /api/demo-csrf
+GET /api/demo-csrf/token
+POST /api/demo-csrf/transfer-preview
 ```
 
 Token flow / Token 流程：
 
 ```http
-GET /demo-csrf/token
+GET /api/demo-csrf/token
 ```
 
 ```json
@@ -250,7 +250,7 @@ GET /demo-csrf/token
 Protected mutation / 受保护写请求：
 
 ```http
-POST /demo-csrf/transfer-preview
+POST /api/demo-csrf/transfer-preview
 x-csrf-token: <token>
 Content-Type: application/json
 
@@ -295,10 +295,10 @@ Files / 文件：
 Routes / 路由：
 
 ```http
-GET /demo-crypto/scenarios
-POST /demo-crypto/encrypt-secret
-POST /demo-crypto/one-time-token
-POST /demo-crypto/webhook-signature
+GET /api/demo-crypto/scenarios
+POST /api/demo-crypto/encrypt-secret
+POST /api/demo-crypto/one-time-token
+POST /api/demo-crypto/webhook-signature
 ```
 
 What it shows / 演示点：
@@ -379,7 +379,7 @@ length `20`; `description` has max length `255`.
 Create one / 创建一条：
 
 ```http
-POST /demo-database
+POST /api/demo-database
 Content-Type: application/json
 
 {
@@ -391,7 +391,7 @@ Content-Type: application/json
 Create many in a transaction / 使用事务批量创建：
 
 ```http
-POST /demo-database/many
+POST /api/demo-database/many
 Content-Type: application/json
 
 [
@@ -412,7 +412,7 @@ Both raw-array and wrapped bulk-create forms require 1–50 records per request.
 Create with audit metadata / 使用审计元数据创建：
 
 ```http
-POST /demo-database/with-audit
+POST /api/demo-database/with-audit
 Content-Type: application/json
 
 {
@@ -425,7 +425,7 @@ Content-Type: application/json
 Name-only mapped DTO / 仅名称 mapped DTO：
 
 ```http
-POST /demo-database/name-only
+POST /api/demo-database/name-only
 Content-Type: application/json
 
 {
@@ -436,7 +436,7 @@ Content-Type: application/json
 Create many with a wrapped DTO / 使用包裹 DTO 批量创建：
 
 ```http
-POST /demo-database/many/wrapped
+POST /api/demo-database/many/wrapped
 Content-Type: application/json
 
 {
@@ -452,18 +452,18 @@ Content-Type: application/json
 Find all / 查询全部：
 
 ```http
-GET /demo-database
+GET /api/demo-database
 ```
 
 The legacy unpaged list and name-search routes return at most 100 rows in
-ascending ID order. Use `/demo-database/page` to traverse the complete table.
+ascending ID order. Use `/api/demo-database/page` to traverse the complete table.
 旧版非分页列表与名称搜索接口均按 ID 升序最多返回 100 行；如需遍历完整数据，请使用
-`/demo-database/page`。
+`/api/demo-database/page`。
 
 Find page / 分页查询：
 
 ```http
-GET /demo-database/page?page=1&limit=10&order=ASC
+GET /api/demo-database/page?page=1&limit=10&order=ASC
 ```
 
 Page numbers are limited to 10,000 and page size to 100 so offset pagination
@@ -472,7 +472,7 @@ stays within the demo contract.
 Find by ids / 按 ID 批量查询：
 
 ```http
-GET /demo-database/by-ids?ids=1,2,3
+GET /api/demo-database/by-ids?ids=1,2,3
 ```
 
 `ids` accepts 1–50 comma-separated integers in the signed MySQL `INT` primary
@@ -483,7 +483,7 @@ key domain (`1`–`2147483647`). The same range applies to every `:id` path.
 Search by name / 按名称搜索：
 
 ```http
-GET /demo-database/search?keyword=hello
+GET /api/demo-database/search?keyword=hello
 ```
 
 `keyword` must contain a non-whitespace character and is limited to 20
@@ -499,31 +499,31 @@ MySQL's backslash SQL mode.
 Count rows / 统计行数：
 
 ```http
-GET /demo-database/count
+GET /api/demo-database/count
 ```
 
 Parse boolean query / 解析布尔查询参数：
 
 ```http
-GET /demo-database/flags?enabled=true
+GET /api/demo-database/flags?enabled=true
 ```
 
 Parse UUID path param / 解析 UUID 路径参数：
 
 ```http
-GET /demo-database/uuid/3f2e1012-0f36-4d48-88f9-3db407e1942b
+GET /api/demo-database/uuid/3f2e1012-0f36-4d48-88f9-3db407e1942b
 ```
 
 Find one / 查询一条：
 
 ```http
-GET /demo-database/1
+GET /api/demo-database/1
 ```
 
 Update / 更新：
 
 ```http
-PATCH /demo-database/1
+PATCH /api/demo-database/1
 Content-Type: application/json
 
 {
@@ -534,7 +534,7 @@ Content-Type: application/json
 Update description only / 仅更新描述：
 
 ```http
-PATCH /demo-database/1/description
+PATCH /api/demo-database/1/description
 Content-Type: application/json
 
 {
@@ -545,7 +545,7 @@ Content-Type: application/json
 Delete / 删除：
 
 ```http
-DELETE /demo-database/1
+DELETE /api/demo-database/1
 ```
 
 ### Database Wiring / 数据库接线
@@ -575,11 +575,11 @@ Files / 文件：
 Routes / 路由：
 
 ```http
-GET /demo-http/scenarios
-GET /demo-http/provider-status
-GET /demo-http/posts?userId=1
-GET /demo-http/posts/1
-POST /demo-http/posts
+GET /api/demo-http/scenarios
+GET /api/demo-http/provider-status
+GET /api/demo-http/posts?userId=1
+GET /api/demo-http/posts/1
+POST /api/demo-http/posts
 Content-Type: application/json
 
 {
@@ -597,20 +597,20 @@ What it shows / 演示点：
   Controller 只负责路由与校验，出站 HTTP 调用集中在 service。
 - `HttpService.get<T>()` and `HttpService.post<T>()` demonstrate typed JSON calls against the configured `http.baseUrl` (JSONPlaceholder by default).
   `HttpService.get<T>()` 与 `HttpService.post<T>()` 演示对配置的 `http.baseUrl`（默认 JSONPlaceholder）做带类型的 JSON 调用。
-- `ListDemoHttpPostsQueryDto` validates optional list filters on `GET /demo-http/posts`.
-  `ListDemoHttpPostsQueryDto` 校验 `GET /demo-http/posts` 的可选列表过滤参数。
+- `ListDemoHttpPostsQueryDto` validates optional list filters on `GET /api/demo-http/posts`.
+  `ListDemoHttpPostsQueryDto` 校验 `GET /api/demo-http/posts` 的可选列表过滤参数。
 - Post and user IDs must be positive safe integers. A params DTO validates
-  `GET /demo-http/posts/:id` with the same range.
+  `GET /api/demo-http/posts/:id` with the same range.
   Post 与 user ID 必须是正安全整数；params DTO 以相同范围校验
-  `GET /demo-http/posts/:id`。
+  `GET /api/demo-http/posts/:id`。
 - Request and upstream response contracts require nonblank `title` and `body`;
   their limits are 500 and 10,000 characters respectively.
   请求与上游响应契约都要求 `title`、`body` 非空白，长度上限分别为 500 和
   10,000 个字符。
 - `firstValueFrom()` converts `HttpService` Observables into Promise-returning Nest service methods.
   `firstValueFrom()` 将 `HttpService` 返回的 Observable 转成 Nest service 常用的 Promise。
-- `axiosRef` is shown for low-level Axios access (`GET /demo-http/provider-status`), while still hidden behind the service boundary.
-  `axiosRef` 演示底层 Axios 访问（`GET /demo-http/provider-status`），但仍封装在 service 边界内。
+- `axiosRef` is shown for low-level Axios access (`GET /api/demo-http/provider-status`), while still hidden behind the service boundary.
+  `axiosRef` 演示底层 Axios 访问（`GET /api/demo-http/provider-status`），但仍封装在 service 边界内。
 - The provider-status response removes URL userinfo, query parameters, and
   fragments before exposing the configured endpoint as diagnostics.
   provider-status 响应在展示诊断端点前会移除 URL userinfo、query 参数与
@@ -648,11 +648,11 @@ EventEmitterModule.forRoot({
 Routes / 路由：
 
 ```http
-GET /demo-events
+GET /api/demo-events
 ```
 
 ```http
-POST /demo-events/users/register
+POST /api/demo-events/users/register
 Content-Type: application/json
 
 {
@@ -662,7 +662,7 @@ Content-Type: application/json
 ```
 
 ```http
-POST /demo-events/cache/invalidate
+POST /api/demo-events/cache/invalidate
 Content-Type: application/json
 
 {
@@ -672,7 +672,7 @@ Content-Type: application/json
 ```
 
 ```http
-DELETE /demo-events/records
+DELETE /api/demo-events/records
 ```
 
 What it shows / 演示点：
@@ -708,18 +708,18 @@ Files / 文件：
 Routes / 路由：
 
 ```http
-POST /demo-upload/single
-POST /demo-upload/image
-POST /demo-upload/files
-POST /demo-upload/profile-assets
-POST /demo-upload/any
-POST /demo-upload/form
+POST /api/demo-upload/single
+POST /api/demo-upload/image
+POST /api/demo-upload/files
+POST /api/demo-upload/profile-assets
+POST /api/demo-upload/any
+POST /api/demo-upload/form
 ```
 
 Chunked upload flow / 分片上传流程：
 
 ```http
-POST /demo-upload/chunked/sessions
+POST /api/demo-upload/chunked/sessions
 Content-Type: application/json
 
 {
@@ -733,16 +733,16 @@ Content-Type: application/json
 ```
 
 ```http
-PUT /demo-upload/chunked/{uploadId}/chunks/{chunkIndex}
+PUT /api/demo-upload/chunked/{uploadId}/chunks/{chunkIndex}
 Content-Type: multipart/form-data
 
 chunk=<binary chunk>
 ```
 
 ```http
-GET /demo-upload/chunked/{uploadId}
-POST /demo-upload/chunked/{uploadId}/complete
-DELETE /demo-upload/chunked/{uploadId}
+GET /api/demo-upload/chunked/{uploadId}
+POST /api/demo-upload/chunked/{uploadId}/complete
+DELETE /api/demo-upload/chunked/{uploadId}
 ```
 
 What it shows / 演示点：
@@ -797,11 +797,11 @@ Files / 文件：
 Routes / 路由：
 
 ```http
-GET /demo-streaming-files
-GET /demo-streaming-files/project/package-json
-GET /demo-streaming-files/project/readme
-GET /demo-streaming-files/generated/report.csv
-GET /demo-streaming-files/generated/note.txt
+GET /api/demo-streaming-files
+GET /api/demo-streaming-files/project/package-json
+GET /api/demo-streaming-files/project/readme
+GET /api/demo-streaming-files/generated/report.csv
+GET /api/demo-streaming-files/generated/note.txt
 ```
 
 What it shows / 演示点：
@@ -828,21 +828,21 @@ Login and call the role-, permission-, and policy-protected APIs:
 
 ```bash
 COOKIE_JAR="$(mktemp)"
-TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/demo-csrf/token)"
+TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/api/demo-csrf/token)"
 CSRF_TOKEN="$(printf '%s' "$TOKEN_RESPONSE" | jq -r .csrfToken)"
 LOGIN_RESPONSE="$(curl -fsS -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
   -H 'content-type: application/json' \
   -H "x-csrf-token: $CSRF_TOKEN" \
   -d '{"username":"admin@example.com","password":"admin12345"}' \
-  http://localhost:3000/demo-auth/login)"
+  http://localhost:3000/api/demo-auth/login)"
 ACCESS_TOKEN="$(printf '%s' "$LOGIN_RESPONSE" | jq -r .accessToken)"
 
 curl -fsS -H "authorization: Bearer $ACCESS_TOKEN" \
-  http://localhost:3000/demo-authorization/admin-report
+  http://localhost:3000/api/demo-authorization/admin-report
 curl -fsS -H "authorization: Bearer $ACCESS_TOKEN" \
-  http://localhost:3000/demo-authorization/audit-log
+  http://localhost:3000/api/demo-authorization/audit-log
 curl -fsS -H "authorization: Bearer $ACCESS_TOKEN" \
-  http://localhost:3000/demo-authorization/users/demo-admin/profile
+  http://localhost:3000/api/demo-authorization/users/demo-admin/profile
 ```
 
 Expected / 预期：the report identifies `demo-admin`, the audit response contains
@@ -859,21 +859,21 @@ single cookie jar so the CSRF identifier and demo cookie survive between calls.
 
 ```bash
 COOKIE_JAR="$(mktemp)"
-TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/demo-csrf/token)"
+TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/api/demo-csrf/token)"
 CSRF_TOKEN="$(printf '%s' "$TOKEN_RESPONSE" | jq -r .csrfToken)"
 
 curl -fsS -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
   -H 'content-type: application/json' \
   -H "x-csrf-token: $CSRF_TOKEN" \
   -d '{"theme":"dark","locale":"zh-CN"}' \
-  http://localhost:3000/demo-cookies/preferences
+  http://localhost:3000/api/demo-cookies/preferences
 curl -fsS -b "$COOKIE_JAR" \
-  http://localhost:3000/demo-cookies/demo_preferences
+  http://localhost:3000/api/demo-cookies/demo_preferences
 ```
 
 Expected / 预期：the mutation returns `name: demo_preferences` and the read
 returns `found: true` with the stored JSON value. Omitting the CSRF header or
-identifier cookies returns `403`. `POST /demo-cookies/session` additionally
+identifier cookies returns `403`. `POST /api/demo-cookies/session` additionally
 requires `COOKIE_SECRET`; without it the route returns `503`.
 Cookie-derived GET responses set `Cache-Control: private, no-store`.
 
@@ -885,12 +885,12 @@ Prerequisites / 前置条件：restart development with
 
 ```bash
 curl -i -H 'Origin: http://localhost:5173' \
-  http://localhost:3000/demo-cors/public-resource
+  http://localhost:3000/api/demo-cors/public-resource
 
 curl -i -X OPTIONS \
   -H 'Origin: http://localhost:5173' \
   -H 'Access-Control-Request-Method: GET' \
-  http://localhost:3000/demo-cors/credentialed-resource
+  http://localhost:3000/api/demo-cors/credentialed-resource
 ```
 
 Expected / 预期：the GET includes
@@ -911,18 +911,18 @@ rejected in production.
 
 ```bash
 COOKIE_JAR="$(mktemp)"
-TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/demo-csrf/token)"
+TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/api/demo-csrf/token)"
 CSRF_TOKEN="$(printf '%s' "$TOKEN_RESPONSE" | jq -r .csrfToken)"
 
 curl -fsS -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
   -H 'content-type: application/json' \
   -H "x-csrf-token: $CSRF_TOKEN" \
   -d '{"userId":"demo-user","displayName":"Demo User","role":"member"}' \
-  http://localhost:3000/demo-session/login
+  http://localhost:3000/api/demo-session/login
 curl -fsS -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
   -H "x-csrf-token: $CSRF_TOKEN" \
-  -X POST http://localhost:3000/demo-session/visits
-curl -fsS -b "$COOKIE_JAR" http://localhost:3000/demo-session
+  -X POST http://localhost:3000/api/demo-session/visits
+curl -fsS -b "$COOKIE_JAR" http://localhost:3000/api/demo-session
 ```
 
 Expected / 预期：the same session cookie preserves the user and increments the
@@ -950,14 +950,16 @@ Prerequisites / 前置条件：start the development app and use a client that d
 not buffer the response.
 
 ```bash
-curl -N http://localhost:3000/demo-sse/job-progress
+curl -N http://localhost:3000/api/demo-sse/job-progress
 ```
 
 Expected / 预期：the finite stream emits named `job.progress` events with stable
 IDs and progress from `0` through `100`, then closes. Browsers can use:
 
 ```js
-const stream = new EventSource('http://localhost:3000/demo-sse/notifications');
+const stream = new EventSource(
+  'http://localhost:3000/api/demo-sse/notifications',
+);
 stream.addEventListener('notification', (event) => {
   const notification = JSON.parse(event.data);
   document.title = notification.title;
@@ -980,12 +982,12 @@ clients; browser `EventSource` reconnects using the advertised retry delay.
 服务端积压；浏览器 `EventSource` 会按流中声明的重试间隔重新连接。
 
 The demo streams are cold and connection-local: each new
-`/demo-sse/activity-feed` connection starts again at `activity-0`. These IDs are
+`/api/demo-sse/activity-feed` connection starts again at `activity-0`. These IDs are
 stable only within that connection; the demo does not persist events or replay
 from `Last-Event-ID`. Use a shared durable event store and an explicit replay
 cursor when production clients require resume semantics.
 
-示例流是冷流且仅属于当前连接：每次新建 `/demo-sse/activity-feed` 连接都会从
+示例流是冷流且仅属于当前连接：每次新建 `/api/demo-sse/activity-feed` 连接都会从
 `activity-0` 重新开始。ID 只在单次连接内稳定；示例不会持久化事件，也不会按
 `Last-Event-ID` 重放。生产环境若需要断线续传，应使用共享持久事件存储和明确的重放游标。
 

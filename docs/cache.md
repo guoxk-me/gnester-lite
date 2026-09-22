@@ -97,12 +97,12 @@ real HTTP response caching.
 版本中立路由（无 `/v1` 前缀）同时演示 `CacheService` CRUD 与真实 HTTP 响应缓存。
 
 ```text
-POST   /demo-cache
-GET    /demo-cache
-GET    /demo-cache/:key
-PATCH  /demo-cache/:key
-DELETE /demo-cache/:key
-GET    /demo-cache/http-response/:variant
+POST   /api/demo-cache
+GET    /api/demo-cache
+GET    /api/demo-cache/:key
+PATCH  /api/demo-cache/:key
+DELETE /api/demo-cache/:key
+GET    /api/demo-cache/http-response/:variant
 ```
 
 Body and path cache keys, plus HTTP cache variants, share the same contract:
@@ -114,14 +114,14 @@ The CRUD demo admits at most 100 tracked entries. Admission and index
 publication are atomic across instances; updates to an existing key remain
 allowed at capacity. Expired index members are removed during bounded listing,
 and a rejected create retries once after that cleanup. A still-full cache
-returns `409` without publishing a partial item. `GET /demo-cache` scans and
+returns `409` without publishing a partial item. `GET /api/demo-cache` scans and
 returns at most 100 entries.
 CRUD 示例最多接纳 100 个索引条目。跨实例的容量准入与索引发布是原子的；达到容量时
 仍可更新已有 key。过期索引成员会在有界列表读取时清理，被拒绝的创建会在清理后重试
-一次。若缓存仍满，则返回 `409` 且不会发布部分条目。`GET /demo-cache` 最多扫描并
+一次。若缓存仍满，则返回 `409` 且不会发布部分条目。`GET /api/demo-cache` 最多扫描并
 返回 100 条。
 
-`GET /demo-cache/http-response/:variant` uses `HttpCacheInterceptor` with a
+`GET /api/demo-cache/http-response/:variant` uses `HttpCacheInterceptor` with a
 five-second TTL. Repeating the same URL and authorization/tenant vary headers
 returns the cached `generatedAt`; changing a vary header creates a separate
 entry. The interceptor delegates all Redis work to the same bounded
@@ -130,9 +130,9 @@ to the route handler. Cache-write failures are best effort and their logs omit
 response bodies, URLs, and identity-derived cache keys.
 
 Event-driven invalidation also appears in `docs/demo.md`
-(`POST /demo-events/cache/invalidate`).
+(`POST /api/demo-events/cache/invalidate`).
 
-事件失效示例见 `docs/demo.md`（`POST /demo-events/cache/invalidate`）。
+事件失效示例见 `docs/demo.md`（`POST /api/demo-events/cache/invalidate`）。
 
 All cache/event mutations require the README CSRF cookie-jar/token flow when
 `CSRF_ENABLED=true`.
