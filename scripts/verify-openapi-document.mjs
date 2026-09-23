@@ -1,4 +1,4 @@
-import { readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common/constants.js';
 import { Test } from '@nestjs/testing';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as yaml from 'js-yaml';
 
 const [openApiMetadataModule, openApiConfigModule] = await Promise.all([
   import('../dist/src/metadata.js'),
@@ -22,6 +23,9 @@ const openApiMetadata =
 const applyCsrfOpenApiContract =
   openApiConfigModule.applyCsrfOpenApiContract ??
   openApiConfigModule.default.applyCsrfOpenApiContract;
+const applyI18nOpenApiContract =
+  openApiConfigModule.applyI18nOpenApiContract ??
+  openApiConfigModule.default.applyI18nOpenApiContract;
 
 function referencesSchema(schema, expectedReference) {
   if (!schema || typeof schema !== 'object') {
@@ -100,6 +104,160 @@ function getSchemaProperties(document, schema, visitedReferences = new Set()) {
   }
 
   return properties;
+}
+
+function getEnvelopeDataSchema(document, path, method, status) {
+  const responseSchema = getResponseSchema(document, path, method, status);
+
+  return getSchemaProperties(document, responseSchema).data;
+}
+
+function isRawResponseOperation(path, operation) {
+  if (
+    operation['x-skip-api-envelope'] === true ||
+    path === '/api/auth' ||
+    path.startsWith('/api/auth/')
+  ) {
+    return true;
+  }
+
+  return Object.entries(operation.responses ?? {}).some(
+    ([status, response]) =>
+      status.startsWith('2') &&
+      response &&
+      !('$ref' in response) &&
+      Boolean(response.content?.['text/event-stream']),
+  );
+}
+
+// AI modified: binary responses stay native, but errors on download operations still require the envelope.
+function isNativeMediaResponse(response) {
+  const content = response.content;
+
+  if (!content || Object.keys(content).length === 0) {
+    return false;
+  }
+
+  const jsonMediaContract = content['application/json'];
+
+  if (!jsonMediaContract) {
+    return true;
+  }
+
+  const responseSchema = jsonMediaContract.schema;
+
+  return Boolean(
+    responseSchema &&
+    !('$ref' in responseSchema) &&
+    responseSchema.format === 'binary',
+  );
+}
+
+// AI modified: validate the final response root and language header for every generated operation, including decorator-added errors.
+function assertI18nOpenApiContract(document) {
+  const httpMethods = [
+    'delete',
+    'get',
+    'head',
+    'options',
+    'patch',
+    'post',
+    'put',
+    'trace',
+  ];
+
+  for (const [path, pathContract] of Object.entries(document.paths)) {
+    for (const method of httpMethods) {
+      const operation = pathContract[method];
+
+      if (!operation) {
+        continue;
+      }
+
+      if (isRawResponseOperation(path, operation)) {
+        continue;
+      }
+
+      const languageHeaders = operation.parameters?.filter(
+        (parameter) =>
+          !('$ref' in parameter) &&
+          parameter.in === 'header' &&
+          parameter.name.toLowerCase() === 'accept-language',
+      );
+
+      assertContract(
+        languageHeaders?.length === 1 &&
+          languageHeaders[0].required === false &&
+          languageHeaders[0].schema?.type === 'string' &&
+          !languageHeaders[0].schema.enum,
+        `OpenAPI ${method.toUpperCase()} ${path} must expose Accept-Language exactly once.`,
+      );
+
+      for (const [status, response] of Object.entries(
+        operation.responses ?? {},
+      )) {
+        if (!response || '$ref' in response) {
+          continue;
+        }
+
+        if (status === '204') {
+          assertContract(
+            !response.content,
+            `OpenAPI ${method.toUpperCase()} ${path} 204 response must not declare a body.`,
+          );
+          continue;
+        }
+
+        if (isNativeMediaResponse(response)) {
+          continue;
+        }
+
+        const schema = response.content?.['application/json']?.schema;
+        const properties = getSchemaProperties(document, schema);
+        const contentLanguageHeader = response.headers?.['Content-Language'];
+        const varyHeader = response.headers?.Vary;
+
+        assertContract(
+          schema?.type === 'object' &&
+            Array.isArray(schema.required) &&
+            ['code', 'message', 'data', 'errors'].every((propertyName) =>
+              schema.required.includes(propertyName),
+            ) &&
+            properties.code?.type === 'integer' &&
+            properties.message?.type === 'string' &&
+            properties.data &&
+            properties.errors?.type === 'array' &&
+            properties.errors.nullable === true,
+          `OpenAPI ${method.toUpperCase()} ${path} ${status} must declare the API envelope.`,
+        );
+        assertContract(
+          contentLanguageHeader &&
+            !('$ref' in contentLanguageHeader) &&
+            contentLanguageHeader.schema?.type === 'string' &&
+            varyHeader &&
+            !('$ref' in varyHeader) &&
+            varyHeader.schema?.type === 'string',
+          `OpenAPI ${method.toUpperCase()} ${path} ${status} must declare Content-Language and Vary response headers.`,
+        );
+      }
+    }
+  }
+
+  const healthProperties = getSchemaProperties(
+    document,
+    getResponseSchema(document, apiPath('/health/live'), 'get', 200),
+  );
+
+  assertContract(
+    healthProperties.status && !healthProperties.code,
+    'OpenAPI health probes must retain the native Terminus contract.',
+  );
+  assertContract(
+    Object.keys(document.paths).every(
+      (path) => path !== '/api/auth' && !path.startsWith('/api/auth/'),
+    ),
+    'OpenAPI must not claim Better Auth raw-handler routes as Nest envelope routes.',
+  );
 }
 
 function assertContract(condition, message) {
@@ -294,6 +452,24 @@ for (const interceptor of getControllerEnhancers(
 
 const testingModule = await testingModuleBuilder.compile();
 const app = testingModule.createNestApplication();
+const compiledYamlConfig = yaml.load(
+  await readFile(
+    new URL('../dist/config/config.yaml', import.meta.url),
+    'utf8',
+  ),
+);
+const apiPrefix = compiledYamlConfig?.app?.apiPrefix;
+
+function apiPath(routePath) {
+  return `/${apiPrefix}${routePath}`;
+}
+
+assertContract(
+  typeof apiPrefix === 'string' && apiPrefix.length > 0,
+  'Compiled YAML configuration must declare app.apiPrefix.',
+);
+// AI modified: verify the same configured global-prefix contract used by runtime bootstrap.
+app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });
 
 await app.init();
 
@@ -305,6 +481,8 @@ try {
     getHeaderName: () => 'x-csrf-token',
     isEnabled: () => true,
   });
+  applyI18nOpenApiContract(document);
+  assertI18nOpenApiContract(document);
   const expectedOperationIds = getExpectedOperationIds(httpControllers);
   const documentedOperationIds = new Set(getDocumentedOperationIds(document));
 
@@ -341,10 +519,10 @@ try {
   }
 
   const guardedOperations = [
-    document.paths['/demo-auth/profile']?.get,
-    document.paths['/demo-authorization/admin-report']?.get,
-    document.paths['/demo-authorization/audit-log']?.get,
-    document.paths['/demo-authorization/users/{userId}/profile']?.get,
+    document.paths[apiPath('/demo-auth/profile')]?.get,
+    document.paths[apiPath('/demo-authorization/admin-report')]?.get,
+    document.paths[apiPath('/demo-authorization/audit-log')]?.get,
+    document.paths[apiPath('/demo-authorization/users/{userId}/profile')]?.get,
   ];
 
   for (const guardedOperation of guardedOperations) {
@@ -360,7 +538,7 @@ try {
     }
   }
 
-  const loginOperation = document.paths['/demo-auth/login']?.post;
+  const loginOperation = document.paths[apiPath('/demo-auth/login')]?.post;
 
   if (
     !loginOperation?.responses?.['400'] ||
@@ -370,15 +548,16 @@ try {
     throw new Error('OpenAPI login errors must document 400, 401, and 429.');
   }
 
-  const profileSchema =
-    document.paths['/demo-auth/profile']?.get?.responses?.['200']?.content?.[
-      'application/json'
-    ]?.schema;
+  const profileSchema = getEnvelopeDataSchema(
+    document,
+    apiPath('/demo-auth/profile'),
+    'get',
+    200,
+  );
 
   if (
     !profileSchema ||
-    !('$ref' in profileSchema) ||
-    profileSchema.$ref !== '#/components/schemas/DemoAuthProfileDto'
+    !referencesSchema(profileSchema, '#/components/schemas/DemoAuthProfileDto')
   ) {
     throw new Error(
       'OpenAPI profile response must reference DemoAuthProfileDto.',
@@ -400,10 +579,12 @@ try {
     );
   }
 
-  const cartSchema =
-    document.paths['/demo-session/cart']?.get?.responses?.['200']?.content?.[
-      'application/json'
-    ]?.schema;
+  const cartSchema = getEnvelopeDataSchema(
+    document,
+    apiPath('/demo-session/cart'),
+    'get',
+    200,
+  );
 
   if (
     !cartSchema ||
@@ -489,19 +670,19 @@ try {
   // AI modified: verify special wire formats against the generated document, not decorator metadata.
   const serializationResponses = [
     [
-      '/demo-serialization/profile',
+      apiPath('/demo-serialization/profile'),
       '#/components/schemas/DemoSerializationProfileResponseDto',
     ],
     [
-      '/demo-serialization/profile/admin',
+      apiPath('/demo-serialization/profile/admin'),
       '#/components/schemas/DemoSerializationAdminProfileResponseDto',
     ],
     [
-      '/demo-serialization/profile/plain',
+      apiPath('/demo-serialization/profile/plain'),
       '#/components/schemas/DemoSerializationProfileResponseDto',
     ],
     [
-      '/demo-serialization/page/plain',
+      apiPath('/demo-serialization/page/plain'),
       '#/components/schemas/DemoSerializationPageResponseDto',
     ],
   ];
@@ -509,7 +690,7 @@ try {
   for (const [path, expectedReference] of serializationResponses) {
     assertContract(
       referencesSchema(
-        getResponseSchema(document, path, 'get', 200),
+        getEnvelopeDataSchema(document, path, 'get', 200),
         expectedReference,
       ),
       `OpenAPI ${path} response does not match the serialized wire DTO.`,
@@ -519,7 +700,12 @@ try {
   const publicProfileProperties = Object.keys(
     getSchemaProperties(
       document,
-      getResponseSchema(document, '/demo-serialization/profile', 'get', 200),
+      getEnvelopeDataSchema(
+        document,
+        apiPath('/demo-serialization/profile'),
+        'get',
+        200,
+      ),
     ),
   ).sort();
   const expectedPublicProfileProperties = [
@@ -540,9 +726,9 @@ try {
   const adminProfileProperties = Object.keys(
     getSchemaProperties(
       document,
-      getResponseSchema(
+      getEnvelopeDataSchema(
         document,
-        '/demo-serialization/profile/admin',
+        apiPath('/demo-serialization/profile/admin'),
         'get',
         200,
       ),
@@ -557,7 +743,12 @@ try {
 
   const serializedPageProperties = getSchemaProperties(
     document,
-    getResponseSchema(document, '/demo-serialization/page/plain', 'get', 200),
+    getEnvelopeDataSchema(
+      document,
+      apiPath('/demo-serialization/page/plain'),
+      'get',
+      200,
+    ),
   );
 
   assertContract(
@@ -571,11 +762,11 @@ try {
   );
 
   const ssePaths = [
-    '/demo-sse/notifications',
-    '/demo-sse/job-progress',
-    '/demo-sse/activity-feed',
-    '/demo-sse/metrics',
-    '/demo-sse/heartbeat',
+    apiPath('/demo-sse/notifications'),
+    apiPath('/demo-sse/job-progress'),
+    apiPath('/demo-sse/activity-feed'),
+    apiPath('/demo-sse/metrics'),
+    apiPath('/demo-sse/heartbeat'),
   ];
 
   for (const path of ssePaths) {
@@ -593,10 +784,10 @@ try {
   }
 
   const streamedFiles = [
-    ['/demo-streaming-files/project/package-json', 'application/json'],
-    ['/demo-streaming-files/project/readme', 'text/markdown'],
-    ['/demo-streaming-files/generated/report.csv', 'text/csv'],
-    ['/demo-streaming-files/generated/note.txt', 'text/plain'],
+    [apiPath('/demo-streaming-files/project/package-json'), 'application/json'],
+    [apiPath('/demo-streaming-files/project/readme'), 'text/markdown'],
+    [apiPath('/demo-streaming-files/generated/report.csv'), 'text/csv'],
+    [apiPath('/demo-streaming-files/generated/note.txt'), 'text/plain'],
   ];
 
   for (const [path, mediaType] of streamedFiles) {
@@ -613,9 +804,13 @@ try {
   }
 
   const multipartBodies = [
-    ['/demo-upload/chunked/{uploadId}/chunks/{chunkIndex}', 'put', 'chunk'],
-    ['/demo-upload/single', 'post', 'file'],
-    ['/demo-upload/image', 'post', 'image'],
+    [
+      apiPath('/demo-upload/chunked/{uploadId}/chunks/{chunkIndex}'),
+      'put',
+      'chunk',
+    ],
+    [apiPath('/demo-upload/single'), 'post', 'file'],
+    [apiPath('/demo-upload/image'), 'post', 'image'],
   ];
 
   for (const [path, method, fieldName] of multipartBodies) {
@@ -636,7 +831,7 @@ try {
 
   const fileArraySchema = getRequestSchema(
     document,
-    '/demo-upload/files',
+    apiPath('/demo-upload/files'),
     'post',
     'multipart/form-data',
   )?.properties?.files;
@@ -650,7 +845,7 @@ try {
 
   const profileAssetsSchema = getRequestSchema(
     document,
-    '/demo-upload/profile-assets',
+    apiPath('/demo-upload/profile-assets'),
     'post',
     'multipart/form-data',
   );
@@ -663,13 +858,13 @@ try {
 
   const arbitraryFilesSchema = getRequestSchema(
     document,
-    '/demo-upload/any',
+    apiPath('/demo-upload/any'),
     'post',
     'multipart/form-data',
   );
   const multipartFormSchema = getRequestSchema(
     document,
-    '/demo-upload/form',
+    apiPath('/demo-upload/form'),
     'post',
     'multipart/form-data',
   );
@@ -712,7 +907,10 @@ try {
     'OpenAPI upload field groups must reference DemoUploadFileDto items.',
   );
 
-  const privateCookiePaths = ['/demo-cookies', '/demo-cookies/{name}'];
+  const privateCookiePaths = [
+    apiPath('/demo-cookies'),
+    apiPath('/demo-cookies/{name}'),
+  ];
 
   for (const path of privateCookiePaths) {
     assertContract(
@@ -722,9 +920,9 @@ try {
   }
 
   const cookieWriteOperations = [
-    ['/demo-cookies/preferences', 'post', 201],
-    ['/demo-cookies/session', 'post', 201],
-    ['/demo-cookies/session', 'delete', 200],
+    [apiPath('/demo-cookies/preferences'), 'post', 201],
+    [apiPath('/demo-cookies/session'), 'post', 201],
+    [apiPath('/demo-cookies/session'), 'delete', 200],
   ];
 
   for (const [path, method, status] of cookieWriteOperations) {
@@ -741,34 +939,42 @@ try {
     cookieSameSiteSchema?.type === 'string' &&
       JSON.stringify(cookieSameSiteSchema.enum) ===
         JSON.stringify(['lax', 'strict', 'none']) &&
-      getResponse(document, '/demo-cookies/{name}', 'get', 400) &&
-      getResponse(document, '/demo-cookies/preferences', 'post', 400) &&
-      getResponse(document, '/demo-cookies/session', 'post', 503),
+      getResponse(document, apiPath('/demo-cookies/{name}'), 'get', 400) &&
+      getResponse(
+        document,
+        apiPath('/demo-cookies/preferences'),
+        'post',
+        400,
+      ) &&
+      getResponse(document, apiPath('/demo-cookies/session'), 'post', 503),
     'OpenAPI cookie contracts must expose sameSite and reachable failures.',
   );
 
   assertContract(
-    getResponse(document, '/demo-cors/public-resource', 'get', 200)?.headers?.[
-      'X-Demo-Cors-Trace'
-    ] &&
-      getResponse(document, '/demo-cors/credentialed-resource', 'get', 200)
-        ?.headers?.['Cache-Control'],
+    getResponse(document, apiPath('/demo-cors/public-resource'), 'get', 200)
+      ?.headers?.['X-Demo-Cors-Trace'] &&
+      getResponse(
+        document,
+        apiPath('/demo-cors/credentialed-resource'),
+        'get',
+        200,
+      )?.headers?.['Cache-Control'],
     'OpenAPI CORS demos must expose the trace and private-cache response headers.',
   );
 
   const csrfTokenResponse = getResponse(
     document,
-    '/demo-csrf/token',
+    apiPath('/demo-csrf/token'),
     'get',
     200,
   );
   const csrfTransferOperation =
-    document.paths['/demo-csrf/transfer-preview']?.post;
+    document.paths[apiPath('/demo-csrf/transfer-preview')]?.post;
 
   assertContract(
     csrfTokenResponse?.headers?.['Cache-Control'] &&
       csrfTokenResponse.headers['Set-Cookie'] &&
-      getResponse(document, '/demo-csrf/token', 'get', 503),
+      getResponse(document, apiPath('/demo-csrf/token'), 'get', 503),
     'OpenAPI CSRF token response must document no-store, cookies, and disabled state.',
   );
   assertContract(
@@ -839,9 +1045,9 @@ try {
   }
 
   const privateSessionPaths = [
-    '/demo-session',
-    '/demo-session/flash',
-    '/demo-session/cart',
+    apiPath('/demo-session'),
+    apiPath('/demo-session/flash'),
+    apiPath('/demo-session/cart'),
   ];
 
   for (const path of privateSessionPaths) {
@@ -853,12 +1059,17 @@ try {
   }
 
   assertContract(
-    getResponse(document, '/demo-session/login', 'post', 400) &&
-      getResponse(document, '/demo-session/login', 'post', 503) &&
-      getResponse(document, '/demo-session/cart/items', 'post', 400) &&
-      getResponse(document, '/demo-session/cart/items', 'post', 503) &&
-      getResponse(document, '/demo-session/cart/items/{sku}', 'delete', 400) &&
-      getResponse(document, '/demo-session', 'delete', 503),
+    getResponse(document, apiPath('/demo-session/login'), 'post', 400) &&
+      getResponse(document, apiPath('/demo-session/login'), 'post', 503) &&
+      getResponse(document, apiPath('/demo-session/cart/items'), 'post', 400) &&
+      getResponse(document, apiPath('/demo-session/cart/items'), 'post', 503) &&
+      getResponse(
+        document,
+        apiPath('/demo-session/cart/items/{sku}'),
+        'delete',
+        400,
+      ) &&
+      getResponse(document, apiPath('/demo-session'), 'delete', 503),
     'OpenAPI session mutations must expose validation and unavailable middleware failures.',
   );
 } finally {

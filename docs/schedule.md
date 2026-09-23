@@ -48,23 +48,23 @@ Do not use `UTC+8` or `Beijing`; validation rejects non-IANA values.
 ## Current API / 当前接口
 
 ```text
-GET /demo-schedule/jobs
-POST /demo-schedule/jobs/declarative-cron/run
-POST /demo-schedule/jobs/dynamic-cron/register
-POST /demo-schedule/jobs/dynamic-cron/start
-POST /demo-schedule/jobs/dynamic-cron/stop
-POST /demo-schedule/jobs/dynamic-cron/reschedule
-POST /demo-schedule/jobs/dynamic-cron/delete
-POST /demo-schedule/jobs/dynamic-cron/run
-POST /demo-schedule/jobs/dynamic-interval/register
-POST /demo-schedule/jobs/dynamic-interval/delete
-POST /demo-schedule/jobs/interval/run
-POST /demo-schedule/jobs/dynamic-timeout/register
-POST /demo-schedule/jobs/dynamic-timeout/delete
-POST /demo-schedule/jobs/timeout/run
+GET /api/demo-schedule/jobs
+POST /api/demo-schedule/jobs/declarative-cron/run
+POST /api/demo-schedule/jobs/dynamic-cron/register
+POST /api/demo-schedule/jobs/dynamic-cron/start
+POST /api/demo-schedule/jobs/dynamic-cron/stop
+POST /api/demo-schedule/jobs/dynamic-cron/reschedule
+POST /api/demo-schedule/jobs/dynamic-cron/delete
+POST /api/demo-schedule/jobs/dynamic-cron/run
+POST /api/demo-schedule/jobs/dynamic-interval/register
+POST /api/demo-schedule/jobs/dynamic-interval/delete
+POST /api/demo-schedule/jobs/interval/run
+POST /api/demo-schedule/jobs/dynamic-timeout/register
+POST /api/demo-schedule/jobs/dynamic-timeout/delete
+POST /api/demo-schedule/jobs/timeout/run
 ```
 
-`GET /demo-schedule/jobs` returns the schedule switch, time zone, cron jobs,
+`GET /api/demo-schedule/jobs` returns the schedule switch, time zone, cron jobs,
 intervals, and timeouts. The `POST .../run` routes manually execute each demo
 scheduler style so the controller layer shows declarative cron, dynamic cron,
 interval, and timeout entrypoints. The dynamic cron routes demonstrate runtime
@@ -74,7 +74,7 @@ interval and timeout routes demonstrate runtime registration and deletion.
 Every `POST` route above requires the README CSRF cookie-jar/token flow when
 `CSRF_ENABLED=true`.
 
-`GET /demo-schedule/jobs` 返回定时任务开关、时区、cron、interval 和 timeout
+`GET /api/demo-schedule/jobs` 返回定时任务开关、时区、cron、interval 和 timeout
 状态。`POST .../run` 路由手动执行每一种 demo 调度方式，让 controller 层示例覆盖
 声明式 cron、动态 cron、interval 和 timeout。动态 cron 路由演示运行时注册、
 启动、停止、改执行时间和删除；动态 interval 与 timeout 路由演示运行时注册和删除。

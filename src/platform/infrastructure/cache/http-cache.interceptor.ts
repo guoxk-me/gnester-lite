@@ -16,7 +16,12 @@ import { Observable, of, tap } from 'rxjs';
 
 import { CacheService } from './cache.service';
 
-const VARY_HEADERS = ['authorization', 'x-tenant-id'] as const;
+// AI modified: localized controller payloads must not share cache entries across languages.
+const VARY_HEADERS = [
+  'accept-language',
+  'authorization',
+  'x-tenant-id',
+] as const;
 
 type ResponseCacheTtlFactory = (
   context: ExecutionContext,

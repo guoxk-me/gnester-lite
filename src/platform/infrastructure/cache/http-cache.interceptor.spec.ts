@@ -59,6 +59,19 @@ describe('HttpCacheInterceptor', () => {
     expect(key).not.toContain('tenant-a');
   });
 
+  it('varies localized response cache entries by Accept-Language', () => {
+    const englishKey = interceptor.testTrackBy(
+      createHttpContext('GET', '/profile', { 'accept-language': 'en' }),
+    );
+    const chineseKey = interceptor.testTrackBy(
+      createHttpContext('GET', '/profile', { 'accept-language': 'zh' }),
+    );
+
+    expect(englishKey).toMatch(/^http:GET:\/profile:vary:[a-f0-9]{64}$/);
+    expect(chineseKey).toMatch(/^http:GET:\/profile:vary:[a-f0-9]{64}$/);
+    expect(englishKey).not.toBe(chineseKey);
+  });
+
   it('returns a cached response without invoking the route handler', async () => {
     cacheService.get.mockResolvedValueOnce({ generatedAt: 'cached' });
     const { handleRoute, next } = createNextHandler({

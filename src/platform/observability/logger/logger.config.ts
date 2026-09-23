@@ -77,7 +77,10 @@ export function nestLevelsToPinoLevel(
   return nestLevelToPinoLevel[mostVerbose];
 }
 
-export function shouldIgnoreRequestLog(req: IncomingMessage): boolean {
+export function shouldIgnoreRequestLog(
+  req: IncomingMessage,
+  apiPrefix = 'api',
+): boolean {
   if (!req.url) {
     return false;
   }
@@ -85,8 +88,11 @@ export function shouldIgnoreRequestLog(req: IncomingMessage): boolean {
   try {
     const { pathname } = new URL(req.url, 'http://localhost');
 
-    // AI modified: suppress only the two intentional infrastructure probes, not arbitrary health-like paths.
-    return pathname === '/health/live' || pathname === '/health/ready';
+    // AI modified: suppress only the configured infrastructure probes, not arbitrary health-like paths.
+    return (
+      pathname === `/${apiPrefix}/health/live` ||
+      pathname === `/${apiPrefix}/health/ready`
+    );
   } catch {
     return false;
   }
@@ -149,6 +155,7 @@ export function createPinoLoggerParams(configService: ConfigService): Params {
     configService.get<string>('LOGGER_LEVELS'),
     nodeEnv,
   );
+  const apiPrefix = configService.get<string>('app.apiPrefix', 'api');
   // AI modified: production never resolves the development-only pino-pretty transport.
   const shouldUsePrettyTransport =
     !isJsonEnabled &&
@@ -170,7 +177,7 @@ export function createPinoLoggerParams(configService: ConfigService): Params {
           }
         : undefined,
       autoLogging: {
-        ignore: shouldIgnoreRequestLog,
+        ignore: (request) => shouldIgnoreRequestLog(request, apiPrefix),
       },
       serializers: {
         req: requestLogSerializer,

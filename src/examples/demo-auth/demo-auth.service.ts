@@ -41,7 +41,7 @@ export class DemoAuthService {
       {
         name: 'Passport local login + JWT bearer API',
         method: 'POST / GET',
-        route: '/demo-auth/login -> /demo-auth/profile',
+        route: '/api/demo-auth/login -> /api/demo-auth/profile',
         useCase:
           'Validate username/password with LocalStrategy, issue a short-lived access token, then require JwtAuthGuard on stateless API requests.',
         nestPattern:
@@ -50,7 +50,7 @@ export class DemoAuthService {
       {
         name: 'Current user payload',
         method: 'GET',
-        route: '/demo-auth/profile',
+        route: '/api/demo-auth/profile',
         useCase:
           'Read the authenticated subject and roles from the verified JWT payload inside a controller.',
         nestPattern:

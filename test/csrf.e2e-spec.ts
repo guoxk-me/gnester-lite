@@ -28,6 +28,9 @@ describe('CSRF protection (e2e)', () => {
               CSRF_ENABLED: true,
               CSRF_SECRET: 'test-csrf-secret',
               COOKIE_SECRET: 'test-cookie-secret',
+              app: {
+                apiPrefix: 'api',
+              },
               rateLimit: {
                 trustProxy: false,
               },
@@ -60,7 +63,7 @@ describe('CSRF protection (e2e)', () => {
     const agent = request.agent(app.getHttpServer());
 
     await agent
-      .post('/demo-csrf/transfer-preview')
+      .post('/api/demo-csrf/transfer-preview')
       .send({ recipient: 'alice@example.com', amount: 25 })
       .expect(403)
       .expect({
@@ -70,14 +73,14 @@ describe('CSRF protection (e2e)', () => {
         errors: null,
       });
 
-    const tokenResponse = await agent.get('/demo-csrf/token').expect(200);
+    const tokenResponse = await agent.get('/api/demo-csrf/token').expect(200);
     const tokenBody = tokenResponse.body as CsrfTokenResponseBody;
 
     expect(typeof tokenBody.csrfToken).toBe('string');
     expect(tokenBody.headerName).toBe('x-csrf-token');
 
     await agent
-      .post('/demo-csrf/transfer-preview')
+      .post('/api/demo-csrf/transfer-preview')
       .set(tokenBody.headerName, tokenBody.csrfToken)
       .send({ recipient: 'alice@example.com', amount: 25 })
       .expect(201)

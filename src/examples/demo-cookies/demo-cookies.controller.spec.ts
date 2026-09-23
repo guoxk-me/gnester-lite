@@ -108,7 +108,7 @@ describe('DemoCookiesController', () => {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
-      path: '/demo-cookies',
+      path: '/api/demo-cookies',
       signed: true,
     };
     const request = { secret: 'secret' } as Request;
@@ -137,12 +137,12 @@ describe('DemoCookiesController', () => {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
-      path: '/demo-cookies',
+      path: '/api/demo-cookies',
       signed: true,
     };
     service.createClearSessionCookie.mockReturnValueOnce({
       name: 'demo_session',
-      options: { path: '/demo-cookies' },
+      options: { path: '/api/demo-cookies' },
       dto: writeDto,
     });
 
@@ -150,7 +150,7 @@ describe('DemoCookiesController', () => {
       controller.clearSignedSession(response as unknown as Response),
     ).toEqual(writeDto);
     expect(response.clearCookie).toHaveBeenCalledWith('demo_session', {
-      path: '/demo-cookies',
+      path: '/api/demo-cookies',
     });
   });
 });

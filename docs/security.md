@@ -23,10 +23,10 @@ Common endpoints / 常用端点：
 
 Runtime boundary / 运行时边界：
 
-- Nest starts with `bodyParser: false`. The auth-only middleware passes the raw
-  request stream directly to Better Auth before JSON or URL-encoded parsing.
-  Declared bodies over 1 MiB are rejected; the production ingress must enforce
-  the same cap for streamed requests without a content length.
+- Nest starts with `bodyParser: false`. The auth-only middleware buffers at
+  most 1 MiB of raw bytes without JSON or URL-encoded parsing, then lets Better
+  Auth replay that bounded body. Both declared-length and chunked uploads are
+  enforced; rejected streams are drained before the localized 413 is sent.
 - The private client-IP header is overwritten from Express `request.ip`, so
   Better Auth uses the same validated `trust proxy` result as the Nest
   throttler. Its built-in limiter follows `rateLimit.enabled` and remains
@@ -126,7 +126,7 @@ that authenticate through cookies or sessions.
 
 - Implementation: `csrf-csrf`, registered globally in
   `src/bootstrap/configure-application.ts`.
-- Token endpoint demo: `GET /demo-csrf/token`.
+- Token endpoint demo: `GET /api/demo-csrf/token`.
 - Unsafe methods (`POST`, `PUT`, `PATCH`, `DELETE`) must send the token in
   the `CSRF_HEADER_NAME` header (default `x-csrf-token`). Development OpenAPI
   uses the configured name and only declares this requirement while CSRF is
@@ -140,14 +140,14 @@ Typical flow / 典型流程：
 
 ```bash
 COOKIE_JAR="$(mktemp)"
-TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/demo-csrf/token)"
+TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/api/demo-csrf/token)"
 CSRF_TOKEN="$(printf '%s' "$TOKEN_RESPONSE" | node -pe 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).data.csrfToken')"
 
 curl -fsS -b "$COOKIE_JAR" \
   -H 'content-type: application/json' \
   -H "x-csrf-token: $CSRF_TOKEN" \
   -d '{"recipient":"alice@example.com","amount":25}' \
-  http://localhost:3000/demo-csrf/transfer-preview
+  http://localhost:3000/api/demo-csrf/transfer-preview
 ```
 
 The middleware in this template protects every unsafe HTTP method while
@@ -159,6 +159,15 @@ a pure bearer-token API.
 `/api/auth/*` is the deliberate exception to this project middleware: Better
 Auth performs its own origin and CSRF checks at that raw-handler boundary. Do
 not add a broad prefix match such as `/api/authentication` to the exception.
+Because this handler runs before Nest controllers, responses produced by Better
+Auth keep its native JSON/localization contract. The project-owned bounded-body
+layer is narrower: an oversized `/api/auth/*` body returns the shared localized
+application envelope before Better Auth runs.
+
+`/api/auth/*` 在 Nest controller 之前处理，因此 Better Auth 自身生成的响应保留
+原生 JSON/本地化契约；项目自有的有界 body 层是例外，声明长度和 chunked
+传输都执行 1 MiB 上限，超限时在进入 Better Auth 前返回共享的本地化
+envelope。
 
 生产环境启用 CSRF 时必须使用 secure cookie。任何
 `CSRF_COOKIE_SAME_SITE=none` 或已启用 session 的
@@ -245,9 +254,9 @@ Common scenarios / 常用场景：
 
 Demo endpoints / 示例接口：
 
-- `GET /demo-rate-limit/default`: global throttler behavior.
-- `POST /demo-rate-limit/login`: stricter route-level override.
-- `GET /demo-rate-limit/health`: explicit `@SkipHttpThrottle()` bypass.
+- `GET /api/demo-rate-limit/default`: global throttler behavior.
+- `POST /api/demo-rate-limit/login`: stricter route-level override.
+- `GET /api/demo-rate-limit/health`: explicit `@SkipHttpThrottle()` bypass.
 
 The built-in throttler storage is in memory. For multiple production instances,
 use a Redis-compatible throttler storage so all instances share the same request

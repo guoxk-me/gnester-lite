@@ -166,7 +166,11 @@ describe('CsrfService', () => {
     const response = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
-    } as unknown as jest.Mocked<Pick<Response, 'status' | 'json'>>;
+      setHeader: jest.fn(),
+      vary: jest.fn(),
+    } as unknown as jest.Mocked<
+      Pick<Response, 'json' | 'setHeader' | 'status' | 'vary'>
+    >;
     const next: NextFunction = jest.fn();
     const error = {
       code: 'CSRF_TOKEN_INVALID',
@@ -182,6 +186,8 @@ describe('CsrfService', () => {
     );
 
     expect(response.status).toHaveBeenCalledWith(403);
+    expect(response.vary).toHaveBeenCalledWith('Accept-Language');
+    expect(response.setHeader).toHaveBeenCalledWith('Content-Language', 'en');
     expect(response.json).toHaveBeenCalledWith({
       code: 403,
       message: 'Invalid CSRF token',
@@ -189,5 +195,37 @@ describe('CsrfService', () => {
       errors: null,
     });
     expect(next).not.toHaveBeenCalled();
+  });
+
+  it('uses the shared quality-aware language negotiation for CSRF errors', () => {
+    const response = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+      setHeader: jest.fn(),
+      vary: jest.fn(),
+    } as unknown as jest.Mocked<
+      Pick<Response, 'json' | 'setHeader' | 'status' | 'vary'>
+    >;
+    const error = {
+      code: 'CSRF_TOKEN_INVALID',
+    };
+
+    service.createErrorHandler()(
+      error,
+      {
+        headers: {
+          'accept-language': 'zh-CN;q=1,en;q=0.8',
+        },
+      } as Request,
+      response as unknown as Response,
+      jest.fn(),
+    );
+
+    expect(i18n.t).toHaveBeenCalledWith(
+      'errors.CSRF_TOKEN_INVALID',
+      expect.objectContaining({ lang: 'zh' }),
+    );
+    expect(response.vary).toHaveBeenCalledWith('Accept-Language');
+    expect(response.setHeader).toHaveBeenCalledWith('Content-Language', 'zh');
   });
 });

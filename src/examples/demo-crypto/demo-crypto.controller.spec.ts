@@ -38,7 +38,7 @@ describe('DemoCryptoController', () => {
       {
         name: 'Authenticated encryption',
         method: 'POST',
-        route: '/demo-crypto/encrypt-secret',
+        route: '/api/demo-crypto/encrypt-secret',
         useCase: 'Encrypt a recoverable token before database storage.',
         nestPattern:
           'Inject SymmetricEncryptionService from CommonCryptoModule.',

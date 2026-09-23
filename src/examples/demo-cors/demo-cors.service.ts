@@ -13,7 +13,7 @@ export class DemoCorsService {
       {
         name: 'public browser read',
         method: 'GET',
-        route: '/demo-cors/public-resource',
+        route: '/api/demo-cors/public-resource',
         useCase:
           'Allow a browser frontend on another origin to read public JSON.',
         nestPattern:
@@ -22,7 +22,7 @@ export class DemoCorsService {
       {
         name: 'credentialed browser request',
         method: 'GET',
-        route: '/demo-cors/credentialed-resource',
+        route: '/api/demo-cors/credentialed-resource',
         useCase:
           'Send cookies or browser-managed credentials from a trusted frontend.',
         nestPattern:
@@ -31,7 +31,7 @@ export class DemoCorsService {
       {
         name: 'preflighted JSON mutation',
         method: 'OPTIONS/POST',
-        route: '/demo-cors/credentialed-resource',
+        route: '/api/demo-cors/credentialed-resource',
         useCase:
           'Let browsers preflight JSON mutations with custom headers before the real request.',
         nestPattern:
@@ -40,7 +40,7 @@ export class DemoCorsService {
       {
         name: 'exposed response headers',
         method: 'GET',
-        route: '/demo-cors/public-resource',
+        route: '/api/demo-cors/public-resource',
         useCase:
           'Allow browser JavaScript to read selected response headers such as request ids or download names.',
         nestPattern:

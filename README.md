@@ -43,13 +43,13 @@ The default HTTP server is `http://localhost:3000`. Useful endpoints:
 
 ```text
 GET /v1
-GET /health/live
-GET /health/ready
+GET /api/health/live
+GET /api/health/ready
 GET /docs              development OpenAPI UI
 GET /docs-json         development OpenAPI JSON
-GET /async-api         non-production AsyncAPI index
-GET /async-api-json
-GET /async-api-yaml
+GET /api/async-api         non-production AsyncAPI index
+GET /api/async-api-json
+GET /api/async-api-yaml
 POST /api/auth/sign-up/email
 POST /api/auth/sign-in/email
 GET /api/auth/get-session
@@ -74,14 +74,14 @@ instead:
 
 ```bash
 COOKIE_JAR="$(mktemp)"
-TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/demo-csrf/token)"
+TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/api/demo-csrf/token)"
 CSRF_TOKEN="$(printf '%s' "$TOKEN_RESPONSE" | node -pe 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).csrfToken')"
 
 curl -fsS -b "$COOKIE_JAR" \
   -H 'content-type: application/json' \
   -H "x-csrf-token: $CSRF_TOKEN" \
   -d '{"recipient":"alice@example.com","amount":25}' \
-  http://localhost:3000/demo-csrf/transfer-preview
+  http://localhost:3000/api/demo-csrf/transfer-preview
 ```
 
 Use this flow for every mutating curl example, including login, queue, schedule,
@@ -117,7 +117,7 @@ one-shot `migrate` service, and starts `app` only after migration success. The
 production data source does not discover example-owned Demo migrations, so a
 new production database does not receive the `demo` table. The production image
 runs as the non-root `node` user. Its container healthcheck calls
-`/health/ready` with Node's built-in `fetch`. External container references
+`/api/health/ready` with Node's built-in `fetch`. External container references
 retain readable tags and append immutable multi-platform digests; update both
 together and run `pnpm run verify:container-references`.
 

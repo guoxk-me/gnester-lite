@@ -32,6 +32,13 @@ class AppVariables {
   @MaxLength(REDIS_NAMESPACE_SEGMENT_MAX_LENGTH)
   @Matches(REDIS_NAMESPACE_SEGMENT_PATTERN)
   name!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  // AI modified: require one slash-free URL segment so bootstrap cannot create ambiguous route prefixes.
+  @Matches(/^(?=.*[A-Za-z0-9])[A-Za-z0-9_-]+$/)
+  apiPrefix!: string;
 }
 
 class CacheVariables {

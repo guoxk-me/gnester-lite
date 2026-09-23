@@ -26,16 +26,16 @@ The endpoints are available in non-production demo environments and are absent
 when `NODE_ENV=production`.
 
 ```text
-http://localhost:3000/async-api
-http://localhost:3000/async-api-json
-http://localhost:3000/async-api-yaml
+http://localhost:3000/api/async-api
+http://localhost:3000/api/async-api-json
+http://localhost:3000/api/async-api-yaml
 ```
 
-| Route             | Content                                         |
-| ----------------- | ----------------------------------------------- |
-| `/async-api`      | Small index linking to the importable documents |
-| `/async-api-json` | AsyncAPI 3.0 JSON                               |
-| `/async-api-yaml` | AsyncAPI 3.0 YAML                               |
+| Route                 | Content                                         |
+| --------------------- | ----------------------------------------------- |
+| `/api/async-api`      | Small index linking to the importable documents |
+| `/api/async-api-json` | AsyncAPI 3.0 JSON                               |
+| `/api/async-api-yaml` | AsyncAPI 3.0 YAML                               |
 
 The server entry uses Engine.IO pathname `/socket.io/` and declares the Socket.IO
 namespace separately as `x-socket-io-namespace: /demo-websocket`. Bearer
@@ -52,6 +52,6 @@ The JSON/YAML documents are the source of truth for tooling.
 pnpm run test -- src/examples/demo-websocket/demo-websocket-asyncapi.service.spec.ts
 
 # With the development app running:
-curl -fsS http://localhost:3000/async-api-json
-curl -fsS http://localhost:3000/async-api-yaml
+curl -fsS http://localhost:3000/api/async-api-json
+curl -fsS http://localhost:3000/api/async-api-yaml
 ```

@@ -87,7 +87,7 @@ describe('DemoHttpService', () => {
       'direct Axios instance access',
     ]);
     const queryScenario = scenarios.find(
-      (scenario) => scenario.route === '/demo-http/posts?userId=1',
+      (scenario) => scenario.route === '/api/demo-http/posts?userId=1',
     );
 
     expect(queryScenario?.nestPattern).toContain('HttpService.get<T>()');

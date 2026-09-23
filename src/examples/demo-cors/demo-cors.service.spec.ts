@@ -12,22 +12,22 @@ describe('DemoCorsService', () => {
       expect.objectContaining({
         name: 'public browser read',
         method: 'GET',
-        route: '/demo-cors/public-resource',
+        route: '/api/demo-cors/public-resource',
       }),
       expect.objectContaining({
         name: 'credentialed browser request',
         method: 'GET',
-        route: '/demo-cors/credentialed-resource',
+        route: '/api/demo-cors/credentialed-resource',
       }),
       expect.objectContaining({
         name: 'preflighted JSON mutation',
         method: 'OPTIONS/POST',
-        route: '/demo-cors/credentialed-resource',
+        route: '/api/demo-cors/credentialed-resource',
       }),
       expect.objectContaining({
         name: 'exposed response headers',
         method: 'GET',
-        route: '/demo-cors/public-resource',
+        route: '/api/demo-cors/public-resource',
       }),
     ]);
   });

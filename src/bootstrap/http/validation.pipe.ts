@@ -1,15 +1,68 @@
 import {
-  BadRequestException,
+  HttpStatus,
   type ValidationError,
   ValidationPipe,
   type ValidationPipeOptions,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 
-import { translateKey } from '../../platform/runtime/i18n/i18n.translate';
+import {
+  translateKey,
+  type ValidationConstraint,
+  validationMessageKey,
+} from '../../platform/runtime/i18n/i18n.translate';
 
 export interface ValidationErrorDetail {
   readonly field: string;
   readonly reason: string;
+}
+
+const constraintValuePatterns: Partial<Record<ValidationConstraint, RegExp>> = {
+  arrayMaxSize: /must contain no more than (.+) elements$/,
+  arrayMinSize: /must contain at least (.+) elements$/,
+  isEnum: /must be one of the following values: (.+)$/,
+  isIn: /must be one of the following values: (.+)$/,
+  matches: /must match (.+) regular expression$/,
+  max: /must not be greater than (.+)$/,
+  maxLength: /must be shorter than or equal to (.+) characters$/,
+  min: /must not be less than (.+)$/,
+  minLength: /must be longer than or equal to (.+) characters$/,
+};
+
+function localizedValidationReason(
+  constraint: string,
+  fallback: string,
+  property: string,
+): string {
+  const messageKey = validationMessageKey(constraint);
+
+  if (!messageKey) {
+    return fallback;
+  }
+
+  const validationConstraint = constraint as ValidationConstraint;
+  const valuePattern = constraintValuePatterns[validationConstraint];
+  const constraintValue = valuePattern?.exec(fallback)?.[1];
+
+  if (valuePattern && !constraintValue) {
+    return fallback;
+  }
+
+  const args: Record<string, unknown> = { property };
+
+  if (constraintValue) {
+    // AI modified: retain validator limits and allowed values when translating the surrounding message.
+    const argumentName =
+      validationConstraint === 'isEnum' || validationConstraint === 'isIn'
+        ? 'allowedValues'
+        : 'constraint';
+    args[argumentName] = constraintValue;
+  }
+
+  return translateKey(messageKey, {
+    args,
+    defaultValue: fallback,
+  });
 }
 
 function collectValidationErrors(
@@ -23,11 +76,7 @@ function collectValidationErrors(
     const currentErrors = Object.entries(error.constraints ?? {}).map(
       ([constraint, fallback]) => ({
         field: fieldPath,
-        // AI modified: translate by constraint name when i18n context is present.
-        reason: translateKey(`validation.${constraint}`, {
-          args: { property: error.property },
-          defaultValue: fallback,
-        }),
+        reason: localizedValidationReason(constraint, fallback, error.property),
       }),
     );
     const childErrors = collectValidationErrors(
@@ -41,11 +90,12 @@ function collectValidationErrors(
 
 export function validationExceptionFactory(
   errors: ValidationError[],
-): BadRequestException {
+): UnprocessableEntityException {
   const details = collectValidationErrors(errors);
 
-  return new BadRequestException({
-    code: 400,
+  // AI modified: validation failures are semantically valid requests with unprocessable content.
+  return new UnprocessableEntityException({
+    code: HttpStatus.UNPROCESSABLE_ENTITY,
     message: translateKey('errors.VALIDATION_FAILED', {
       defaultValue: 'Validation failed',
     }),

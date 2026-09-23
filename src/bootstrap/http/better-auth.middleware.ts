@@ -1,15 +1,18 @@
 import type { RequestHandler } from 'express';
+import type { I18nService } from 'nestjs-i18n';
 
 import {
   BETTER_AUTH_CLIENT_IP_HEADER,
   isBetterAuthRequestPath,
 } from 'config/better-auth.config';
 import type { BetterAuthRequestHandler } from '../../platform/security/better-auth/better-auth.service';
+import { resolveSupportedLanguage } from '../../platform/runtime/i18n/i18n.translate';
 
 export const BETTER_AUTH_REQUEST_BODY_LIMIT_BYTES = 1_048_576;
 
 export function createBetterAuthRequestMiddleware(
   betterAuthHandler: BetterAuthRequestHandler,
+  i18nService: I18nService,
 ): RequestHandler {
   return (request, response, next) => {
     if (!isBetterAuthRequestPath(request.path)) {
@@ -20,19 +23,97 @@ export function createBetterAuthRequestMiddleware(
     // AI modified: overwrite the private header with Express's trusted-proxy result before Better Auth rate limiting.
     request.headers[BETTER_AUTH_CLIENT_IP_HEADER] = request.ip;
 
-    // AI modified: reject declared oversized payloads without consuming the raw stream Better Auth must read itself.
-    if (hasOversizedDeclaredBody(request.headers['content-length'])) {
-      response.status(413).json({
-        statusCode: 413,
-        code: 'BETTER_AUTH_BODY_TOO_LARGE',
-        message: 'Better Auth request body exceeds the 1 MiB limit.',
-      });
+    const forwardRequestToBetterAuth = (): void => {
+      void betterAuthHandler(request, response).catch((handlerError: unknown) =>
+        next(handlerError),
+      );
+    };
+
+    if (
+      request.method === 'GET' ||
+      request.method === 'HEAD' ||
+      request.destroyed ||
+      request.readableEnded ||
+      !request.readable
+    ) {
+      forwardRequestToBetterAuth();
       return;
     }
 
-    void betterAuthHandler(request, response).catch((handlerError: unknown) =>
-      next(handlerError),
+    const bodyChunks: Buffer[] = [];
+    let bodySize = 0;
+    let isOversized = hasOversizedDeclaredBody(
+      request.headers['content-length'],
     );
+    let hasFinishedReading = false;
+
+    // AI modified: buffer at most 1 MiB of raw auth input so chunked requests cannot bypass the pre-Nest limit.
+    request.on('data', (incomingChunk: Buffer | string) => {
+      const bodyChunk = Buffer.isBuffer(incomingChunk)
+        ? incomingChunk
+        : Buffer.from(incomingChunk);
+      bodySize += bodyChunk.byteLength;
+
+      if (bodySize > BETTER_AUTH_REQUEST_BODY_LIMIT_BYTES) {
+        isOversized = true;
+        bodyChunks.length = 0;
+        return;
+      }
+
+      if (!isOversized) {
+        bodyChunks.push(bodyChunk);
+      }
+    });
+    request.once('aborted', () => {
+      hasFinishedReading = true;
+    });
+    request.once('error', (requestError: Error) => {
+      if (hasFinishedReading) {
+        return;
+      }
+
+      hasFinishedReading = true;
+      next(requestError);
+    });
+    request.once('end', () => {
+      if (hasFinishedReading) {
+        return;
+      }
+
+      hasFinishedReading = true;
+
+      if (!isOversized) {
+        if (bodySize > 0) {
+          // Better Call replays this raw string after observing that the Node stream has ended.
+          request.body = Buffer.concat(bodyChunks, bodySize).toString('utf8');
+        }
+
+        forwardRequestToBetterAuth();
+        return;
+      }
+
+      const language = resolveSupportedLanguage(
+        request.headers['accept-language'],
+      );
+      const translatedMessage = i18nService.translate('http.413', {
+        lang: language,
+        defaultValue: 'Payload Too Large',
+      });
+
+      // AI modified: this project-owned pre-Nest failure follows the shared localized envelope contract.
+      response.vary('Accept-Language');
+      response.setHeader('Content-Language', language);
+      response.status(413).json({
+        code: 413,
+        message:
+          typeof translatedMessage === 'string'
+            ? translatedMessage
+            : 'Payload Too Large',
+        data: null,
+        errors: null,
+      });
+    });
+    request.resume();
   };
 }
 

@@ -166,6 +166,30 @@
         "functions": 70,
         "lines": 75,
         "statements": 70
+      },
+      "./src/bootstrap/http/validation.pipe.ts": {
+        "branches": 80,
+        "functions": 100,
+        "lines": 90,
+        "statements": 90
+      },
+      "./src/platform/runtime/i18n/api-envelope.interceptor.ts": {
+        "branches": 50,
+        "functions": 100,
+        "lines": 85,
+        "statements": 85
+      },
+      "./src/platform/runtime/i18n/api-exception.filter.ts": {
+        "branches": 60,
+        "functions": 90,
+        "lines": 80,
+        "statements": 80
+      },
+      "./src/platform/runtime/i18n/i18n.translate.ts": {
+        "branches": 60,
+        "functions": 85,
+        "lines": 85,
+        "statements": 85
       }
     },
     "testEnvironment": "node"

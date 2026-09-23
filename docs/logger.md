@@ -40,7 +40,7 @@ Notes / 说明：
 - Defaults without `LOGGER_LEVELS`: production `info`, development `debug`,
   test `warn`.
   未设置 `LOGGER_LEVELS` 时：生产 `info`，开发 `debug`，测试 `warn`。
-- Only exact `/health/live` and `/health/ready` probe paths (with optional
+- Only exact `/api/health/live` and `/api/health/ready` probe paths (with optional
   query strings) skip automatic request/response logging.
 - Request access logs keep an explicit allowlist of request ID, method, URL
   pathname, and remote address/port. They omit all request headers and parsed

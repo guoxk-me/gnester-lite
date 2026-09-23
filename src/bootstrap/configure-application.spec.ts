@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import session from 'express-session';
 import helmet from 'helmet';
+import { I18nService } from 'nestjs-i18n';
 
 import { Environment, type RateLimitConfig } from 'config/config.types';
 import { BetterAuthService } from '../platform/security/better-auth/better-auth.service';
@@ -56,9 +57,13 @@ describe('configureApplication', () => {
     const betterAuthService = {
       getRequestHandler: jest.fn().mockResolvedValue(betterAuthHandler),
     };
+    const i18nService = {
+      translate: jest.fn(),
+    };
     const values = new Map<string, unknown>([
       ['PORT', 4100],
       ['NODE_ENV', Environment.Development],
+      ['app.apiPrefix', 'api'],
       ['COMPRESSION_ENABLED', true],
       ['SESSION_ENABLED', true],
       ['SESSION_SECRET', 'test-session-secret'],
@@ -86,6 +91,7 @@ describe('configureApplication', () => {
     };
     const enableCors = jest.fn();
     const enableVersioning = jest.fn();
+    const setGlobalPrefix = jest.fn();
     const set = jest.fn();
     const use = jest.fn();
     const useBodyParser = jest.fn();
@@ -107,9 +113,14 @@ describe('configureApplication', () => {
           return betterAuthService;
         }
 
+        if (token === I18nService) {
+          return i18nService;
+        }
+
         throw new Error('Unexpected provider lookup');
       }),
       set,
+      setGlobalPrefix,
       use,
       useBodyParser,
       useGlobalPipes,
@@ -179,6 +190,9 @@ describe('configureApplication', () => {
       ['urlencoded', { extended: true }],
     ]);
     expect(useGlobalPipes).toHaveBeenCalledWith(expect.any(ValidationPipe));
+    expect(setGlobalPrefix).toHaveBeenCalledWith('api', {
+      exclude: ['/'],
+    });
     expect(enableVersioning).toHaveBeenCalledWith({
       type: VersioningType.URI,
       prefix: 'v',
@@ -204,6 +218,7 @@ describe('configureApplication', () => {
       use.mock.invocationCallOrder[5],
       use.mock.invocationCallOrder[6],
       useGlobalPipes.mock.invocationCallOrder[0],
+      setGlobalPrefix.mock.invocationCallOrder[0],
       enableVersioning.mock.invocationCallOrder[0],
       jest.mocked(setupOpenApi).mock.invocationCallOrder[0],
     ];

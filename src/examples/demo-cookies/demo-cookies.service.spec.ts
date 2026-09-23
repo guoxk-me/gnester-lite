@@ -13,14 +13,18 @@ import {
 } from './demo-cookies.service';
 
 describe('DemoCookiesService', () => {
-  const configService: jest.Mocked<Pick<ConfigService, 'get'>> = {
-    get: jest.fn(),
-  };
+  let nodeEnv = Environment.Development;
+  const getConfig = jest.fn((key: string, fallback?: unknown): unknown =>
+    key === 'NODE_ENV' ? nodeEnv : key === 'app.apiPrefix' ? 'api' : fallback,
+  );
+  const configService = {
+    get: getConfig,
+  } as unknown as Pick<ConfigService, 'get'>;
   let service: DemoCookiesService;
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    configService.get.mockReturnValue(Environment.Development);
+    nodeEnv = Environment.Development;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -99,7 +103,7 @@ describe('DemoCookiesService', () => {
     expect(cookie.name).toBe(DEMO_SESSION_COOKIE);
     expect(cookie.options).toMatchObject({
       httpOnly: true,
-      path: '/demo-cookies',
+      path: '/api/demo-cookies',
       sameSite: 'lax',
       secure: false,
       signed: true,
@@ -118,7 +122,7 @@ describe('DemoCookiesService', () => {
   });
 
   it('uses secure cookies in production', () => {
-    configService.get.mockReturnValue(Environment.Production);
+    nodeEnv = Environment.Production;
 
     const cookie = service.createPreferencesCookie({ theme: 'system' });
 
@@ -131,7 +135,7 @@ describe('DemoCookiesService', () => {
     expect(cookie.name).toBe(DEMO_SESSION_COOKIE);
     expect(cookie.options).toMatchObject({
       httpOnly: true,
-      path: '/demo-cookies',
+      path: '/api/demo-cookies',
       sameSite: 'lax',
     });
     expect(cookie.options.signed).toBeUndefined();

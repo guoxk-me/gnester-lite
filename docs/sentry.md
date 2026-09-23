@@ -94,7 +94,7 @@ they usually act as control flow.
 Verify with:
 
 ```http
-GET /demo-sentry/debug-sentry
+GET /api/demo-sentry/debug-sentry
 ```
 
 When a DSN is configured, the thrown `Error` should appear in the Sentry
@@ -168,9 +168,9 @@ npx @sentry/wizard@latest -i sourcemaps
 ## Demo Routes / 示例路由
 
 ```http
-GET /demo-sentry/scenarios
-GET /demo-sentry/status
-GET /demo-sentry/debug-sentry
+GET /api/demo-sentry/scenarios
+GET /api/demo-sentry/status
+GET /api/demo-sentry/debug-sentry
 ```
 
 ## Verify / 验证

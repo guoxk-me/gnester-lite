@@ -118,11 +118,11 @@ describe('DemoAuthService', () => {
       expect.arrayContaining([
         expect.objectContaining({
           name: 'Passport local login + JWT bearer API',
-          route: '/demo-auth/login -> /demo-auth/profile',
+          route: '/api/demo-auth/login -> /api/demo-auth/profile',
         }),
         expect.objectContaining({
           name: 'Current user payload',
-          route: '/demo-auth/profile',
+          route: '/api/demo-auth/profile',
         }),
       ]),
     );

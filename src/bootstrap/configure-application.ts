@@ -5,6 +5,7 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import helmet from 'helmet';
+import { I18nService } from 'nestjs-i18n';
 
 import { Environment, type RateLimitConfig } from 'config/config.types';
 import { BetterAuthService } from '../platform/security/better-auth/better-auth.service';
@@ -105,9 +106,10 @@ export async function configureApplication(
   const betterAuthHandler = await app
     .get(BetterAuthService)
     .getRequestHandler();
+  const i18nService = app.get(I18nService);
 
   // AI modified: mount the raw Better Auth handler before restoring Nest body parsers.
-  app.use(createBetterAuthRequestMiddleware(betterAuthHandler));
+  app.use(createBetterAuthRequestMiddleware(betterAuthHandler, i18nService));
   app.useBodyParser('json');
   app.useBodyParser('urlencoded', { extended: true });
 
@@ -117,6 +119,13 @@ export async function configureApplication(
 
   // AI modified: the custom exception factory owns one stable sanitized contract in every environment.
   app.useGlobalPipes(createValidationPipe());
+  // AI modified: keep the landing route public while grouping every API route under the configured prefix.
+  app.setGlobalPrefix(
+    configService.getOrThrow<string>('app.apiPrefix', { infer: true }),
+    {
+      exclude: ['/'],
+    },
+  );
   app.enableVersioning({
     type: VersioningType.URI,
     prefix: 'v',

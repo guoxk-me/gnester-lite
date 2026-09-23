@@ -11,6 +11,7 @@ export enum DbConnection {
 
 export interface AppConfig {
   readonly name: string;
+  readonly apiPrefix: string;
 }
 
 export interface CacheConfig {

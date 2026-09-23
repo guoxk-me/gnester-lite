@@ -41,7 +41,7 @@ const demoCookieCreatedResponse: ApiResponseOptions = {
       schema: {
         type: 'string',
         example:
-          'demo_session=value; Path=/demo-cookies; HttpOnly; SameSite=Lax',
+          'demo_session=value; Path=/api/demo-cookies; HttpOnly; SameSite=Lax',
       },
     },
   },
@@ -56,7 +56,7 @@ const demoCookieClearedResponse: ApiResponseOptions = {
       schema: {
         type: 'string',
         example:
-          'demo_session=; Path=/demo-cookies; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax',
+          'demo_session=; Path=/api/demo-cookies; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax',
       },
     },
   },

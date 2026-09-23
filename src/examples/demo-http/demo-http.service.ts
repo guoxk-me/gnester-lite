@@ -27,7 +27,7 @@ export class DemoHttpService {
       {
         name: 'typed GET with query params',
         method: 'GET',
-        route: '/demo-http/posts?userId=1',
+        route: '/api/demo-http/posts?userId=1',
         useCase: 'Call an upstream REST list endpoint with optional filters.',
         nestPattern:
           'Controller validates query DTO, service calls HttpService.get<T>().',
@@ -35,7 +35,7 @@ export class DemoHttpService {
       {
         name: 'typed GET by id',
         method: 'GET',
-        route: '/demo-http/posts/1',
+        route: '/api/demo-http/posts/1',
         useCase: 'Fetch one upstream resource and map HTTP failures centrally.',
         nestPattern:
           'Use ParseIntPipe for path params and translate Axios errors in the service.',
@@ -43,7 +43,7 @@ export class DemoHttpService {
       {
         name: 'POST JSON body',
         method: 'POST',
-        route: '/demo-http/posts',
+        route: '/api/demo-http/posts',
         useCase: 'Send a validated request body to another HTTP service.',
         nestPattern:
           'Controller owns DTO validation, service owns outbound HTTP behavior.',
@@ -51,7 +51,7 @@ export class DemoHttpService {
       {
         name: 'direct Axios instance access',
         method: 'GET',
-        route: '/demo-http/provider-status',
+        route: '/api/demo-http/provider-status',
         useCase:
           'Use axiosRef for low-level Axios behavior when HttpService Observable helpers are not enough.',
         nestPattern:

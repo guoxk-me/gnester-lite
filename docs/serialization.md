@@ -64,13 +64,13 @@ It shows common response cases:
 
 ## Routes / 路由
 
-- `GET /demo-serialization/profile`: normal public response.
+- `GET /api/demo-serialization/profile`: normal public response.
   普通公开响应。
-- `GET /demo-serialization/profile/admin`: includes `groups: ['admin']` fields.
+- `GET /api/demo-serialization/profile/admin`: includes `groups: ['admin']` fields.
   包含 `groups: ['admin']` 字段。
-- `GET /demo-serialization/profile/plain`: plain object transformed by response DTO.
+- `GET /api/demo-serialization/profile/plain`: plain object transformed by response DTO.
   普通对象按响应 DTO 转换。
-- `GET /demo-serialization/page/plain`: nested plain array transformed by response DTO.
+- `GET /api/demo-serialization/page/plain`: nested plain array transformed by response DTO.
   嵌套普通数组按响应 DTO 转换。
 
 ## How To Change / 如何修改

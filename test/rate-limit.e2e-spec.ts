@@ -36,6 +36,9 @@ describe('Rate limiting (e2e)', () => {
               CORS_ENABLED: false,
               CSRF_ENABLED: false,
               SESSION_ENABLED: false,
+              app: {
+                apiPrefix: 'api',
+              },
               rateLimit: {
                 enabled: true,
                 trustProxy,
@@ -75,13 +78,13 @@ describe('Rate limiting (e2e)', () => {
     }
 
     await request(app.getHttpServer())
-      .get('/demo-rate-limit/default')
+      .get('/api/demo-rate-limit/default')
       .expect(200);
     await request(app.getHttpServer())
-      .get('/demo-rate-limit/default')
+      .get('/api/demo-rate-limit/default')
       .expect(200);
     await request(app.getHttpServer())
-      .get('/demo-rate-limit/default')
+      .get('/api/demo-rate-limit/default')
       .expect(429);
   });
 
@@ -91,10 +94,10 @@ describe('Rate limiting (e2e)', () => {
     }
 
     await request(app.getHttpServer())
-      .post('/demo-rate-limit/login')
+      .post('/api/demo-rate-limit/login')
       .expect(201);
     await request(app.getHttpServer())
-      .post('/demo-rate-limit/login')
+      .post('/api/demo-rate-limit/login')
       .expect(429);
   });
 
@@ -104,13 +107,13 @@ describe('Rate limiting (e2e)', () => {
     }
 
     await request(app.getHttpServer())
-      .get('/demo-rate-limit/health')
+      .get('/api/demo-rate-limit/health')
       .expect(200);
     await request(app.getHttpServer())
-      .get('/demo-rate-limit/health')
+      .get('/api/demo-rate-limit/health')
       .expect(200);
     await request(app.getHttpServer())
-      .get('/demo-rate-limit/health')
+      .get('/api/demo-rate-limit/health')
       .expect(200);
   });
 
@@ -123,23 +126,23 @@ describe('Rate limiting (e2e)', () => {
     const secondClientIp = '203.0.113.20';
 
     await request(app.getHttpServer())
-      .get('/demo-rate-limit/default')
+      .get('/api/demo-rate-limit/default')
       .set('X-Forwarded-For', firstClientIp)
       .expect(200);
     await request(app.getHttpServer())
-      .get('/demo-rate-limit/default')
+      .get('/api/demo-rate-limit/default')
       .set('X-Forwarded-For', firstClientIp)
       .expect(200);
     await request(app.getHttpServer())
-      .get('/demo-rate-limit/default')
+      .get('/api/demo-rate-limit/default')
       .set('X-Forwarded-For', secondClientIp)
       .expect(200);
     await request(app.getHttpServer())
-      .get('/demo-rate-limit/default')
+      .get('/api/demo-rate-limit/default')
       .set('X-Forwarded-For', firstClientIp)
       .expect(429);
     await request(app.getHttpServer())
-      .get('/demo-rate-limit/default')
+      .get('/api/demo-rate-limit/default')
       .set('X-Forwarded-For', secondClientIp)
       .expect(200);
   });
@@ -150,15 +153,15 @@ describe('Rate limiting (e2e)', () => {
     const httpServer = app.getHttpServer();
 
     await request(httpServer)
-      .get('/demo-rate-limit/default')
+      .get('/api/demo-rate-limit/default')
       .set('X-Forwarded-For', '198.51.100.10')
       .expect(200);
     await request(httpServer)
-      .get('/demo-rate-limit/default')
+      .get('/api/demo-rate-limit/default')
       .set('X-Forwarded-For', '203.0.113.20')
       .expect(200);
     await request(httpServer)
-      .get('/demo-rate-limit/default')
+      .get('/api/demo-rate-limit/default')
       .set('X-Forwarded-For', '192.0.2.30')
       .expect(429);
   });

@@ -11,9 +11,9 @@ deployment platforms (Kubernetes, load balancers, PaaS health checks).
 - `src/platform/operations/health/health.module.ts`: imports `TerminusModule` and registers
   the controller.
   引入 `TerminusModule` 并注册控制器。
-- `src/platform/operations/health/health.controller.ts`: `GET /health/live` and
-  `GET /health/ready`.
-  暴露 `GET /health/live` 与 `GET /health/ready`。
+- `src/platform/operations/health/health.controller.ts`: `GET /api/health/live` and
+  `GET /api/health/ready`.
+  暴露 `GET /api/health/live` 与 `GET /api/health/ready`。
 - `src/platform/operations/health/application-readiness.service.ts`: owns the irreversible
   ready-to-draining transition used by graceful shutdown.
   管理优雅关停期间不可逆的 ready→draining 状态。
@@ -28,14 +28,14 @@ Paths are **version-neutral** (`VERSION_NEUTRAL`), so they are not under
 路径使用 **VERSION_NEUTRAL**，不带 `/v1/...` 前缀。
 
 ```text
-GET /health/live
-GET /health/ready
+GET /api/health/live
+GET /api/health/ready
 ```
 
-| Route           | Purpose               | Checks                                                          |
-| --------------- | --------------------- | --------------------------------------------------------------- |
-| `/health/live`  | Process is up         | In-process `app: up` only（不探依赖）                           |
-| `/health/ready` | Ready to take traffic | Application not draining, sanitized database ping, Redis `PING` |
+| Route               | Purpose               | Checks                                                          |
+| ------------------- | --------------------- | --------------------------------------------------------------- |
+| `/api/health/live`  | Process is up         | In-process `app: up` only（不探依赖）                           |
+| `/api/health/ready` | Ready to take traffic | Application not draining, sanitized database ping, Redis `PING` |
 
 Example readiness success body (shape from `@nestjs/terminus`):
 
@@ -87,20 +87,20 @@ Example readiness success body (shape from `@nestjs/terminus`):
   timeout. A query that exceeds the total one-second budget destroys its
   connection; a queued acquisition remains single-flight and releases a late
   connection before another attempt can start.
-- nestjs-pino skips automatic access logs only for exact `/health/live` and
-  `/health/ready` paths (`src/platform/observability/logger/logger.config.ts`).
+- nestjs-pino skips automatic access logs only for exact `/api/health/live` and
+  `/api/health/ready` paths (`src/platform/observability/logger/logger.config.ts`).
 - Both infrastructure probes use `@SkipHttpThrottle()`, which bypasses every
   configured HTTP throttler without coupling the probe to throttler names.
-- Rate-limit demo also has `GET /demo-rate-limit/health` with
+- Rate-limit demo also has `GET /api/demo-rate-limit/health` with
   `@SkipHttpThrottle()`;
   that is a throttling demo route, not the Terminus probe.
-  `GET /demo-rate-limit/health` 是限流演示（`@SkipHttpThrottle()`），不是 Terminus
+  `GET /api/demo-rate-limit/health` 是限流演示（`@SkipHttpThrottle()`），不是 Terminus
   探针。
 
 ## Verify / 验证
 
 ```bash
 pnpm run test -- src/platform/operations/health/health.controller.spec.ts
-curl -sS http://localhost:3000/health/live
-curl -sS http://localhost:3000/health/ready
+curl -sS http://localhost:3000/api/health/live
+curl -sS http://localhost:3000/api/health/ready
 ```

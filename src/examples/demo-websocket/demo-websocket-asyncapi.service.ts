@@ -39,7 +39,8 @@ export interface DemoWebsocketAsyncApiDocument {
   };
 }
 
-const asyncApiIndex = `<!doctype html>
+function createAsyncApiIndex(apiPrefix: string): string {
+  return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -51,12 +52,13 @@ const asyncApiIndex = `<!doctype html>
       <h1>gnester-lite WebSocket API</h1>
       <p>Import the maintained AsyncAPI contract using one of these endpoints:</p>
       <ul>
-        <li><a href="/async-api-json">AsyncAPI JSON</a></li>
-        <li><a href="/async-api-yaml">AsyncAPI YAML</a></li>
+        <li><a href="/${apiPrefix}/async-api-json">AsyncAPI JSON</a></li>
+        <li><a href="/${apiPrefix}/async-api-yaml">AsyncAPI YAML</a></li>
       </ul>
     </main>
   </body>
 </html>`;
+}
 
 export function createDemoWebsocketAsyncApiDocument(
   port: number,
@@ -460,7 +462,10 @@ export class DemoWebsocketAsyncApiService {
   }
 
   getIndex(): string {
-    return asyncApiIndex;
+    // AI modified: AsyncAPI index links follow the configurable HTTP prefix; the Socket.IO namespace remains unchanged.
+    return createAsyncApiIndex(
+      this.configService.get<string>('app.apiPrefix', 'api'),
+    );
   }
 
   private resolveServerPort(): number {

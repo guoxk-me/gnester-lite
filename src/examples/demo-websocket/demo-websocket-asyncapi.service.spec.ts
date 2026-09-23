@@ -163,7 +163,11 @@ describe('DemoWebsocketAsyncApiService', () => {
       await request(httpServer)
         .get('/async-api')
         .expect(200)
-        .expect('Content-Type', /text\/html/);
+        .expect('Content-Type', /text\/html/)
+        .expect((response) => {
+          expect(response.text).toContain('href="/api/async-api-json"');
+          expect(response.text).toContain('href="/api/async-api-yaml"');
+        });
       await request(httpServer)
         .get('/async-api-json')
         .expect(200)

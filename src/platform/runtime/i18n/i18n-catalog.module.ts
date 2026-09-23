@@ -1,9 +1,10 @@
 import { join } from 'node:path';
 
 import { Module } from '@nestjs/common';
-import { AcceptLanguageResolver, I18nModule } from 'nestjs-i18n';
+import { I18nModule } from 'nestjs-i18n';
 
 import { I18N_FALLBACK_LANGUAGE } from './i18n.constants';
+import { SupportedLanguageResolver } from './i18n.translate';
 
 // AI modified: catalog-only root so CSRF and other consumers can translate without HTTP envelope side effects.
 @Module({
@@ -18,7 +19,8 @@ import { I18N_FALLBACK_LANGUAGE } from './i18n.constants';
         path: join(__dirname, 'locales'),
         watch: false,
       },
-      resolvers: [AcceptLanguageResolver],
+      // AI modified: resolve directly to a supported base language after weighted negotiation.
+      resolvers: [SupportedLanguageResolver],
     }),
   ],
   exports: [I18nModule],
