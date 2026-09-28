@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 
-import { AuthGuard } from '../../platform/security/auth/auth.guard';
-import { IS_PUBLIC_KEY } from '../../platform/security/auth/decorators/public.decorator';
-import { PermissionsGuard } from '../../platform/security/authorization/guards/permissions.guard';
-import { PoliciesGuard } from '../../platform/security/authorization/guards/policies.guard';
-import { RolesGuard } from '../../platform/security/authorization/guards/roles.guard';
+import { AuthGuard } from '../../auth/auth.guard';
+import { IS_PUBLIC_KEY } from '../../auth/decorators/public.decorator';
+import { PermissionsGuard } from '../../authorization/guards/permissions.guard';
+import { PoliciesGuard } from '../../authorization/guards/policies.guard';
+import { RolesGuard } from '../../authorization/guards/roles.guard';
 import { DemoAuthorizationController } from './demo-authorization.controller';
 import { DemoAuthorizationService } from './demo-authorization.service';
 

@@ -1,4 +1,4 @@
-import { CommonScheduleService } from '../../platform/runtime/schedule/schedule.service';
+import { ScheduleService } from '../../schedule/schedule.service';
 import {
   DEMO_DECLARATIVE_CRON_JOB,
   DEMO_DYNAMIC_CRON_JOB,
@@ -8,7 +8,7 @@ import { DemoScheduleService } from './demo-schedule.service';
 describe('DemoScheduleService', () => {
   const scheduleService: jest.Mocked<
     Pick<
-      CommonScheduleService,
+      ScheduleService,
       | 'addCronJob'
       | 'addInterval'
       | 'addTimeout'
@@ -56,7 +56,7 @@ describe('DemoScheduleService', () => {
     });
     scheduleService.isEnabled.mockReturnValue(false);
     service = new DemoScheduleService(
-      scheduleService as unknown as CommonScheduleService,
+      scheduleService as unknown as ScheduleService,
     );
   });
 

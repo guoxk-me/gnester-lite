@@ -3,7 +3,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import type { Request, Response } from 'express';
 
-import { CsrfService } from '../../platform/security/csrf/csrf.service';
+import { CsrfService } from '../../csrf/csrf.service';
 import { DemoCsrfController } from './demo-csrf.controller';
 import { DemoCsrfService } from './demo-csrf.service';
 import {

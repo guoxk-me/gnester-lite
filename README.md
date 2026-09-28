@@ -218,10 +218,10 @@ one another.
 
 ## Database
 
-Runtime options live in `config/database.config.ts`; CLI options live in
-`config/typeorm.data-source.ts`.
+Runtime options live in `src/config/database.config.ts`; CLI options live in
+`src/config/typeorm.data-source.ts`.
 
-Application migrations that production may execute belong in `src/migrations/`.
+Application migrations that production may execute belong in `src/database/migrations/`.
 The educational database migration instead lives beside its owner at
 `src/examples/demo-database/migrations/`. Migration discovery includes that
 feature directory in `development`, `test`, and guarded `provision`, but excludes
@@ -232,8 +232,8 @@ runs in every environment. Better Auth uses its own `mysql2` pool against the
 same database; TypeORM remains the migration owner.
 
 ```bash
-pnpm migration:create src/migrations/CreateExample
-pnpm migration:generate src/migrations/CreateExample
+pnpm migration:create src/database/migrations/CreateExample
+pnpm migration:generate src/database/migrations/CreateExample
 pnpm migration:run
 pnpm migration:revert
 
@@ -252,19 +252,21 @@ that history when the Demo migration set is enabled.
 ## Project layout
 
 ```text
-config/              YAML/env validation and TypeORM CLI configuration
 docs/                operational topic guides
 scripts/             artifact and contract verification
 src/bootstrap/       order-sensitive startup, HTTP, and shutdown composition
-src/platform/        reusable infrastructure, runtime, observability, operations, and security capabilities
-src/features/        supported production business capabilities
+src/auth/ ...        top-level reusable capabilities (auth, cache, queue, etc.)
+src/<business-name>/ future production business modules
+src/config/          YAML/env validation and TypeORM CLI configuration
 src/examples/        removable teaching examples, including the Demo migration
 src/contracts/       pure framework-free contracts shared across owners
-src/migrations/      application migrations discoverable in production
-test/                focused e2e and full-infrastructure integration tests
+src/database/migrations/ application migrations discoverable in production
+test/e2e/            focused end-to-end tests
+test/integration/    full-infrastructure integration tests
+test/fixtures/       shared test fixtures
 ```
 
-Platform modules are explicit dependencies: a consuming Nest module imports
+Capability modules are explicit dependencies: a consuming Nest module imports
 the capability module that exports its providers. The deliberate composition
 exceptions are the global `ConfigModule` and the application-level TypeORM root
 registration in `AppModule`; feature repositories still use

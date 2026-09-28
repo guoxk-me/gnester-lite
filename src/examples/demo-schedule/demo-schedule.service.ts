@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron, CronExpression, Interval, Timeout } from '@nestjs/schedule';
-import { CommonScheduleService } from '../../platform/runtime/schedule/schedule.service';
+import { ScheduleService } from '../../schedule/schedule.service';
 import {
   DEMO_CRON_PATTERN_JOB,
   DEMO_DECLARATIVE_CRON_JOB,
@@ -13,7 +13,7 @@ import {
   DEMO_TIME_ZONE_CRON_JOB,
   DEMO_UTC_OFFSET_CRON_JOB,
 } from './demo-schedule.constants';
-import { withSentryIsolation } from '../../platform/observability/sentry/with-sentry-isolation';
+import { withSentryIsolation } from '../../sentry/with-sentry-isolation';
 import { DemoScheduleOverviewDto } from './dto/demo-schedule-overview.dto';
 import { DemoScheduleRunDto } from './dto/demo-schedule-run.dto';
 
@@ -21,7 +21,7 @@ import { DemoScheduleRunDto } from './dto/demo-schedule-run.dto';
 export class DemoScheduleService implements OnApplicationBootstrap {
   private readonly logger = new Logger(DemoScheduleService.name);
 
-  constructor(private readonly scheduleService: CommonScheduleService) {}
+  constructor(private readonly scheduleService: ScheduleService) {}
 
   onApplicationBootstrap(): void {
     this.registerDynamicCronJob();

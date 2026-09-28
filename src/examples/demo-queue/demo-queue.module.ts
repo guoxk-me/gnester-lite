@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { Worker } from 'bullmq';
 
-import { CommonQueueModule } from '../../platform/infrastructure/queue/queue.module';
+import { QueueModule } from '../../queue/queue.module';
 import {
   DEMO_QUEUE,
   DEMO_QUEUE_FLOW_PRODUCER,
@@ -21,7 +21,7 @@ const demoQueueWorkerFactory: DemoQueueWorkerFactory = (processor, options) =>
 @Module({
   imports: [
     // AI modified: queue root configuration is explicit in the owning example.
-    CommonQueueModule,
+    QueueModule,
     BullModule.registerQueue({
       name: DEMO_QUEUE,
     }),

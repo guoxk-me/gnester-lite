@@ -6,7 +6,7 @@ import { DemoRateLimitScenarioDto } from './dto/demo-rate-limit-scenario.dto';
 export class DemoRateLimitService {
   getOverview(): DemoRateLimitOverviewDto {
     return {
-      module: 'CommonRateLimitModule',
+      module: 'RateLimitModule',
       package: '@nestjs/throttler',
       registration: 'global APP_GUARD with YAML-backed throttler definitions',
       scenarios: [

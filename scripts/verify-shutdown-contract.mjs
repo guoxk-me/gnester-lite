@@ -76,7 +76,7 @@ export function verifyShutdownBudgets({
 
 export function verifyWorkspaceShutdownContract(projectDirectory) {
   const applicationConfig = yaml.load(
-    readFileSync(`${projectDirectory}/config/config.yaml`, 'utf8'),
+    readFileSync(`${projectDirectory}/src/config/config.yaml`, 'utf8'),
   );
   const composeConfig = yaml.load(
     readFileSync(`${projectDirectory}/docker-compose.yml`, 'utf8'),

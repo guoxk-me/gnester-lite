@@ -7,11 +7,6 @@
     "noEmit": true,
     "sourceMap": false
   },
-  "include": [
-    "src/**/*.d.ts",
-    "src/**/*.spec.ts",
-    "config/**/*.spec.ts",
-    "test/**/*.ts"
-  ],
+  "include": ["src/**/*.d.ts", "src/**/*.spec.ts", "test/**/*.ts"],
   "exclude": ["node_modules", "dist", "documentation", "src/metadata.ts"]
 }

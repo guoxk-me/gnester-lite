@@ -79,7 +79,8 @@ const localizedBodyMetadata: ArgumentMetadata = {
 function readLocaleMessages(fileName: string): Record<string, string> {
   return JSON.parse(
     readFileSync(
-      join(__dirname, '../../platform/runtime/i18n/locales/zh', fileName),
+      // AI modified: locale fixtures now live in the top-level i18n capability.
+      join(__dirname, '../../i18n/locales/zh', fileName),
       'utf8',
     ),
   ) as Record<string, string>;

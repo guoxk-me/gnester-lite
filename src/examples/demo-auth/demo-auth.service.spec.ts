@@ -1,5 +1,5 @@
-import { AuthTokenService } from '../../platform/security/auth/auth-token.service';
-import { PasswordHashService } from '../../platform/security/auth/password-hash.service';
+import { AuthTokenService } from '../../auth/auth-token.service';
+import { PasswordHashService } from '../../auth/password-hash.service';
 import { DemoAuthService } from './demo-auth.service';
 
 describe('DemoAuthService', () => {

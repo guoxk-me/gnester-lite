@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
-import { AuthTokenService } from '../../platform/security/auth/auth-token.service';
-import type { JwtAuthenticatedUser } from '../../platform/security/auth/types/jwt-authenticated-user.type';
+import { AuthTokenService } from '../../auth/auth-token.service';
+import type { JwtAuthenticatedUser } from '../../auth/types/jwt-authenticated-user.type';
 import {
   DEMO_WEBSOCKET_EVENTS,
   type DemoWebsocketEventName,

@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { CommonScheduleModule } from '../../platform/runtime/schedule/schedule.module';
+import { ScheduleModule } from '../../schedule/schedule.module';
 import { DemoScheduleController } from './demo-schedule.controller';
 import { DemoScheduleService } from './demo-schedule.service';
 
 @Module({
-  imports: [CommonScheduleModule],
+  imports: [ScheduleModule],
   controllers: [DemoScheduleController],
   providers: [DemoScheduleService],
 })

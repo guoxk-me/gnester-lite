@@ -1,6 +1,6 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { CacheService } from '../../platform/infrastructure/cache/cache.service';
+import { CacheService } from '../../cache/cache.service';
 import { DEMO_CACHE_MAX_ENTRIES, DemoCacheService } from './demo-cache.service';
 
 describe('DemoCacheService', () => {

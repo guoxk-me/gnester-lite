@@ -10,10 +10,10 @@ it exists.
 - `src/main.ts`: Creates the NestJS app, delegates application configuration, and starts listening. / 创建 NestJS 应用、委托应用配置并启动监听。
 - `src/instrument.ts`: Initializes Sentry before any Nest modules load. / 在任何 Nest 模块加载前初始化 Sentry。
 - `src/app.module.ts`: Acts as the application composition root for global configuration, the TypeORM root connection, always-on platform modules, and the non-production demo catalog. / 作为应用唯一装配根，组合全局配置、TypeORM 根连接、常驻平台模块与非生产环境的 Demo 目录。
-- `src/migrations/`: Contains application migrations that the production data source may discover. / 保存生产数据源可以发现的应用迁移。
-- `config/`: Loads YAML/env configuration, validates runtime settings, and provides TypeORM CLI config. / 加载 YAML/env 配置、校验运行参数，并提供 TypeORM CLI 配置。
+- `src/database/migrations/`: Contains application migrations that the production data source may discover. / 保存生产数据源可以发现的应用迁移。
+- `src/config/`: Loads YAML/env configuration, validates runtime settings, and provides TypeORM CLI config. / 加载 YAML/env 配置、校验运行参数，并提供 TypeORM CLI 配置。
 - `docs/`: Explains each template capability so code examples have operational context. / 说明各模板能力，让代码示例有可运行、可维护的上下文。
-- `test/`: Holds e2e tests for API wiring and cross-module behavior. / 存放端到端测试，验证接口装配和跨模块行为。
+- `test/e2e/`, `test/integration/`, `test/fixtures/`: Hold end-to-end tests, full-stack integration tests, and shared fixtures. / 分别存放端到端测试、完整集成测试与共用测试夹具。
 
 ## Bootstrap / 启动与接入
 
@@ -25,42 +25,44 @@ it exists.
 - `src/bootstrap/http/openapi.config.ts`: Configures development OpenAPI metadata and UI. / 配置开发环境的 OpenAPI 元数据与 UI。
 - `src/bootstrap/http/socket-io.adapter.ts`: Applies the validated origin policy to Socket.IO. / 将已校验的来源策略应用到 Socket.IO。
 
-## Platform / 平台能力
+## Top-level capabilities / 顶层能力目录
 
-Platform modules are explicit dependencies: a consumer imports the module that exports the provider it injects. They are grouped by runtime responsibility and never import Feature implementations. / 平台模块采用显式依赖：消费者必须导入其所注入 provider 的所属模块。平台按运行职责分类，且不得反向依赖 Feature 实现。
+Capability modules live directly under `src/`. A consumer imports the module that exports the provider it injects; capabilities never import business implementations. / 能力模块直接放在 `src/` 下。消费者显式导入所注入 provider 的所属模块，能力目录不反向依赖业务实现。
 
 ### Infrastructure / 基础设施
 
-- `src/platform/infrastructure/cache`: Wraps Redis cache access and HTTP cache interception. See `docs/cache.md`. / 封装 Redis 缓存访问和 HTTP 缓存拦截。详见 `docs/cache.md`。
-- `src/platform/infrastructure/http-client`: Centralizes optional outbound HTTP client configuration. See the Demo HTTP section in `docs/demo.md`. / 集中管理可选的外部 HTTP 客户端配置。详见 `docs/demo.md` 的 Demo HTTP 章节。
-- `src/platform/infrastructure/queue`: Provides BullMQ connection policy and shared queue operations. See `docs/queue.md`. / 提供 BullMQ 连接策略与共享队列操作。详见 `docs/queue.md`。
+- `src/cache`: Wraps Redis cache access and HTTP cache interception. See `docs/cache.md`. / 封装 Redis 缓存访问和 HTTP 缓存拦截。详见 `docs/cache.md`。
+- `src/http-client`: Centralizes optional outbound HTTP client configuration. See the Demo HTTP section in `docs/demo.md`. / 集中管理可选的外部 HTTP 客户端配置。详见 `docs/demo.md` 的 Demo HTTP 章节。
+- `src/queue`: Provides BullMQ connection policy and shared queue operations. See `docs/queue.md`. / 提供 BullMQ 连接策略与共享队列操作。详见 `docs/queue.md`。
 
 ### Runtime / 运行时
 
-- `src/platform/runtime/schedule`: Owns scheduler registration, runtime job visibility, and shutdown cleanup. See `docs/schedule.md`. / 负责调度器注册、运行时任务可见性与关停清理。详见 `docs/schedule.md`。
+- `src/schedule`: Owns scheduler registration, runtime job visibility, and shutdown cleanup. See `docs/schedule.md`. / 负责调度器注册、运行时任务可见性与关停清理。详见 `docs/schedule.md`。
+- `src/i18n`: Owns localized responses and message catalogs. See `docs/i18n.md`. / 负责本地化响应与翻译目录。详见 `docs/i18n.md`。
 
 ### Observability / 可观测性
 
-- `src/platform/observability/logger`: Wraps `nestjs-pino` for structured logs and HTTP access logging. See `docs/logger.md`. / 封装 `nestjs-pino`，提供结构化日志与 HTTP 访问日志。详见 `docs/logger.md`。
-- `src/platform/observability/sentry`: Owns Sentry module registration, privacy policy, background isolation, and telemetry shutdown. See `docs/sentry.md`. / 负责 Sentry 模块注册、隐私策略、后台任务隔离和遥测关闭。详见 `docs/sentry.md`。
+- `src/logger`: Wraps `nestjs-pino` for structured logs and HTTP access logging. See `docs/logger.md`. / 封装 `nestjs-pino`，提供结构化日志与 HTTP 访问日志。详见 `docs/logger.md`。
+- `src/sentry`: Owns Sentry module registration, privacy policy, background isolation, and telemetry shutdown. See `docs/sentry.md`. / 负责 Sentry 模块注册、隐私策略、后台任务隔离和遥测关闭。详见 `docs/sentry.md`。
 
 ### Operations / 运维能力
 
-- `src/platform/operations/health`: Exposes liveness/readiness checks and bounded dependency diagnostics. See `docs/health.md`. / 提供存活、就绪探针与有界依赖诊断。详见 `docs/health.md`。
+- `src/health`: Exposes liveness/readiness checks and bounded dependency diagnostics. See `docs/health.md`. / 提供存活、就绪探针与有界依赖诊断。详见 `docs/health.md`。
 
 ### Security / 安全能力
 
-- `src/platform/security/auth`: Issues and verifies JWTs, hashes passwords, and protects routes. / 签发与校验 JWT、处理密码哈希，并保护接口。
-- `src/platform/security/authorization`: Provides role, permission, and policy guards. / 提供角色、权限和策略守卫。
-- `src/platform/security/crypto`: Provides HMAC signing, secure token generation, and symmetric encryption. / 提供 HMAC 签名、安全令牌生成和对称加密。
-- `src/platform/security/csrf`: Creates CSRF protection middleware and error handling. / 创建 CSRF 防护中间件和错误处理。
-- `src/platform/security/rate-limit`: Configures application-wide HTTP request throttling. / 配置应用级 HTTP 请求限流。
+- `src/auth`: Issues and verifies JWTs, hashes passwords, and protects routes. / 签发与校验 JWT、处理密码哈希，并保护接口。
+- `src/better-auth`: Owns the Better Auth integration. / 负责 Better Auth 集成。
+- `src/authorization`: Provides role, permission, and policy guards. / 提供角色、权限和策略守卫。
+- `src/crypto`: Provides HMAC signing, secure token generation, and symmetric encryption. / 提供 HMAC 签名、安全令牌生成和对称加密。
+- `src/csrf`: Creates CSRF protection middleware and error handling. / 创建 CSRF 防护中间件和错误处理。
+- `src/rate-limit`: Configures application-wide HTTP request throttling. / 配置应用级 HTTP 请求限流。
 
 See `docs/security.md` for the security capability details. / 安全能力细节见 `docs/security.md`。
 
 ## Contracts / 共享契约
 
-- `src/contracts/`: Contains only stable, framework-free TypeScript values shared across owners. It must not contain NestJS DTOs or depend on bootstrap, platform, or features. / 只保存跨所有者共享、稳定且无框架依赖的 TypeScript 类型或常量；不得放置 NestJS DTO，也不得依赖 bootstrap、platform 或 features。
+- `src/contracts/`: Contains only stable, framework-free TypeScript values shared across owners. It must not contain NestJS DTOs or depend on bootstrap, capabilities, or business folders. / 只保存跨所有者共享、稳定且无框架依赖的 TypeScript 类型或常量；不得放置 NestJS DTO，也不得依赖 bootstrap、能力目录或业务目录。
 
 ## Composition Rules / 装配规则
 
@@ -71,7 +73,7 @@ See `docs/security.md` for the security capability details. / 安全能力细节
 - `DemosModule` is omitted from production, while optional platform infrastructure is imported by the Feature that consumes it. / 生产环境不装配 `DemosModule`；可选平台基础设施由实际消费它的 Feature 导入。
 - Demo database migration discovery is opt-in by environment: `development`, `test`, and guarded `provision` include `src/examples/demo-database/migrations/`, while `production` excludes it. Existing production Demo tables are not automatically removed. / Demo 数据库迁移按环境启用：`development`、`test` 和受安全门保护的 `provision` 会包含 `src/examples/demo-database/migrations/`，`production` 则排除；已有生产 Demo 表不会被自动删除。
 
-## Feature Modules / 功能示例模块
+## Examples / 功能示例模块
 
 - `demo-auth`: Shows sign-in and token issuance flow. / 演示登录和令牌签发流程。
 - `demo-authorization`: Shows role, permission, and policy-protected endpoints. / 演示角色、权限和策略保护接口。

@@ -50,26 +50,26 @@
 | 依赖服务 | MySQL 8 + Redis 7                                                |
 | 构建     | Nest SWC（`nest-cli.json`：`builder: swc`，`typeCheck: true`）   |
 | 测试     | Jest + `@swc/jest`，`NODE_ENV=test`，`--experimental-vm-modules` |
-| 日志     | `nestjs-pino`（`CommonLoggerModule` + `app.useLogger`）          |
+| 日志     | `nestjs-pino`（`LoggerModule` + `app.useLogger`）                |
 | 观测     | `@sentry/nestjs`（`src/instrument.ts` 最先导入）                 |
 
 ### 1.2 架构边界
 
 - **`src/bootstrap/`**：启动、关停与有顺序要求的 HTTP 接入层；`bootstrap/http` 归属 CORS、Helmet、OpenAPI、ValidationPipe 和 Socket.IO adapter。
-- **`src/platform/`**：业务中立的平台能力，按 infrastructure、observability、operations、runtime、security 等职责分类。
-- **`src/features/`**：正式生产业务模块，自己拥有 controller、service、DTO、实体、迁移和测试。
+- **`src/<capability>/`**：业务中立的平台能力，按 auth、cache、queue 等具体职责分别放在 `src/` 顶层目录。
+- **`src/<business-name>/`**：正式生产业务模块，自己拥有 controller、service、DTO、实体、迁移和测试。
 - **`src/examples/`**：可整体移除的教学与集成 Demo，自己拥有 controller、service、DTO、测试和示例专属规则。
 - **`src/contracts/`**：框架无关的稳定共享 TypeScript 契约，只能依赖同层契约或 `node:` 内置模块。
-- 依赖方向只能是 **`AppModule → bootstrap + platform + features + examples + contracts`**、**`bootstrap/features/examples → platform + contracts`**、**`platform → contracts`**；禁止 `platform → bootstrap/features/examples`、`features/bootstrap → examples` 和 `contracts → bootstrap/platform/features/examples`。
+- 依赖方向只能是 **`AppModule → bootstrap + capabilities + business + examples + contracts`**、**`bootstrap/business/examples → capabilities + contracts`**、**`capabilities → contracts`**；禁止 `capabilities → bootstrap/business/examples`、`business/bootstrap → examples` 和 `contracts → bootstrap/capabilities/business/examples`。
 - **`src/common/` 已退役**，不得再放置 TypeScript 实现。
 - platform 能力由消费者显式 import；自定义 platform module 禁止 `@Global()`，同时检查第三方动态根模块自身的 global 语义和重复注册风险。
-- Demo 数据库迁移位于 `src/examples/demo-database/migrations/`，只由 development/test/provision 数据源发现；production 数据源只发现 `src/migrations/`，不会在全新生产库创建 Demo 表。路径移动不自动删除旧生产表，迁移类名保持稳定以延续 history。
+- Demo 数据库迁移位于 `src/examples/demo-database/migrations/`，只由 development/test/provision 数据源发现；production 数据源只发现 `src/database/migrations/`，不会在全新生产库创建 Demo 表。路径移动不自动删除旧生产表，迁移类名保持稳定以延续 history。
 
 ### 1.3 配置系统（双校验）
 
-- YAML 默认：`config/config.yaml` → `configuration.ts` / `YamlVariables`
-- Env 密钥与环境：`config/validation.ts` / `EnvironmentVariables`
-- 类型：`config/config.types.ts`
+- YAML 默认：`src/config/config.yaml` → `configuration.ts` / `YamlVariables`
+- Env 密钥与环境：`src/config/validation.ts` / `EnvironmentVariables`
+- 类型：`src/config/config.types.ts`
 - 生产必须强制：`JWT_SECRET`、`ENCRYPTION_KEY`、`HMAC_SECRET`、`CSRF_SECRET` 等（不得弱化）
 
 ### 1.4 启动链路（`main.ts`）
@@ -99,7 +99,7 @@
 
 ### 1.6 能力矩阵（完成度对照表）
 
-审计时以「platform/bootstrap + feature + docs + tests + config 接入」五元组对照。缺口记入 findings。
+审计时以「capabilities/bootstrap + feature + docs + tests + config 接入」五元组对照。缺口记入 findings。
 
 | Platform/Bootstrap 能力                                | 期望 Demo          | 期望 Docs               | 备注                           |
 | ------------------------------------------------------ | ------------------ | ----------------------- | ------------------------------ |
@@ -152,15 +152,15 @@ CI 基线顺序：`lint:check` → `test` → `build` → `verify:architecture` 
 
 #### 优先级队列（高 → 低）
 
-| P      | 主题          | 含义（发现即记录，本轮只修当前主题）                                                                                                             |
-| ------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **P0** | 阻塞性正确性  | 编译失败、类型错误、测试红、启动崩溃、明显逻辑 bug、安全漏洞（密钥硬编码、鉴权绕过、注入、敏感信息落日志）                                       |
-| **P1** | 契约 / 完成度 | platform/bootstrap↔feature↔docs↔tests↔config 不对称；缺模块接入；缺 DTO/校验；缺 guard；缺错误处理；缺 OpenAPI/AsyncAPI；缺 logger/Sentry 接入点 |
-| **P2** | 测试缺口      | 关键路径无 `*.spec.ts`；断言过弱；假阳性；e2e 未覆盖跨模块契约；只测 happy path                                                                  |
-| **P3** | 文档缺陷      | README/docs 与代码不一致；缺能力文档；过时命令/路径/端口；versioning（`/v1`）错误；双语备注缺失或矛盾；「文档有、代码无」                        |
-| **P4** | 结构与边界    | bootstrap/platform/features/contracts 职责混乱；循环依赖；错误 `@Global`/exports；退役 common 残留；重复实现；依赖方向反了                       |
-| **P5** | 风格与简洁    | 命名不一致；多余抽象；`any`；过长函数；重复样板；import 顺序；与邻近模块模式漂移；无意义注释                                                     |
-| **P6** | 完成度打磨    | 示例可运行性；配置示例；健康检查；迁移路径清晰度；DX 小摩擦                                                                                      |
+| P      | 主题          | 含义（发现即记录，本轮只修当前主题）                                                                                                                 |
+| ------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P0** | 阻塞性正确性  | 编译失败、类型错误、测试红、启动崩溃、明显逻辑 bug、安全漏洞（密钥硬编码、鉴权绕过、注入、敏感信息落日志）                                           |
+| **P1** | 契约 / 完成度 | capabilities/bootstrap↔feature↔docs↔tests↔config 不对称；缺模块接入；缺 DTO/校验；缺 guard；缺错误处理；缺 OpenAPI/AsyncAPI；缺 logger/Sentry 接入点 |
+| **P2** | 测试缺口      | 关键路径无 `*.spec.ts`；断言过弱；假阳性；e2e 未覆盖跨模块契约；只测 happy path                                                                      |
+| **P3** | 文档缺陷      | README/docs 与代码不一致；缺能力文档；过时命令/路径/端口；versioning（`/v1`）错误；双语备注缺失或矛盾；「文档有、代码无」                            |
+| **P4** | 结构与边界    | bootstrap/capabilities/business/contracts 职责混乱；循环依赖；错误 `@Global`/exports；退役 common 残留；重复实现；依赖方向反了                       |
+| **P5** | 风格与简洁    | 命名不一致；多余抽象；`any`；过长函数；重复样板；import 顺序；与邻近模块模式漂移；无意义注释                                                         |
+| **P6** | 完成度打磨    | 示例可运行性；配置示例；健康检查；迁移路径清晰度；DX 小摩擦                                                                                          |
 
 ### Step B — 侦察（只读，先取证后动手）
 
@@ -214,7 +214,7 @@ CI 基线顺序：`lint:check` → `test` → `build` → `verify:architecture` 
 ## 3. 完整检测清单（按维度）
 
 > 用法：选中本轮主题后，从对应维度勾选扫描；不要每轮跑完全表。  
-> 对每个 `platform/*` 或 `bootstrap/*` 能力与对应 `features/demo-*` 消费者成对检查；同时检查 `contracts/*` 的真实跨层使用。
+> 对每个 `<capability>/*` 或 `bootstrap/*` 能力与对应 `examples/demo-*` 消费者成对检查；同时检查 `contracts/*` 的真实跨层使用。
 
 ### 3.1 项目完成度（Completeness）
 
@@ -227,7 +227,7 @@ CI 基线顺序：`lint:check` → `test` → `build` → `verify:architecture` 
 - [ ] `docs/` 有对应说明；`docs/project-notes.zh-en.md` 有条目且 `See docs/...` 正确
 - [ ] README 安装/启动/验证命令与 `package.json` scripts 一致
 - [ ] 配置：YAML 默认与/或 env 校验完整；生产密钥强制项未弱化
-- [ ] Demo 能独立说明「如何正确使用对应 platform/bootstrap 能力」，而非空壳
+- [ ] Demo 能独立说明「如何正确使用对应 capabilities/bootstrap 能力」，而非空壳
 
 ### 3.2 Bug / 正确性 / 安全（Correctness & Security）
 
@@ -267,7 +267,7 @@ CI 基线顺序：`lint:check` → `test` → `build` → `verify:architecture` 
 
 ### 3.5 代码结构（Structure）
 
-- [ ] 依赖方向符合 `AppModule/bootstrap → platform + features + contracts`、`features → platform + contracts`、`platform → contracts`
+- [ ] 依赖方向符合 `AppModule/bootstrap → platform + features + contracts`、`features → platform + contracts`、`capabilities → contracts`
 - [ ] `platform` 不反向依赖 feature；platform 保持业务中立，不承载 Demo DTO、entity 或示例专属规则
 - [ ] `contracts` 只依赖同层契约或 `node:` 内置模块，不依赖 NestJS/Express/TypeORM/BullMQ 或其他源码层
 - [ ] 退役 `src/common` 没有 TypeScript 实现残留
@@ -278,7 +278,7 @@ CI 基线顺序：`lint:check` → `test` → `build` → `verify:architecture` 
 - [ ] 无死导出、未使用依赖、大段注释掉代码
 - [ ] 重复的业务中立能力优先归入现有 platform；稳定且框架无关的共享约束才进入 contracts
 - [ ] `pnpm run verify:architecture` 在 build 后通过，且其显式 capability imports 与 production module graph 断言覆盖本轮改动
-- [ ] 配置逻辑集中在 `config/` + 对应 `*.config.ts`，不散落魔法字符串
+- [ ] 配置逻辑集中在 `src/config/` + 对应 `*.config.ts`，不散落魔法字符串
 
 ### 3.6 风格统一 / 简洁 / 完整（Style）
 
@@ -344,7 +344,7 @@ CI 基线顺序：`lint:check` → `test` → `build` → `verify:architecture` 
 
 ## Capability matrix gaps
 
-- platform/bootstrap X / feature Y / docs Z / tests / config — 缺什么（若无写「无」）
+- capabilities/bootstrap X / feature Y / docs Z / tests / config — 缺什么（若无写「无」）
 
 ## Notes
 
@@ -384,7 +384,7 @@ CI 基线顺序：`lint:check` → `test` → `build` → `verify:architecture` 
 3. 快速盘点：
    - `git status` 未提交改动范围（只作上下文，不 commit）
    - §1.6 能力矩阵缺口
-   - docs 与 bootstrap/platform/features/contracts 是否对称
+   - docs 与 bootstrap/capabilities/business/contracts 是否对称
 4. 选定**单个最高优先级** `next_focus`，立即进入 Step B–E
 5. 不要试图第一轮「评完整个项目」
 

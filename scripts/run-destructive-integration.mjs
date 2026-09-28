@@ -115,7 +115,7 @@ if (
         [
           'node_modules/typeorm/cli.js',
           '-d',
-          'dist/config/typeorm.data-source.js',
+          'dist/src/config/typeorm.data-source.js',
           'migration:run',
         ],
         childEnvironment,
@@ -124,7 +124,7 @@ if (
         [
           'node_modules/typeorm/cli.js',
           '-d',
-          'dist/config/typeorm.data-source.js',
+          'dist/src/config/typeorm.data-source.js',
           'migration:revert',
         ],
         childEnvironment,
@@ -133,7 +133,7 @@ if (
         [
           'node_modules/typeorm/cli.js',
           '-d',
-          'dist/config/typeorm.data-source.js',
+          'dist/src/config/typeorm.data-source.js',
           'migration:run',
         ],
         childEnvironment,

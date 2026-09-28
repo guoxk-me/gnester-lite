@@ -2,8 +2,8 @@ import { INestApplication } from '@nestjs/common';
 import { type OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 
 import { Environment } from 'config/config.types';
-import { SKIP_API_ENVELOPE_OPENAPI_EXTENSION } from '../../platform/runtime/i18n/i18n.constants';
-import { CsrfService } from '../../platform/security/csrf/csrf.service';
+import { SKIP_API_ENVELOPE_OPENAPI_EXTENSION } from '../../i18n/i18n.constants';
+import { CsrfService } from '../../csrf/csrf.service';
 import {
   applyCsrfOpenApiContract,
   applyI18nOpenApiContract,

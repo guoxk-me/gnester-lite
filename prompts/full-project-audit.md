@@ -142,11 +142,11 @@
 ### 2.2 架构事实
 
 - `src/bootstrap/`：应用生命周期与协议接入层，负责启动、关停和有顺序要求的 HTTP pipeline 装配；`src/bootstrap/http/` 归属 CORS、Helmet、OpenAPI、ValidationPipe 和 Socket.IO adapter 等接入代码。
-- `src/platform/`：业务中立的平台能力，按 infrastructure、observability、operations、runtime、security 等职责分类；能力模块必须由真实消费者显式导入。
-- `src/features/`：正式生产业务目录；Feature 自己拥有 controller、service、DTO、实体、迁移和测试。
+- `src/<capability>/`：业务中立的平台能力，按 auth、cache、queue 等具体职责分别放在 `src/` 顶层目录；能力模块必须由真实消费者显式导入。
+- `src/<business-name>/`：正式生产业务目录；Feature 自己拥有 controller、service、DTO、实体、迁移和测试。
 - `src/examples/`：可整体移除的教学与集成 Demo；Example 自己拥有 controller、service、DTO、测试和仅服务该示例的契约。
 - `src/contracts/`：无 NestJS/Express/TypeORM/BullMQ 等框架依赖的稳定共享 TypeScript 契约；只允许依赖同层契约或 `node:` 内置模块。
-- 预期依赖方向是 `AppModule → bootstrap + platform + features + examples + contracts`、`bootstrap/features/examples → platform + contracts`、`platform → contracts`；禁止 `platform → bootstrap/features/examples`，禁止 `features/bootstrap → examples`，禁止 `contracts → bootstrap/platform/features/examples`。
+- 预期依赖方向是 `AppModule → bootstrap + capabilities + business + examples + contracts`、`bootstrap/business/examples → capabilities + contracts`、`capabilities → contracts`；禁止 `capabilities → bootstrap/business/examples`，禁止 `business/bootstrap → examples`，禁止 `contracts → bootstrap/capabilities/business/examples`。
 - `src/common/` 是已退役目录；任何残留 TypeScript 实现都应由 `verify:architecture` 判为违规，不能继续作为共享杂物层。
 - Demo 通过 `DemosModule` 聚合，`AppModule` 不需要逐个导入全部 Demo。
 - 当前 production 模块图应排除整个 `DemosModule`；development/test/provision 的模块图不同，必须分别验证，不能由某一环境外推其他环境。
@@ -277,15 +277,14 @@
 逐项列出并计数：
 
 - `src/bootstrap/**/*.ts`
-- `src/platform/**/*.ts`
-- `src/features/**/*.ts`
+- `src/<capability>/**/*.ts`
+- `src/<business-name>/**/*.ts`
 - `src/examples/**/*.ts`
 - `src/contracts/**/*.ts`
 - `src/common/**/*.ts`（预期为空；若存在则按退役层残留审计）
-- `src/migrations/**/*.ts`（production 可发现的应用迁移）
-- `src/features/**/migrations/**/*.ts`（正式 Feature 自有迁移）
+- `src/database/migrations/**/*.ts`（正式业务迁移统一由生产数据源发现）
 - `src/examples/**/migrations/**/*.ts`（即使已包含于 examples glob，仍须单独重建环境发现规则）
-- `config/**/*`
+- `src/config/**/*`
 - `test/**/*`
 - `docs/**/*`
 - `scripts/**/*`
@@ -335,19 +334,19 @@ Inventory 必须保留“已检查第一方文件”和“未检查第一方文�
 
 每一行必须包含：
 
-| 字段               | 要求                                                                |
-| ------------------ | ------------------------------------------------------------------- |
-| 能力               | 名称与职责                                                          |
-| platform/bootstrap | 平台实现或接入点                                                    |
-| demo/consumer      | 使用方；没有时说明原因                                              |
-| module wiring      | AppModule、DemosModule 或 feature import                            |
-| config             | YAML/env/type/default/生产约束                                      |
-| unit tests         | 文件及核心覆盖                                                      |
-| e2e                | 场景与装配深度                                                      |
-| docs               | README/专题/OpenAPI/AsyncAPI                                        |
-| runtime dependency | MySQL/Redis/网络/文件系统等                                         |
-| 状态               | Complete / Partial / Demo Only / Missing / Blocked / Not Applicable |
-| 证据               | 路径、符号、测试或命令                                              |
+| 字段                   | 要求                                                                |
+| ---------------------- | ------------------------------------------------------------------- |
+| 能力                   | 名称与职责                                                          |
+| capabilities/bootstrap | 平台实现或接入点                                                    |
+| demo/consumer          | 使用方；没有时说明原因                                              |
+| module wiring          | AppModule、DemosModule 或 feature import                            |
+| config                 | YAML/env/type/default/生产约束                                      |
+| unit tests             | 文件及核心覆盖                                                      |
+| e2e                    | 场景与装配深度                                                      |
+| docs                   | README/专题/OpenAPI/AsyncAPI                                        |
+| runtime dependency     | MySQL/Redis/网络/文件系统等                                         |
+| 状态                   | Complete / Partial / Demo Only / Missing / Blocked / Not Applicable |
+| 证据                   | 路径、符号、测试或命令                                              |
 
 不要强求所有能力具有完全相同的文件形态。矩阵衡量的是“实现、使用、配置、测试和说明是否与该能力真实职责相匹配”。`Demo Only` 表示能力被明确限制为教学实现且文档没有冒充 production；它既不等于 `Complete`，也不自动构成缺陷。
 
@@ -418,7 +417,7 @@ pnpm run audit:prod
 `pnpm run build` 成功后必须检查 `verify:artifact` 的覆盖范围并人工只读核对实际产物，不得只相信退出码：
 
 - `dist/src/main.js` 与生产启动命令一致。
-- `dist/config/config.yaml`、`dist/config/typeorm.data-source.js` 和运行时配置导入可解析。
+- `dist/src/config/config.yaml`、`dist/src/config/typeorm.data-source.js` 和运行时配置导入可解析。
 - entity 与 migration 的实际输出路径能被 TypeORM runtime/CLI glob 命中，并分别证明 production 只发现应用迁移、development/test/provision 额外发现 Feature-owned Demo migration。
 - spec、source map、生成 metadata、静态资源和 production dependencies 是否符合 Docker/部署方式。
 
@@ -527,8 +526,8 @@ Docker build/run 只有在调用者明确允许写入本地 Docker image/cache�
 - `AppModule`、bootstrap、`DemosModule`、各 feature/platform module 的装配关系。
 - imports/providers/controllers/exports 是否最小且正确。
 - 自定义 platform module 是否错误使用 `@Global()`，第三方动态根模块是否制造隐式依赖、重复注册或生产泄漏。
-- `AppModule/bootstrap → platform + features + contracts`、`features → platform + contracts`、`platform → contracts` 的依赖方向和潜在循环依赖。
-- `platform → features`、`contracts → bootstrap/platform/features` 是否被禁止，`src/common` 是否仍残留 TypeScript 实现。
+- `AppModule/bootstrap → platform + features + contracts`、`features → platform + contracts`、`capabilities → contracts` 的依赖方向和潜在循环依赖。
+- `capabilities → business`、`contracts → bootstrap/capabilities/business` 是否被禁止，`src/common` 是否仍残留 TypeScript 实现。
 - Controller/Gateway 只承担协议适配、输入边界和响应映射；不得直接承载核心业务编排、持久化细节或跨模块状态管理。
 - Service/Application provider 承担用例与业务规则，但不得依赖 HTTP/Express/Socket.IO 请求对象等传输层细节，除非其职责明确属于适配层。
 - Entity、migration 和数据库访问保持在持久化边界；DTO、公开响应和事件契约不得无意泄漏 ORM 实体、内部字段或敏感字段。
@@ -536,7 +535,7 @@ Docker build/run 只有在调用者明确允许写入本地 Docker image/cache�
 - platform 层必须保持业务中立；不得反向引用 feature、Demo DTO、Demo entity 或仅服务某个示例的业务规则。
 - contracts 层必须保持框架无关，不得导入 NestJS、Express、TypeORM、BullMQ、platform 或 feature 实现。
 - 对每个代表性请求至少追踪一条完整链路：入口 → guard/pipe → controller/gateway → service → persistence/integration → response/error，标出职责越界和缺失层。
-- platform 能力是否泄漏 Demo 专用类型或命名，feature 专属 DTO/事件/规则是否错误上移到 platform/contracts。
+- platform 能力是否泄漏 Demo 专用类型或命名，feature 专属 DTO/事件/规则是否错误上移到 capabilities/contracts。
 - 模块、service、controller/gateway、DTO、config、tests、docs 的能力闭环。
 - 死导出、孤立 provider、不可达 controller、重复实现和注释掉的代码。
 - 文件布局和邻近模块一致性。
@@ -626,7 +625,7 @@ Docker build/run 只有在调用者明确允许写入本地 Docker image/cache�
 - README 要求、Quick Start、脚本、端口、路由、健康检查和文档地址。
 - `package.json` scripts、README、AGENTS、CI 命令是否一致。
 - MySQL、Redis、env、migration 是否被首次启动流程真实覆盖。
-- `docs/project-notes.zh-en.md` 是否完整映射 bootstrap/platform/features/contracts，链接是否有效。
+- `docs/project-notes.zh-en.md` 是否完整映射 bootstrap/capabilities/business/contracts，链接是否有效。
 - 每份专题文档与真实模块、DTO、配置键和运行行为。
 - 文档中 HTTP method/path/body/response/status code 是否与 controller/DTO 一致。
 - `VERSION_NEUTRAL` 与 `/v1` 示例是否正确。
@@ -650,7 +649,7 @@ Docker build/run 只有在调用者明确允许写入本地 Docker image/cache�
 - 默认值、隐式类型转换、required/optional、范围校验和生产条件校验。
 - `NODE_ENV`、env file 加载顺序和测试污染。
 - development/test/provision/production 四种环境的 module graph、校验、dotenv、Sentry、queue/schedule 和可达路由是否形成明确且相互隔离的矩阵。
-- 配置构建后路径、`dist/config` 资产复制和 `start:prod` 解析。
+- 配置构建后路径、`dist/src/config` 资产复制和 `start:prod` 解析。
 - TypeORM runtime/CLI 配置、entity glob、migration glob、`Relation<T>`。
 - development/test/provision/production 的 migration 发现集合是否符合 true opt-in Demo 边界；不得把“旧生产 Demo 表仍存在”误判为当前 production 数据源仍会发现 Demo migration。
 - migration 与实体一致性、生产 `DB_SYNCHRONIZE=false`、Docker 启动前迁移路径。
@@ -681,7 +680,7 @@ Docker build/run 只有在调用者明确允许写入本地 Docker image/cache�
 
 ### D1. 模板能力完成度
 
-- platform/bootstrap + feature/docs/tests/config 闭环。
+- capabilities/bootstrap + feature/docs/tests/config 闭环。
 - 模块已接入且真实可达。
 - Demo 能说明正确使用方式而非空壳。
 - 缺失项与 Not Applicable 明确区分。
@@ -717,10 +716,10 @@ Docker build/run 只有在调用者明确允许写入本地 Docker image/cache�
 
 ### D6. 架构与依赖边界
 
-- bootstrap/platform/features/contracts 分层及允许的依赖方向。
+- bootstrap/capabilities/business/contracts 分层及允许的依赖方向。
 - DI、imports/providers/exports。
 - 自定义 platform `@Global()`、显式 capability imports 与第三方动态根模块的重复注册。
-- 退役 `src/common` 残留、`platform → features` 和 contracts 框架依赖。
+- 退役 `src/common` 残留、`capabilities → business` 和 contracts 框架依赖。
 - Controller/Gateway、Service/Application、Persistence/Integration 的职责边界。
 - DTO、事件契约、领域对象和 ORM Entity 的边界与泄漏。
 - 循环依赖、跨 feature 深层导入、平台层泄漏和模块职责。
@@ -1101,13 +1100,13 @@ ID:
 以下条件必须全部满足，才能说“审计完成”：
 
 - [ ] 已盘点 `src/bootstrap`。
-- [ ] 已盘点 `src/platform`。
-- [ ] 已盘点 `src/features`。
+- [ ] 已盘点 `src/<capability>`。
+- [ ] 已盘点 `src/<business-name>`。
 - [ ] 已盘点 `src/examples`。
 - [ ] 已盘点 `src/contracts`，并核对其框架无关约束。
 - [ ] 已确认退役 `src/common` 没有 TypeScript 实现残留。
-- [ ] 已盘点 production 可发现的 `src/migrations`、正式 Feature-owned migrations 以及 Example-owned migrations，并分别重建四种环境的迁移发现集合。
-- [ ] 已盘点 `config`。
+- [ ] 已盘点 production 可发现的 `src/database/migrations` 以及 Example-owned migrations，并分别重建四种环境的迁移发现集合。
+- [ ] 已盘点 `src/config`。
 - [ ] 已盘点 `test`。
 - [ ] 已盘点 `docs`。
 - [ ] 已盘点 `scripts`、`prompts` 与 `.github`。

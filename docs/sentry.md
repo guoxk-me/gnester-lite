@@ -11,16 +11,16 @@ keep local and CI runs offline.
 
 - `src/instrument.ts`: calls `Sentry.init` before Nest modules load.
   在 Nest 模块加载前调用 `Sentry.init`。
-- `src/platform/observability/sentry/sentry.module.ts`: registers `SentryModule` and
+- `src/sentry/sentry.module.ts`: registers `SentryModule` and
   `SentryGlobalFilter`.
   注册 `SentryModule` 与 `SentryGlobalFilter`。
-- `src/platform/observability/sentry/with-sentry-isolation.ts`: isolates cron / queue / event
+- `src/sentry/with-sentry-isolation.ts`: isolates cron / queue / event
   scopes.
   隔离定时任务、队列和事件的作用域。
-- `src/platform/observability/sentry/sentry-privacy.ts`: defines the deny-by-default telemetry
+- `src/sentry/sentry-privacy.ts`: defines the deny-by-default telemetry
   privacy boundary.
   定义默认拒绝采集的遥测隐私边界。
-- `src/platform/observability/sentry/sentry-shutdown.ts`: closes pending telemetry within the
+- `src/sentry/sentry-shutdown.ts`: closes pending telemetry within the
   final shutdown budget.
   在最终关停预算内关闭待发送遥测和 SDK 资源。
 - `src/examples/demo-sentry/`: status and debug endpoints.
@@ -121,7 +121,7 @@ This template already does that in:
 
 本模板已在以下位置使用：
 
-- `platform/runtime/schedule/schedule.service.ts`
+- `src/schedule/schedule.service.ts`
 - `demo-queue.processor.ts`
 - `demo-events.listener.ts`
 
@@ -177,6 +177,6 @@ GET /api/demo-sentry/debug-sentry
 
 ```bash
 pnpm run lint:check
-pnpm run test -- src/platform/observability/sentry src/examples/demo-sentry src/examples/demo-websocket/demo-websocket-exception.filter.spec.ts
+pnpm run test -- src/sentry src/examples/demo-sentry src/examples/demo-websocket/demo-websocket-exception.filter.spec.ts
 pnpm run build
 ```

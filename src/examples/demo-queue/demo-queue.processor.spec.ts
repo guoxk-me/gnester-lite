@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { Job } from 'bullmq';
-import { captureBackgroundException } from '../../platform/observability/sentry/with-sentry-isolation';
+import { captureBackgroundException } from '../../sentry/with-sentry-isolation';
 import {
   DEMO_QUEUE_LONG_TASK_JOB,
   DEMO_QUEUE_SEND_EMAIL_JOB,
@@ -21,7 +21,7 @@ import {
 } from './demo-queue.types';
 import { DemoQueueResultDto } from './dto/demo-queue-result.dto';
 
-jest.mock('../../platform/observability/sentry/with-sentry-isolation', () => ({
+jest.mock('../../sentry/with-sentry-isolation', () => ({
   captureBackgroundException: jest.fn(),
   withSentryIsolation: jest.fn(
     <OperationOutcome>(callback: () => OperationOutcome): OperationOutcome =>

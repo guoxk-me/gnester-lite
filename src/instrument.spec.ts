@@ -14,7 +14,7 @@ jest.mock('config/environment-files', () => ({
   sentryBootstrapEnvironment: jest.fn(),
   shouldInitializeSentry: jest.fn(),
 }));
-jest.mock('./platform/observability/sentry/sentry-privacy', () => ({
+jest.mock('./sentry/sentry-privacy', () => ({
   sentryPrivacyOptions: {
     maxBreadcrumbs: 0,
     dataCollection: {

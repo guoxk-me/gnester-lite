@@ -8,13 +8,13 @@ import { environmentFilePaths } from 'config/environment-files';
 import { validate } from 'config/validation';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { CommonBetterAuthModule } from './platform/security/better-auth/better-auth.module';
-import { CommonCsrfModule } from './platform/security/csrf/csrf.module';
-import { CommonHealthModule } from './platform/operations/health/health.module';
-import { CommonLoggerModule } from './platform/observability/logger/logger.module';
-import { CommonRateLimitModule } from './platform/security/rate-limit/rate-limit.module';
-import { CommonI18nModule } from './platform/runtime/i18n/i18n.module';
-import { CommonSentryModule } from './platform/observability/sentry/sentry.module';
+import { BetterAuthModule } from './better-auth/better-auth.module';
+import { CsrfModule } from './csrf/csrf.module';
+import { HealthModule } from './health/health.module';
+import { LoggerModule } from './logger/logger.module';
+import { RateLimitModule } from './rate-limit/rate-limit.module';
+import { I18nModule } from './i18n/i18n.module';
+import { SentryModule } from './sentry/sentry.module';
 import { DemosModule } from './examples/demos.module';
 
 const demoImports = shouldEnableDemos(process.env.NODE_ENV)
@@ -33,13 +33,13 @@ const demoImports = shouldEnableDemos(process.env.NODE_ENV)
       validate,
     }),
     TypeOrmModule.forRootAsync(databaseConfig.asProvider()),
-    CommonBetterAuthModule,
-    CommonSentryModule,
-    CommonI18nModule,
-    CommonCsrfModule,
-    CommonHealthModule,
-    CommonLoggerModule,
-    CommonRateLimitModule,
+    BetterAuthModule,
+    SentryModule,
+    I18nModule,
+    CsrfModule,
+    HealthModule,
+    LoggerModule,
+    RateLimitModule,
     // AI modified: optional infrastructure is composed inside the feature that consumes it.
     ...demoImports,
   ],

@@ -25,15 +25,15 @@ import { randomBytes } from 'node:crypto';
 
 import { shouldEnableDemos } from 'config/demo-catalog';
 import { AppModule } from './app.module';
-import { CommonCacheModule } from './platform/infrastructure/cache/cache.module';
-import { CacheService } from './platform/infrastructure/cache/cache.service';
-import { HttpCacheInterceptor } from './platform/infrastructure/cache/http-cache.interceptor';
-import { CommonHealthModule } from './platform/operations/health/health.module';
-import { CommonHttpClientModule } from './platform/infrastructure/http-client/http-client.module';
-import { CommonQueueModule } from './platform/infrastructure/queue/queue.module';
-import { CommonQueueService } from './platform/infrastructure/queue/queue.service';
-import { CommonScheduleModule } from './platform/runtime/schedule/schedule.module';
-import { CommonScheduleService } from './platform/runtime/schedule/schedule.service';
+import { CacheModule } from './cache/cache.module';
+import { CacheService } from './cache/cache.service';
+import { HttpCacheInterceptor } from './cache/http-cache.interceptor';
+import { HealthModule } from './health/health.module';
+import { HttpClientModule } from './http-client/http-client.module';
+import { QueueModule } from './queue/queue.module';
+import { QueueService } from './queue/queue.service';
+import { ScheduleModule } from './schedule/schedule.module';
+import { ScheduleService } from './schedule/schedule.service';
 import { DemoCacheModule } from './examples/demo-cache/demo-cache.module';
 import { DemoEventsModule } from './examples/demo-events/demo-events.module';
 import { DemoHttpModule } from './examples/demo-http/demo-http.module';
@@ -46,8 +46,8 @@ class ExplicitInfrastructureConsumer {
   constructor(
     readonly cacheService: CacheService,
     readonly httpService: HttpService,
-    readonly queueService: CommonQueueService,
-    readonly scheduleService: CommonScheduleService,
+    readonly queueService: QueueService,
+    readonly scheduleService: ScheduleService,
     @Inject(CACHE_MANAGER) readonly cacheManager: Cache,
     @Inject(getSharedConfigToken())
     readonly bullConfig: BullRootModuleOptions,
@@ -57,12 +57,7 @@ class ExplicitInfrastructureConsumer {
 
 @Module({
   // AI modified: the consumer module declares every infrastructure provider it injects.
-  imports: [
-    CommonCacheModule,
-    CommonHttpClientModule,
-    CommonQueueModule,
-    CommonScheduleModule,
-  ],
+  imports: [CacheModule, HttpClientModule, QueueModule, ScheduleModule],
   providers: [ExplicitInfrastructureConsumer],
 })
 class ExplicitInfrastructureConsumerModule {}
@@ -136,44 +131,37 @@ describe('AppModule infrastructure boundaries', () => {
   });
 
   it('keeps root registration inside explicit capability modules', () => {
+    expect(getDynamicModuleImport(CacheModule, NestCacheModule)).toBeDefined();
+    expect(getDynamicModuleImport(HttpClientModule, HttpModule)).toBeDefined();
+    expect(getDynamicModuleImport(QueueModule, BullModule)).toBeDefined();
     expect(
-      getDynamicModuleImport(CommonCacheModule, NestCacheModule),
-    ).toBeDefined();
-    expect(
-      getDynamicModuleImport(CommonHttpClientModule, HttpModule),
-    ).toBeDefined();
-    expect(getDynamicModuleImport(CommonQueueModule, BullModule)).toBeDefined();
-    expect(
-      getDynamicModuleImport(CommonScheduleModule, NestScheduleModule),
+      getDynamicModuleImport(ScheduleModule, NestScheduleModule),
     ).toBeDefined();
     expect(
       getDynamicModuleImport(DemoEventsModule, EventEmitterModule),
     ).toBeDefined();
 
     expect(
-      Reflect.getMetadata(GLOBAL_MODULE_METADATA, CommonCacheModule),
+      Reflect.getMetadata(GLOBAL_MODULE_METADATA, CacheModule),
     ).toBeUndefined();
     expect(
-      Reflect.getMetadata(GLOBAL_MODULE_METADATA, CommonHttpClientModule),
+      Reflect.getMetadata(GLOBAL_MODULE_METADATA, HttpClientModule),
     ).toBeUndefined();
     expect(
-      Reflect.getMetadata(GLOBAL_MODULE_METADATA, CommonQueueModule),
+      Reflect.getMetadata(GLOBAL_MODULE_METADATA, QueueModule),
     ).toBeUndefined();
     expect(
-      Reflect.getMetadata(GLOBAL_MODULE_METADATA, CommonScheduleModule),
+      Reflect.getMetadata(GLOBAL_MODULE_METADATA, ScheduleModule),
     ).toBeUndefined();
-    expect(getModuleExports(CommonCacheModule)).toEqual([
+    expect(getModuleExports(CacheModule)).toEqual([
       NestCacheModule,
       CacheService,
       HttpCacheInterceptor,
     ]);
-    expect(getModuleExports(CommonQueueModule)).toEqual([
-      BullModule,
-      CommonQueueService,
-    ]);
-    expect(getModuleExports(CommonScheduleModule)).toEqual([
+    expect(getModuleExports(QueueModule)).toEqual([BullModule, QueueService]);
+    expect(getModuleExports(ScheduleModule)).toEqual([
       NestScheduleModule,
-      CommonScheduleService,
+      ScheduleService,
     ]);
 
     const appImports = getModuleImports(AppModule);
@@ -182,37 +170,28 @@ describe('AppModule infrastructure boundaries', () => {
     expect(hasImportedModule(appImports, BullModule)).toBe(false);
     expect(hasImportedModule(appImports, NestScheduleModule)).toBe(false);
     expect(hasImportedModule(appImports, EventEmitterModule)).toBe(false);
-    expect(countImportedModule(appImports, CommonCacheModule)).toBe(0);
-    expect(countImportedModule(appImports, CommonHttpClientModule)).toBe(0);
-    expect(countImportedModule(appImports, CommonQueueModule)).toBe(0);
-    expect(countImportedModule(appImports, CommonScheduleModule)).toBe(0);
+    expect(countImportedModule(appImports, CacheModule)).toBe(0);
+    expect(countImportedModule(appImports, HttpClientModule)).toBe(0);
+    expect(countImportedModule(appImports, QueueModule)).toBe(0);
+    expect(countImportedModule(appImports, ScheduleModule)).toBe(0);
     expect(countImportedModule(appImports, DemosModule)).toBe(1);
   });
 
   it('makes every feature and readiness module declare its capability imports', () => {
     expect(
-      countImportedModule(
-        getModuleImports(CommonHealthModule),
-        CommonCacheModule,
-      ),
+      countImportedModule(getModuleImports(HealthModule), CacheModule),
     ).toBe(1);
     expect(
-      countImportedModule(getModuleImports(DemoCacheModule), CommonCacheModule),
+      countImportedModule(getModuleImports(DemoCacheModule), CacheModule),
     ).toBe(1);
     expect(
-      countImportedModule(
-        getModuleImports(DemoHttpModule),
-        CommonHttpClientModule,
-      ),
+      countImportedModule(getModuleImports(DemoHttpModule), HttpClientModule),
     ).toBe(1);
     expect(
-      countImportedModule(getModuleImports(DemoQueueModule), CommonQueueModule),
+      countImportedModule(getModuleImports(DemoQueueModule), QueueModule),
     ).toBe(1);
     expect(
-      countImportedModule(
-        getModuleImports(DemoScheduleModule),
-        CommonScheduleModule,
-      ),
+      countImportedModule(getModuleImports(DemoScheduleModule), ScheduleModule),
     ).toBe(1);
   });
 
@@ -263,10 +242,8 @@ describe('AppModule infrastructure boundaries', () => {
 
       expect(consumer.cacheService).toBe(moduleRef.get(CacheService));
       expect(consumer.httpService).toBe(moduleRef.get(HttpService));
-      expect(consumer.queueService).toBe(moduleRef.get(CommonQueueService));
-      expect(consumer.scheduleService).toBe(
-        moduleRef.get(CommonScheduleService),
-      );
+      expect(consumer.queueService).toBe(moduleRef.get(QueueService));
+      expect(consumer.scheduleService).toBe(moduleRef.get(ScheduleService));
       expect(consumer.cacheManager).toBe(moduleRef.get(CACHE_MANAGER));
       expect(consumer.bullConfig).toMatchObject({
         prefix: 'test:test',

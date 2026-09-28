@@ -5,7 +5,7 @@ import type { I18nService } from 'nestjs-i18n';
 import request from 'supertest';
 
 import { BETTER_AUTH_CLIENT_IP_HEADER } from 'config/better-auth.config';
-import type { BetterAuthRequestHandler } from '../../platform/security/better-auth/better-auth.service';
+import type { BetterAuthRequestHandler } from '../../better-auth/better-auth.service';
 import {
   BETTER_AUTH_REQUEST_BODY_LIMIT_BYTES,
   createBetterAuthRequestMiddleware,

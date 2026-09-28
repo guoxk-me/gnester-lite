@@ -39,14 +39,14 @@ if (
 // AI modified: the image retains the opt-in Demo migration for guarded provision verification.
 const requiredPaths = [
   '/app/dist/src/main.js',
-  '/app/dist/config/typeorm.data-source.js',
-  '/app/dist/src/migrations/1785801600000-CreateBetterAuthTables.js',
-  '/app/dist/src/platform/security/better-auth/better-auth.loader.cjs',
+  '/app/dist/src/config/typeorm.data-source.js',
+  '/app/dist/src/database/migrations/1785801600000-CreateBetterAuthTables.js',
+  '/app/dist/src/better-auth/better-auth.loader.cjs',
   '/app/dist/src/examples/demo-database/migrations/1760000000000-CreateDemoTable.js',
   '/app/node_modules/typeorm/cli.js',
 ];
 const forbiddenPaths = [
-  '/app/dist/src/migrations/1760000000000-CreateDemoTable.js',
+  '/app/dist/src/database/migrations/1760000000000-CreateDemoTable.js',
 ];
 const fileAssertion = [
   "const { existsSync, statSync } = require('node:fs');",

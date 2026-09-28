@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 
-import { CommonCryptoModule } from '../../platform/security/crypto/crypto.module';
+import { CryptoModule } from '../../crypto/crypto.module';
 import { DemoCryptoController } from './demo-crypto.controller';
 import { DemoCryptoService } from './demo-crypto.service';
 
 @Module({
-  imports: [CommonCryptoModule],
+  imports: [CryptoModule],
   controllers: [DemoCryptoController],
   providers: [DemoCryptoService],
 })

@@ -5,8 +5,8 @@ import {
   BETTER_AUTH_CLIENT_IP_HEADER,
   isBetterAuthRequestPath,
 } from 'config/better-auth.config';
-import type { BetterAuthRequestHandler } from '../../platform/security/better-auth/better-auth.service';
-import { resolveSupportedLanguage } from '../../platform/runtime/i18n/i18n.translate';
+import type { BetterAuthRequestHandler } from '../../better-auth/better-auth.service';
+import { resolveSupportedLanguage } from '../../i18n/i18n.translate';
 
 export const BETTER_AUTH_REQUEST_BODY_LIMIT_BYTES = 1_048_576;
 

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { withSentryIsolation } from '../../platform/observability/sentry/with-sentry-isolation';
+import { withSentryIsolation } from '../../sentry/with-sentry-isolation';
 import { DEMO_EVENTS } from './demo-events.constants';
 import { DemoEventsLogService } from './demo-events-log.service';
 import { DemoCacheInvalidationRequestedEvent } from './events/demo-cache-invalidation-requested.event';

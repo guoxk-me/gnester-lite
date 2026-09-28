@@ -1,5 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
-import { AuthTokenService } from '../../platform/security/auth/auth-token.service';
+import { AuthTokenService } from '../../auth/auth-token.service';
 import { DEMO_WEBSOCKET_EVENTS } from './demo-websocket.constants';
 import { DemoWebsocketService } from './demo-websocket.service';
 

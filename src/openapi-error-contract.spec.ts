@@ -2,7 +2,7 @@ import { RequestMethod } from '@nestjs/common';
 import { HTTP_CODE_METADATA, METHOD_METADATA } from '@nestjs/common/constants';
 import { DECORATORS } from '@nestjs/swagger';
 
-import { HealthController } from './platform/operations/health/health.controller';
+import { HealthController } from './health/health.controller';
 import { DemoCacheController } from './examples/demo-cache/demo-cache.controller';
 import { DemoDatabaseController } from './examples/demo-database/demo-database.controller';
 import { DemoHttpController } from './examples/demo-http/demo-http.controller';

@@ -9,8 +9,8 @@ import helmet from 'helmet';
 import { I18nService } from 'nestjs-i18n';
 
 import { Environment, type RateLimitConfig } from 'config/config.types';
-import { BetterAuthService } from '../platform/security/better-auth/better-auth.service';
-import { CsrfService } from '../platform/security/csrf/csrf.service';
+import { BetterAuthService } from '../better-auth/better-auth.service';
+import { CsrfService } from '../csrf/csrf.service';
 import { createHelmetOptions } from './http/helmet-options';
 import { setupOpenApi } from './http/openapi.config';
 import { SocketIoAdapter } from './http/socket-io.adapter';

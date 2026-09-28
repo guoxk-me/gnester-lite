@@ -6,7 +6,7 @@ This document is for AI agents and developers who need to change configuration s
 
 ## Mental Model / 配置模型
 
-- `config/config.yaml`: static, non-secret defaults that can be committed.
+- `src/config/config.yaml`: static, non-secret defaults that can be committed.
   可提交的静态非敏感默认值。
 - `.env.*` or runtime env: environment values and secrets.
   环境相关配置和密钥。
@@ -16,8 +16,8 @@ This document is for AI agents and developers who need to change configuration s
 Rule / 判断规则：
 
 ```text
-Safe in a public PR? -> config/config.yaml
-可以出现在公开 PR？-> config/config.yaml
+Safe in a public PR? -> src/config/config.yaml
+可以出现在公开 PR？-> src/config/config.yaml
 
 Secret or environment-specific? -> .env.* / secret manager
 密钥或环境相关？-> .env.* / 密钥管理系统
@@ -71,17 +71,17 @@ Sentry initialization.
 
 ## Key Files / 关键文件
 
-- `config/config.yaml`: YAML defaults. YAML 默认值。
+- `src/config/config.yaml`: YAML defaults. YAML 默认值。
 - `.env.example`: complete environment-variable contract without production
   credentials. 完整环境变量契约，不含生产凭据。
-- `config/environment-files.ts`: file precedence and early Sentry environment
+- `src/config/environment-files.ts`: file precedence and early Sentry environment
   semantics. 文件优先级与 Sentry 早期环境语义。
-- `config/configuration.ts`: YAML loader and validation. YAML 加载与校验。
-- `config/validation.ts`: env validation. 环境变量校验。
-- `config/database.config.ts`: MySQL TypeORM options. MySQL TypeORM 配置。
-- `config/typeorm.data-source.ts`: TypeORM CLI data source. TypeORM CLI 数据源。
+- `src/config/configuration.ts`: YAML loader and validation. YAML 加载与校验。
+- `src/config/validation.ts`: env validation. 环境变量校验。
+- `src/config/database.config.ts`: MySQL TypeORM options. MySQL TypeORM 配置。
+- `src/config/typeorm.data-source.ts`: TypeORM CLI data source. TypeORM CLI 数据源。
 - `src/app.module.ts`: Nest module wiring. Nest 模块接线。
-- `nest-cli.json`: copies `config/*.yaml` to `dist`. 将 `config/*.yaml` 复制到 `dist`。
+- `nest-cli.json`: copies `src/config/*.yaml` to `dist/src/config/`. 将 `src/config/*.yaml` 复制到 `dist/src/config/`。
 
 ## Current Values / 当前配置
 
@@ -204,10 +204,10 @@ Notes / 说明：
 
 Add static config / 新增静态配置：
 
-1. Add it to `config/config.yaml`.
-   添加到 `config/config.yaml`。
-2. Update the type and checks in `config/configuration.ts`.
-   更新 `config/configuration.ts` 的类型和校验。
+1. Add it to `src/config/config.yaml`.
+   添加到 `src/config/config.yaml`。
+2. Update the type and checks in `src/config/configuration.ts`.
+   更新 `src/config/configuration.ts` 的类型和校验。
 3. Read it with `ConfigService`.
    使用 `ConfigService` 读取。
 
@@ -217,8 +217,8 @@ Add env config / 新增环境配置：
    在 `.env.example` 中增加安全的本地示例。
 2. Supply actual environment values through an ignored `.env.*.local` file or
    the deployment secret manager.
-3. Add validation in `config/validation.ts`.
-   在 `config/validation.ts` 添加校验。
+3. Add validation in `src/config/validation.ts`.
+   在 `src/config/validation.ts` 添加校验。
 4. Use `getOrThrow()` for required values.
    必填值使用 `getOrThrow()`。
 

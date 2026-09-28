@@ -1,13 +1,13 @@
 # Security Utilities / 安全工具
 
-This template keeps cryptographic primitives in `src/platform/security/crypto/` and application examples in `src/examples/demo-crypto/`.
+This template keeps cryptographic primitives in `src/crypto/` and application examples in `src/examples/demo-crypto/`.
 
-本模板将通用加密能力放在 `src/platform/security/crypto/`，将应用示例放在 `src/examples/demo-crypto/`。
+本模板将通用加密能力放在 `src/crypto/`，将应用示例放在 `src/examples/demo-crypto/`。
 
 ## Better Auth
 
 The production authentication entry is Better Auth 1.6 at `/api/auth/*`.
-`CommonBetterAuthModule` owns a Better Auth instance backed by a dedicated
+`BetterAuthModule` owns a Better Auth instance backed by a dedicated
 `mysql2` pool, with email/password authentication and opaque cookie sessions
 enabled.
 
@@ -71,9 +71,9 @@ cookie 身份互不兼容，也不会相互认证。
 
 ## Password Hashing / 密码哈希
 
-Use `PasswordHashService` from `src/platform/security/auth/password-hash.service.ts` for passwords.
+Use `PasswordHashService` from `src/auth/password-hash.service.ts` for passwords.
 
-密码使用 `src/platform/security/auth/password-hash.service.ts` 中的 `PasswordHashService`。
+密码使用 `src/auth/password-hash.service.ts` 中的 `PasswordHashService`。
 
 - Passwords are never encrypted for later recovery.
 - Store only salted hashes.
@@ -118,11 +118,11 @@ Webhook 签名、回调校验、内部服务 payload 签名使用 `HmacSignature
 
 ## CSRF Protection / CSRF 防护
 
-Use `CsrfService` from `src/platform/security/csrf/csrf.service.ts` for browser clients
+Use `CsrfService` from `src/csrf/csrf.service.ts` for browser clients
 that authenticate through cookies or sessions.
 
 浏览器客户端通过 cookie 或 session 自动携带凭证时，使用
-`src/platform/security/csrf/csrf.service.ts` 中的 `CsrfService`。
+`src/csrf/csrf.service.ts` 中的 `CsrfService`。
 
 - Implementation: `csrf-csrf`, registered globally in
   `src/bootstrap/configure-application.ts`.
@@ -212,12 +212,12 @@ The template exposes two HTTP guard adapters but one JWT trust policy:
 
 ## Rate Limiting / 请求限流
 
-Use `CommonRateLimitModule` from `src/platform/security/rate-limit/` for request budget
+Use `RateLimitModule` from `src/rate-limit/` for request budget
 protection. It registers `@nestjs/throttler` as a global guard and reads named
-throttler definitions from `config/config.yaml`.
+throttler definitions from `src/config/config.yaml`.
 
-请求预算保护使用 `src/platform/security/rate-limit/` 中的 `CommonRateLimitModule`。它将
-`@nestjs/throttler` 注册为全局 guard，并从 `config/config.yaml` 读取命名限流策略。
+请求预算保护使用 `src/rate-limit/` 中的 `RateLimitModule`。它将
+`@nestjs/throttler` 注册为全局 guard，并从 `src/config/config.yaml` 读取命名限流策略。
 
 Default template policy / 模板默认策略：
 

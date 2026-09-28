@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SKIP_HTTP_THROTTLE_KEY } from '../../platform/security/rate-limit/skip-http-throttle.decorator';
+import { SKIP_HTTP_THROTTLE_KEY } from '../../rate-limit/skip-http-throttle.decorator';
 import { DemoRateLimitController } from './demo-rate-limit.controller';
 import { DemoRateLimitService } from './demo-rate-limit.service';
 
@@ -38,7 +38,7 @@ describe('DemoRateLimitController', () => {
 
   it('delegates overview and scenario routes to the service', () => {
     service.getOverview.mockReturnValueOnce({
-      module: 'CommonRateLimitModule',
+      module: 'RateLimitModule',
       package: '@nestjs/throttler',
       registration: 'global APP_GUARD',
       scenarios: [],
@@ -57,7 +57,7 @@ describe('DemoRateLimitController', () => {
     });
 
     expect(controller.getOverview()).toEqual({
-      module: 'CommonRateLimitModule',
+      module: 'RateLimitModule',
       package: '@nestjs/throttler',
       registration: 'global APP_GUARD',
       scenarios: [],

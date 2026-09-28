@@ -12,7 +12,7 @@ NestJS 11 TypeScript service template using pnpm 11.1.2 on Node.js 24. Productio
 pnpm install                # install dependencies
 pnpm run start:dev          # development watch mode (NODE_ENV=development)
 pnpm run start:debug        # watch mode with debugger
-pnpm run build              # compile to dist/ and copy config/*.yaml
+pnpm run build              # compile to dist/src/ and copy src/config/*.yaml
 pnpm run start:prod         # run dist/src/main.js (NODE_ENV=production)
 ```
 
@@ -72,35 +72,31 @@ pnpm run audit:prod
 
 - **`src/bootstrap/`** — order-sensitive process and HTTP composition: startup,
   shutdown, middleware, validation, OpenAPI, and the Socket.IO adapter.
-- **`src/platform/infrastructure/`** — cache, outbound HTTP, and queue
-  integrations.
-- **`src/platform/runtime/`** — managed runtime capabilities such as
-  scheduling.
-- **`src/platform/observability/`** — Pino logging and Sentry integration.
-- **`src/platform/operations/`** — health, readiness, and operator-facing
-  capabilities.
-- **`src/platform/security/`** — auth, authorization, crypto, CSRF, and rate
-  limiting.
-- **`src/features/`** — supported production business capabilities. A feature
-  owns its controllers, services, DTOs, entities, feature-only migrations,
-  local adapters, and tests.
+- **Top-level capability folders** — `auth/`, `authorization/`, `better-auth/`,
+  `cache/`, `crypto/`, `csrf/`, `health/`, `http-client/`, `i18n/`,
+  `logger/`, `queue/`, `rate-limit/`, `schedule/`, and `sentry/`.
+  Each owns its Nest module, providers, adapters, and focused tests.
+- **`src/<business-name>/`** — future production business capabilities. A
+  business folder owns its controllers, services, DTOs, entities, local
+  adapters, and tests. There is no `src/features/` wrapper.
 - **`src/examples/`** — removable teaching and integration examples. The
   complete Demo catalog is excluded from the production module graph.
+- **`src/config/`** — typed YAML defaults, environment validation, and
+  TypeORM CLI configuration.
+- **`src/database/migrations/`** — production-visible application migrations.
 - **`src/contracts/`** — small, stable, framework-free TypeScript contracts.
   Do not place NestJS DTOs or miscellaneous helpers here.
 
-Dependency direction is `bootstrap/features/examples -> platform -> contracts`.
-`platform` must not import `features`, `examples`, or `bootstrap`; production
-features and bootstrap must not import examples. `contracts` must not import
-NestJS, platform, bootstrap, features, or examples. Do not import another
-feature's private implementation. See `docs/architecture.md` for the complete
-rules.
+Dependency direction is `bootstrap/business/examples -> capabilities -> contracts`.
+Capabilities must not import business folders, examples, or bootstrap;
+business folders and bootstrap must not import examples. Do not import another
+business folder's private implementation. See `docs/architecture.md`.
 
-Platform modules are explicit dependencies and must not use `@Global()`. A
-consumer that injects a platform provider imports the owning module in its own
-`imports` array. `AppModule` is the sole application composition root.
+Capability modules are explicit dependencies and must not use `@Global()`.
+A consumer that injects a capability provider imports its owning module in
+its own `imports` array. `AppModule` is the sole composition root.
 
-Production-visible application migrations belong in `src/migrations/`. The
+Production-visible application migrations belong in `src/database/migrations/`. The
 Demo database migration belongs to `src/examples/demo-database/migrations/`
 and is discovered only in development, test, and guarded provision—not in
 production. Keep its migration class/name stable so existing TypeORM history is
@@ -108,10 +104,10 @@ not reinterpreted.
 
 ### Configuration system
 
-Double-validation design in `config/`:
+Double-validation design in `src/config/`:
 
-- **YAML defaults** (`config/config.yaml`) → validated by `configuration.ts` using `class-validator` on a typed `YamlVariables` class. Used for non-secret app defaults (cache TTL, queue settings, HTTP client options, rate-limit throttlers).
-- **Environment variables** → validated by `config/validation.ts` using `class-validator` on `EnvironmentVariables`. Secrets, DB credentials, Redis URL, CORS settings. Production enforces JWT_SECRET, ENCRYPTION_KEY, and HMAC_SECRET; CSRF_SECRET is required when CSRF is enabled.
+- **YAML defaults** (`src/config/config.yaml`) → validated by `configuration.ts` using `class-validator` on a typed `YamlVariables` class. Used for non-secret app defaults (cache TTL, queue settings, HTTP client options, rate-limit throttlers).
+- **Environment variables** → validated by `src/config/validation.ts` using `class-validator` on `EnvironmentVariables`. Secrets, DB credentials, Redis URL, CORS settings. Production enforces JWT_SECRET, ENCRYPTION_KEY, and HMAC_SECRET; CSRF_SECRET is required when CSRF is enabled.
 
 Both run through NestJS `ConfigModule.forRoot({ validate, isGlobal: true })`,
 combining YAML defaults with env overrides. The global `ConfigModule` is a
@@ -119,10 +115,10 @@ deliberate composition exception, so capabilities may inject `ConfigService`
 without repeated module imports. `TypeOrmModule.forRootAsync(...)` is likewise
 registered once in `AppModule`; repository-owning features still declare
 `TypeOrmModule.forFeature(...)` locally. Config types live in
-`config/config.types.ts`.
+`src/config/config.types.ts`.
 
 Framework-wide `APP_GUARD` and `APP_FILTER` providers are allowed only inside
-their focused platform modules, which `AppModule` imports explicitly.
+their focused capability modules, which `AppModule` imports explicitly.
 
 ### Bootstrap
 
@@ -136,12 +132,12 @@ the Socket.IO adapter.
 
 ### Test infrastructure
 
-- Nest CLI builds with SWC (`nest-cli.json` `builder: "swc"`, `typeCheck: true`, `filenames: ["src","config"]`, `stripLeadingPaths: false` so `dist/src` + `dist/config` match runtime imports). Jest uses `@swc/jest` with `.swcrc` (`legacyDecorator` + `decoratorMetadata`).
+- Nest CLI builds with SWC (`nest-cli.json` `builder: "swc"`, `typeCheck: true`, `filenames: ["src"]`, `stripLeadingPaths: false` so `dist/src` matches runtime imports). Jest uses `@swc/jest` with `.swcrc` (`legacyDecorator` + `decoratorMetadata`).
 - Jest with `NODE_ENV=test`, `--experimental-vm-modules`.
-- Unit tests colocated as `*.spec.ts` (in `src/` and `config/`).
-- E2E tests in `test/` using `test/jest-e2e.json`.
+- Unit tests colocated as `*.spec.ts` in `src/`.
+- E2E tests in `test/e2e/`, integration tests in `test/integration/`, and fixtures in `test/fixtures/`.
 - `DemosModule` excludes `DemoQueueModule` in test environments.
-  `DemoQueueModule` explicitly imports `CommonQueueModule`, which keeps BullMQ
+  `DemoQueueModule` explicitly imports `QueueModule`, which keeps BullMQ
   lazy and manually registered in test mode.
 - TypeORM relation fields should use `Relation<T>` to avoid SWC circular-import issues (see `docs/database.md`).
 

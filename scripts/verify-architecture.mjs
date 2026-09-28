@@ -8,45 +8,75 @@ import ts from 'typescript';
 
 const projectRoot = process.cwd();
 const sourceRoot = resolve(projectRoot, 'src');
-const platformRoot = resolve(sourceRoot, 'platform');
 const contractsRoot = resolve(sourceRoot, 'contracts');
-const featuresRoot = resolve(sourceRoot, 'features');
 const examplesRoot = resolve(sourceRoot, 'examples');
 const bootstrapRoot = resolve(sourceRoot, 'bootstrap');
 const legacyCommonRoot = resolve(sourceRoot, 'common');
+const legacyPlatformRoot = resolve(sourceRoot, 'platform');
+const legacyFeaturesRoot = resolve(sourceRoot, 'features');
 const architectureViolations = [];
+const capabilityNames = [
+  'auth',
+  'authorization',
+  'better-auth',
+  'cache',
+  'crypto',
+  'csrf',
+  'health',
+  'http-client',
+  'i18n',
+  'logger',
+  'queue',
+  'rate-limit',
+  'schedule',
+  'sentry',
+];
+const capabilityRoots = capabilityNames.map((name) =>
+  resolve(sourceRoot, name),
+);
+const reservedDirectoryNames = new Set([
+  ...capabilityNames,
+  'bootstrap',
+  'config',
+  'contracts',
+  'database',
+  'examples',
+  'common',
+  'platform',
+  'features',
+]);
 
 const capabilityContracts = [
   {
-    consumerPath: 'dist/src/platform/operations/health/health.module.js',
-    consumerExport: 'CommonHealthModule',
-    requiredImports: ['CommonCacheModule'],
+    consumerPath: 'dist/src/health/health.module.js',
+    consumerExport: 'HealthModule',
+    requiredImports: ['CacheModule'],
   },
   {
     consumerPath: 'dist/src/examples/demo-auth/demo-auth.module.js',
     consumerExport: 'DemoAuthModule',
-    requiredImports: ['CommonAuthModule'],
+    requiredImports: ['AuthModule'],
   },
   {
     consumerPath:
       'dist/src/examples/demo-authorization/demo-authorization.module.js',
     consumerExport: 'DemoAuthorizationModule',
-    requiredImports: ['CommonAuthModule', 'CommonAuthorizationModule'],
+    requiredImports: ['AuthModule', 'AuthorizationModule'],
   },
   {
     consumerPath: 'dist/src/examples/demo-cache/demo-cache.module.js',
     consumerExport: 'DemoCacheModule',
-    requiredImports: ['CommonCacheModule'],
+    requiredImports: ['CacheModule'],
   },
   {
     consumerPath: 'dist/src/examples/demo-crypto/demo-crypto.module.js',
     consumerExport: 'DemoCryptoModule',
-    requiredImports: ['CommonCryptoModule'],
+    requiredImports: ['CryptoModule'],
   },
   {
     consumerPath: 'dist/src/examples/demo-csrf/demo-csrf.module.js',
     consumerExport: 'DemoCsrfModule',
-    requiredImports: ['CommonCsrfModule'],
+    requiredImports: ['CsrfModule'],
   },
   {
     consumerPath: 'dist/src/examples/demo-events/demo-events.module.js',
@@ -56,32 +86,32 @@ const capabilityContracts = [
   {
     consumerPath: 'dist/src/examples/demo-http/demo-http.module.js',
     consumerExport: 'DemoHttpModule',
-    requiredImports: ['CommonHttpClientModule'],
+    requiredImports: ['HttpClientModule'],
   },
   {
     consumerPath: 'dist/src/examples/demo-queue/demo-queue.module.js',
     consumerExport: 'DemoQueueModule',
-    requiredImports: ['CommonQueueModule'],
+    requiredImports: ['QueueModule'],
   },
   {
     consumerPath: 'dist/src/examples/demo-schedule/demo-schedule.module.js',
     consumerExport: 'DemoScheduleModule',
-    requiredImports: ['CommonScheduleModule'],
+    requiredImports: ['ScheduleModule'],
   },
   {
     consumerPath: 'dist/src/examples/demo-websocket/demo-websocket.module.js',
     consumerExport: 'DemoWebsocketModule',
-    requiredImports: ['CommonAuthModule'],
+    requiredImports: ['AuthModule'],
   },
 ];
 
 const productionForbiddenModules = new Set([
-  'CommonAuthModule',
-  'CommonAuthorizationModule',
-  'CommonCryptoModule',
-  'CommonHttpClientModule',
-  'CommonQueueModule',
-  'CommonScheduleModule',
+  'AuthModule',
+  'AuthorizationModule',
+  'CryptoModule',
+  'HttpClientModule',
+  'QueueModule',
+  'ScheduleModule',
   'EventEmitterModule',
 ]);
 const demoDatabaseMigrationGlob =
@@ -153,21 +183,38 @@ function moduleSpecifiers(sourceFile) {
 }
 
 async function verifySourceBoundaries() {
-  const platformFiles = await listTypeScriptFiles(platformRoot);
+  const sourceEntries = await readdir(sourceRoot, { withFileTypes: true });
+  const featureRoots = sourceEntries
+    .filter(
+      (entry) => entry.isDirectory() && !reservedDirectoryNames.has(entry.name),
+    )
+    .map((entry) => resolve(sourceRoot, entry.name));
+  const capabilityFileGroups = await Promise.all(
+    capabilityRoots.map((root) => listTypeScriptFiles(root)),
+  );
+  // AI modified: require every capability to be scanned after flattening the old platform tree.
+  for (const [index, files] of capabilityFileGroups.entries()) {
+    if (files.length === 0) {
+      architectureViolations.push(
+        `src/${capabilityNames[index]} has no TypeScript files`,
+      );
+    }
+  }
+  const capabilityFiles = capabilityFileGroups.flat();
 
-  for (const platformFile of platformFiles) {
-    const sourceText = await readFile(platformFile, 'utf8');
+  for (const capabilityFile of capabilityFiles) {
+    const sourceText = await readFile(capabilityFile, 'utf8');
     const sourceFile = ts.createSourceFile(
-      platformFile,
+      capabilityFile,
       sourceText,
       ts.ScriptTarget.Latest,
       true,
     );
 
-    // AI modified: platform dependencies stay explicit instead of becoming invisible application globals.
+    // AI modified: capability dependencies stay explicit instead of becoming invisible application globals.
     if (/@Global\s*\(/u.test(sourceText)) {
       architectureViolations.push(
-        `${relative(projectRoot, platformFile)} uses @Global()`,
+        `${relative(projectRoot, capabilityFile)} uses @Global()`,
       );
     }
 
@@ -176,22 +223,24 @@ async function verifySourceBoundaries() {
         continue;
       }
 
-      const dependencyPath = resolve(dirname(platformFile), moduleSpecifier);
+      const dependencyPath = resolve(dirname(capabilityFile), moduleSpecifier);
 
-      // AI modified: production features and removable examples are both callers of platform capabilities.
+      // AI modified: reusable capabilities must not depend on business or demo modules.
       if (
-        isInside(dependencyPath, featuresRoot) ||
+        featureRoots.some((root) => isInside(dependencyPath, root)) ||
         isInside(dependencyPath, examplesRoot) ||
         isInside(dependencyPath, bootstrapRoot)
       ) {
         architectureViolations.push(
-          `${relative(projectRoot, platformFile)} imports an application layer ${moduleSpecifier}`,
+          `${relative(projectRoot, capabilityFile)} imports an application layer ${moduleSpecifier}`,
         );
       }
     }
   }
 
-  const featureFiles = await listTypeScriptFiles(featuresRoot);
+  const featureFiles = (
+    await Promise.all(featureRoots.map((root) => listTypeScriptFiles(root)))
+  ).flat();
 
   for (const featureFile of featureFiles) {
     const sourceText = await readFile(featureFile, 'utf8');
@@ -209,12 +258,18 @@ async function verifySourceBoundaries() {
 
       const dependencyPath = resolve(dirname(featureFile), moduleSpecifier);
 
+      const importsAnotherFeature = featureRoots.some(
+        (root) =>
+          isInside(dependencyPath, root) && !isInside(featureFile, root),
+      );
+
       if (
+        importsAnotherFeature ||
         isInside(dependencyPath, examplesRoot) ||
         isInside(dependencyPath, bootstrapRoot)
       ) {
         architectureViolations.push(
-          `${relative(projectRoot, featureFile)} imports a non-production layer ${moduleSpecifier}`,
+          `${relative(projectRoot, featureFile)} imports another feature or a non-production layer ${moduleSpecifier}`,
         );
       }
     }
@@ -239,7 +294,7 @@ async function verifySourceBoundaries() {
       const dependencyPath = resolve(dirname(exampleFile), moduleSpecifier);
 
       if (
-        isInside(dependencyPath, featuresRoot) ||
+        featureRoots.some((root) => isInside(dependencyPath, root)) ||
         isInside(dependencyPath, bootstrapRoot)
       ) {
         architectureViolations.push(
@@ -268,7 +323,7 @@ async function verifySourceBoundaries() {
       const dependencyPath = resolve(dirname(bootstrapFile), moduleSpecifier);
 
       if (
-        isInside(dependencyPath, featuresRoot) ||
+        featureRoots.some((root) => isInside(dependencyPath, root)) ||
         isInside(dependencyPath, examplesRoot)
       ) {
         architectureViolations.push(
@@ -310,15 +365,21 @@ async function verifySourceBoundaries() {
   }
 
   const legacyCommonFiles = await listTypeScriptFiles(legacyCommonRoot);
+  const legacyPlatformFiles = await listTypeScriptFiles(legacyPlatformRoot);
+  const legacyFeaturesFiles = await listTypeScriptFiles(legacyFeaturesRoot);
 
-  for (const legacyCommonFile of legacyCommonFiles) {
+  for (const legacyCommonFile of [
+    ...legacyCommonFiles,
+    ...legacyPlatformFiles,
+    ...legacyFeaturesFiles,
+  ]) {
     architectureViolations.push(
-      `${relative(projectRoot, legacyCommonFile)} remains in the retired common layer`,
+      `${relative(projectRoot, legacyCommonFile)} remains in a retired source layer`,
     );
   }
 
   return (
-    platformFiles.length +
+    capabilityFiles.length +
     featureFiles.length +
     exampleFiles.length +
     bootstrapFiles.length +
@@ -380,11 +441,11 @@ function databaseMigrationGlobs(databaseOptions, contractName) {
 async function verifyMigrationOwnership() {
   Object.assign(process.env, productionEnvironment());
   const createDatabaseOptions = await importCompiledModule(
-    'dist/config/database.config.js',
+    'dist/src/config/database.config.js',
     'createDatabaseOptions',
   );
   const createDatabaseCliOptions = await importCompiledModule(
-    'dist/config/database.config.js',
+    'dist/src/config/database.config.js',
     'createDatabaseCliOptions',
   );
   const migrationContracts = [

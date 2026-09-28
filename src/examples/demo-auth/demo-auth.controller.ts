@@ -19,9 +19,9 @@ import {
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
-import { CurrentUser } from '../../platform/security/auth/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../../platform/security/auth/guards/jwt-auth.guard';
-import type { JwtAuthenticatedUser } from '../../platform/security/auth/types/jwt-authenticated-user.type';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import type { JwtAuthenticatedUser } from '../../auth/types/jwt-authenticated-user.type';
 import { DemoAuthService } from './demo-auth.service';
 import { AccessTokenDto } from './dto/access-token.dto';
 import { DemoAuthProfileDto } from './dto/demo-auth-profile.dto';

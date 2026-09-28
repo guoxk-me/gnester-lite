@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 
-import { CommonAuthModule } from '../../platform/security/auth/auth.module';
+import { AuthModule } from '../../auth/auth.module';
 import { DemoWebsocketAuthenticatedGuard } from './demo-websocket-authenticated.guard';
 import { DemoWebsocketAsyncApiController } from './demo-websocket-asyncapi.controller';
 import { DemoWebsocketAsyncApiService } from './demo-websocket-asyncapi.service';
@@ -9,7 +9,7 @@ import { DemoWebsocketResponseInterceptor } from './demo-websocket-response.inte
 import { DemoWebsocketService } from './demo-websocket.service';
 
 @Module({
-  imports: [CommonAuthModule],
+  imports: [AuthModule],
   controllers: [DemoWebsocketAsyncApiController],
   providers: [
     DemoWebsocketAuthenticatedGuard,

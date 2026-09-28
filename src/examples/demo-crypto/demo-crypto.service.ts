@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { HmacSignatureService } from '../../platform/security/crypto/hmac-signature.service';
-import { SecureTokenService } from '../../platform/security/crypto/secure-token.service';
-import { SymmetricEncryptionService } from '../../platform/security/crypto/symmetric-encryption.service';
+import { HmacSignatureService } from '../../crypto/hmac-signature.service';
+import { SecureTokenService } from '../../crypto/secure-token.service';
+import { SymmetricEncryptionService } from '../../crypto/symmetric-encryption.service';
 import { DemoCryptoScenarioDto } from './dto/demo-crypto-scenario.dto';
 import { DemoEncryptedSecretDto } from './dto/demo-encrypted-secret.dto';
 import { DemoOneTimeTokenDto } from './dto/demo-one-time-token.dto';
@@ -30,7 +30,7 @@ export class DemoCryptoService {
         useCase:
           'Encrypt a recoverable third-party token or private setting before database storage.',
         nestPattern:
-          'Inject SymmetricEncryptionService from CommonCryptoModule and bind ciphertext to an authenticated context.',
+          'Inject SymmetricEncryptionService from CryptoModule and bind ciphertext to an authenticated context.',
       },
       {
         name: 'One-time token storage',

@@ -1,6 +1,6 @@
 import type { ExecutionContext } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
-import type { JwtAuthenticatedUser } from '../../platform/security/auth/types/jwt-authenticated-user.type';
+import type { JwtAuthenticatedUser } from '../../auth/types/jwt-authenticated-user.type';
 import { DemoWebsocketAuthenticatedGuard } from './demo-websocket-authenticated.guard';
 import type { DemoWebsocketSocket } from './demo-websocket.gateway';
 

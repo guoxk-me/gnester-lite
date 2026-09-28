@@ -454,7 +454,7 @@ const testingModule = await testingModuleBuilder.compile();
 const app = testingModule.createNestApplication();
 const compiledYamlConfig = yaml.load(
   await readFile(
-    new URL('../dist/config/config.yaml', import.meta.url),
+    new URL('../dist/src/config/config.yaml', import.meta.url),
     'utf8',
   ),
 );

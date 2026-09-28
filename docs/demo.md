@@ -54,20 +54,20 @@ What it shows / 演示点：
   `ConfigModule` 是全局模块，feature service 可以直接注入 `ConfigService`。
 - Required config uses `getOrThrow()`.
   必填配置使用 `getOrThrow()` 读取。
-- `app.name` comes from `config/config.yaml`.
-  `app.name` 来自 `config/config.yaml`。
+- `app.name` comes from `src/config/config.yaml`.
+  `app.name` 来自 `src/config/config.yaml`。
 
 ## Demo Auth / 认证示例
 
 Files / 文件：
 
-- `src/platform/security/auth/auth.module.ts`
-- `src/platform/security/auth/auth.guard.ts`
+- `src/auth/auth.module.ts`
+- `src/auth/auth.guard.ts`
 - `src/examples/demo-auth/local-auth.guard.ts`
-- `src/platform/security/auth/guards/jwt-auth.guard.ts`
-- `src/platform/security/auth/strategies/jwt.strategy.ts`
-- `src/platform/security/auth/decorators/public.decorator.ts`
-- `src/platform/security/auth/decorators/current-user.decorator.ts`
+- `src/auth/guards/jwt-auth.guard.ts`
+- `src/auth/strategies/jwt.strategy.ts`
+- `src/auth/decorators/public.decorator.ts`
+- `src/auth/decorators/current-user.decorator.ts`
 - `src/examples/demo-auth/demo-auth.module.ts`
 - `src/examples/demo-auth/demo-auth.controller.ts`
 - `src/examples/demo-auth/demo-auth.service.ts`
@@ -187,8 +187,8 @@ What it shows / 演示点：
 Files / 文件：
 
 - `src/instrument.ts`
-- `src/platform/observability/sentry/sentry.module.ts`
-- `src/platform/observability/sentry/with-sentry-isolation.ts`
+- `src/sentry/sentry.module.ts`
+- `src/sentry/with-sentry-isolation.ts`
 - `src/examples/demo-sentry/demo-sentry.module.ts`
 - `src/examples/demo-sentry/demo-sentry.controller.ts`
 - `src/examples/demo-sentry/demo-sentry.service.ts`
@@ -219,8 +219,8 @@ What it shows / 演示点：
 
 Files / 文件：
 
-- `src/platform/security/csrf/csrf.module.ts`
-- `src/platform/security/csrf/csrf.service.ts`
+- `src/csrf/csrf.module.ts`
+- `src/csrf/csrf.service.ts`
 - `src/examples/demo-csrf/demo-csrf.module.ts`
 - `src/examples/demo-csrf/demo-csrf.controller.ts`
 - `src/examples/demo-csrf/demo-csrf.service.ts`
@@ -284,10 +284,10 @@ What it shows / 演示点：
 
 Files / 文件：
 
-- `src/platform/security/crypto/crypto.module.ts`
-- `src/platform/security/crypto/symmetric-encryption.service.ts`
-- `src/platform/security/crypto/secure-token.service.ts`
-- `src/platform/security/crypto/hmac-signature.service.ts`
+- `src/crypto/crypto.module.ts`
+- `src/crypto/symmetric-encryption.service.ts`
+- `src/crypto/secure-token.service.ts`
+- `src/crypto/hmac-signature.service.ts`
 - `src/examples/demo-crypto/demo-crypto.module.ts`
 - `src/examples/demo-crypto/demo-crypto.controller.ts`
 - `src/examples/demo-crypto/demo-crypto.service.ts`
@@ -565,8 +565,8 @@ DELETE /api/demo-database/1
 
 Files / 文件：
 
-- `src/platform/infrastructure/http-client/http-client.module.ts`
-- `src/platform/infrastructure/http-client/http-client.config.ts`
+- `src/http-client/http-client.module.ts`
+- `src/http-client/http-client.config.ts`
 - `src/examples/demo-http/demo-http.module.ts`
 - `src/examples/demo-http/demo-http.controller.ts`
 - `src/examples/demo-http/demo-http.service.ts`
@@ -591,8 +591,8 @@ Content-Type: application/json
 
 What it shows / 演示点：
 
-- `CommonHttpClientModule` wraps `@nestjs/axios` and reads default Axios options from `config/config.yaml` via `createHttpModuleOptions`.
-  `CommonHttpClientModule` 封装 `@nestjs/axios`，并通过 `createHttpModuleOptions` 从 `config/config.yaml` 读取默认 Axios 配置。
+- `HttpClientModule` wraps `@nestjs/axios` and reads default Axios options from `src/config/config.yaml` via `createHttpModuleOptions`.
+  `HttpClientModule` 封装 `@nestjs/axios`，并通过 `createHttpModuleOptions` 从 `src/config/config.yaml` 读取默认 Axios 配置。
 - Controllers keep validation and routing concerns; outbound HTTP calls stay in the service.
   Controller 只负责路由与校验，出站 HTTP 调用集中在 service。
 - `HttpService.get<T>()` and `HttpService.post<T>()` demonstrate typed JSON calls against the configured `http.baseUrl` (JSONPlaceholder by default).

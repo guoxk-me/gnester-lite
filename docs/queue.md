@@ -7,7 +7,7 @@ maintenance mode.
 ## Configuration
 
 Redis is configured through `REDIS_URL`. Queue defaults live in
-`config/config.yaml`:
+`src/config/config.yaml`:
 
 ```yaml
 queue:
@@ -19,7 +19,7 @@ queue:
   removeOnFail: 5000
 ```
 
-`CommonQueueModule` owns the BullMQ root registration and shared queue defaults.
+`QueueModule` owns the BullMQ root registration and shared queue defaults.
 `NODE_ENV=test` uses manual registration, while `DemosModule` skips the demo
 queue feature so app-level tests do not start workers or require Redis.
 Ordinary producers and every `FlowProducer` parent/child node also receive the
@@ -29,7 +29,7 @@ keeps completed and failed workflow jobs within the same retention budgets.
 
 ## Common Module
 
-`CommonQueueModule` exports BullMQ and `CommonQueueService`, which centralizes
+`QueueModule` exports BullMQ and `QueueService`, which centralizes
 template queue behavior:
 
 - rejects job mutation when `queue.enabled` is false
@@ -129,7 +129,7 @@ job before retrying. This demo does not claim exactly-once delivery.
 ## Verify
 
 ```bash
-pnpm run test -- src/platform/infrastructure/queue/ src/examples/demo-queue/
+pnpm run test -- src/queue/ src/examples/demo-queue/
 pnpm run test:full-app
 ```
 

@@ -6,14 +6,17 @@ const outputDirectory = join(projectRoot, 'dist');
 // AI modified: guarded provision runs use the example-owned Demo migration from the compiled artifact.
 const requiredArtifacts = [
   'dist/src/main.js',
-  'dist/config/config.yaml',
-  'dist/config/typeorm.data-source.js',
-  'dist/src/migrations/1785801600000-CreateBetterAuthTables.js',
-  'dist/src/platform/security/better-auth/better-auth.loader.cjs',
+  'dist/src/config/config.yaml',
+  'dist/src/config/typeorm.data-source.js',
+  'dist/src/database/migrations/1785801600000-CreateBetterAuthTables.js',
+  'dist/src/better-auth/better-auth.loader.cjs',
   'dist/src/examples/demo-database/migrations/1760000000000-CreateDemoTable.js',
 ];
 const forbiddenArtifactPaths = new Set([
-  join(projectRoot, 'dist/src/migrations/1760000000000-CreateDemoTable.js'),
+  join(
+    projectRoot,
+    'dist/src/database/migrations/1760000000000-CreateDemoTable.js',
+  ),
 ]);
 
 async function listFiles(directory) {
@@ -32,14 +35,8 @@ for (const requiredArtifact of requiredArtifacts) {
   await access(join(projectRoot, requiredArtifact));
 }
 
-const sourceLocaleDirectory = join(
-  projectRoot,
-  'src/platform/runtime/i18n/locales',
-);
-const outputLocaleDirectory = join(
-  outputDirectory,
-  'src/platform/runtime/i18n/locales',
-);
+const sourceLocaleDirectory = join(projectRoot, 'src/i18n/locales');
+const outputLocaleDirectory = join(outputDirectory, 'src/i18n/locales');
 const sourceLocaleFiles = (await listFiles(sourceLocaleDirectory)).filter(
   (filePath) => filePath.endsWith('.json'),
 );

@@ -10,7 +10,7 @@ import {
   translateKey,
   type ValidationConstraint,
   validationMessageKey,
-} from '../../platform/runtime/i18n/i18n.translate';
+} from '../../i18n/i18n.translate';
 
 export interface ValidationErrorDetail {
   readonly field: string;

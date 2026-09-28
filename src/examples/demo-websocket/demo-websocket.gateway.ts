@@ -16,11 +16,11 @@ import {
 } from '@nestjs/common';
 import type { Server, Socket } from 'socket.io';
 
-import type { JwtAuthenticatedUser } from '../../platform/security/auth/types/jwt-authenticated-user.type';
+import type { JwtAuthenticatedUser } from '../../auth/types/jwt-authenticated-user.type';
 import {
   extractBearerToken,
   MAX_BEARER_TOKEN_LENGTH,
-} from '../../platform/security/auth/bearer-token';
+} from '../../auth/bearer-token';
 import {
   DEMO_WEBSOCKET_EVENTS,
   DEMO_WEBSOCKET_NAMESPACE,

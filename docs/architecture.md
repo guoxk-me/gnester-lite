@@ -15,18 +15,19 @@ src/
 ├── instrument.ts              pre-bootstrap telemetry initialization
 ├── bootstrap/                 startup, HTTP pipeline, and shutdown policy
 │   └── http/                  CORS, Helmet, validation, OpenAPI, Socket.IO adapter
-├── platform/                  reusable runtime capabilities
-│   ├── infrastructure/        cache, outbound HTTP, queue
-│   ├── runtime/               scheduling and managed runtime work
-│   ├── observability/         logger and Sentry
-│   ├── operations/            health and readiness
-│   └── security/              auth, authorization, crypto, CSRF, rate limiting
-├── features/                  production business capabilities
+├── auth/ authorization/       authentication and access rules
+├── better-auth/ crypto/ csrf/  security integrations
+├── cache/ http-client/ queue/  external resource integrations
+├── logger/ sentry/ health/     observability and operations
+├── i18n/ schedule/ rate-limit/ runtime capabilities
+├── config/                    YAML and environment configuration
+├── database/
+│   └── migrations/            application migrations visible to production
+├── <business-name>/           future production business capabilities
 ├── examples/                  removable teaching and integration examples
 │   └── demo-database/
 │       └── migrations/        non-production Demo schema history
-├── contracts/                 pure, stable, framework-free shared contracts
-└── migrations/                application migrations visible to production
+└── contracts/                 pure, stable, framework-free shared contracts
 ```
 
 ### `src/bootstrap`
@@ -34,51 +35,44 @@ src/
 `bootstrap` owns order-sensitive integration with the running process and HTTP
 server. It configures middleware, CORS, Helmet, global validation, versioning,
 OpenAPI, the Socket.IO adapter, and graceful shutdown. It may orchestrate
-platform services, but it must not contain feature business behavior.
+capability services, but it must not contain business behavior.
 
 `bootstrap` 负责与进程和 HTTP 服务有关、且顺序敏感的接入逻辑。它可以编排平台服务，但不能承载 Feature 业务逻辑。
 
-### `src/platform`
+### Top-level capabilities
 
-`platform` owns reusable mechanisms that can serve more than one feature or
-the application runtime itself. A capability keeps its Nest module, providers,
-configuration adapter, and focused tests together.
+Reusable capabilities live directly under `src/` in folders named for their
+responsibility. Each keeps its Nest module, providers, configuration adapter,
+and focused tests together. Capability code may depend on other capabilities
+and `contracts`, but not on a business module, `examples`, or `bootstrap`.
 
-Platform categories are ownership boundaries:
+可复用能力直接放在 `src/` 下，按职责命名；不能反向依赖业务模块、`examples` 或 `bootstrap`。
 
-- `infrastructure`: external resource and client integrations.
-- `runtime`: managed background work and runtime lifecycle.
-- `observability`: logging, telemetry, and failure capture.
-- `operations`: deployment and operator-facing capabilities.
-- `security`: authentication, authorization, cryptography, and HTTP protection.
+### Production business folders
 
-平台层保存可被多个 Feature 或应用运行时复用的机制；它不能依赖 `features`、`examples` 或 `bootstrap`。
-
-### `src/features`
-
-Production features own real business use cases such as identity, users,
-orders, or payments. A feature keeps its controllers, services, DTOs, entities,
-feature-specific migrations, local guards, adapters, tests, and documentation
+Production business folders live directly under `src/`, for example `users/`
+or `orders/`. A business folder keeps its controllers, services, DTOs, entities,
+local guards, adapters, tests, and documentation
 contracts together. A feature may be optional in a deployment, but it remains a
 feature when it is supported production behavior rather than teaching code.
 
-Feature 负责正式生产环境中的完整纵向业务能力；是否每个部署都启用，不改变其生产功能属性。
+正式业务模块直接放在 `src/<business-name>/`，并拥有自己的完整纵向能力。
 
 ### `src/examples`
 
-Examples demonstrate platform capabilities without defining production
+Examples demonstrate reusable capabilities without defining production
 business behavior. `DemosModule` is the catalog boundary: it is enabled outside
 production and excluded from the production module graph. The entire directory
-must be removable without changing platform implementations or production
-features.
+must be removable without changing capability implementations or production
+business modules.
 
-Examples 用于教学和集成演示，可以整体删除，并且不会影响平台实现或正式生产 Feature。
+Examples 用于教学和集成演示，可以整体删除，并且不会影响可复用能力或正式业务模块。
 
 ### `src/contracts`
 
 `contracts` is deliberately small. It contains only stable TypeScript values or
 types that are genuinely shared across ownership boundaries. It must not import
-NestJS, Express, TypeORM, platform modules, bootstrap code, features, or
+NestJS, Express, TypeORM, capability modules, bootstrap code, business modules, or
 examples. API DTOs belong to their owning feature or example, not to
 `contracts`.
 
@@ -89,53 +83,50 @@ examples. API DTOs belong to their owning feature or example, not to
 ```text
 main / AppModule
     ├── bootstrap
-    ├── platform
-    ├── features
+    ├── capabilities
+    ├── business folders
     └── examples
 
-bootstrap ──> platform ──> contracts
-features  ──> platform ──> contracts
-examples  ──> platform ──> contracts
-bootstrap / platform / features / examples ──> config
+bootstrap        ──> capabilities ──> contracts
+business folders ──> capabilities ──> contracts
+examples         ──> capabilities ──> contracts
+bootstrap / capabilities / business folders / examples ──> config
 ```
 
-`config/` is a separate application-configuration boundary. `AppModule` loads
-and validates it once; bootstrap, platform, features, and examples may consume
+`src/config/` is a separate application-configuration boundary. `AppModule` loads
+and validates it once; bootstrap, capabilities, business folders, and examples may consume
 its typed values through `ConfigService` or import its TypeScript config types.
 
 The following directions are forbidden:
 
-- `platform -> features`
-- `platform -> examples`
-- `platform -> bootstrap`
-- `features -> examples | bootstrap`
-- `bootstrap -> features | examples`
-- `contracts -> platform | features | examples | bootstrap | NestJS`
-- one feature importing another feature's private implementation
+- `capability -> business folder | examples | bootstrap`
+- `business folder -> examples | bootstrap | another business folder's private implementation`
+- `bootstrap -> business folder | examples`
+- `contracts -> capability | business folder | examples | bootstrap | NestJS`
 
-Cross-feature behavior should be expressed through a platform capability, a
+Cross-feature behavior should be expressed through a reusable capability, a
 small framework-free contract, or an application-level event—not by reaching
 into another feature's controller or service.
 
-禁止平台层反向依赖 Feature 或 bootstrap，也禁止 Feature 直接引用另一个 Feature 的私有实现。
+禁止能力目录反向依赖业务模块、Example 或 bootstrap，也禁止业务模块直接引用另一个业务模块的私有实现。
 
 ## Nest module composition / Nest 模块装配
 
-Platform modules are not `@Global()`. A module that injects a platform provider
+Capability modules are not `@Global()`. A module that injects a capability provider
 must import the module that exports it in its own `imports` array. This keeps
 Redis, BullMQ, scheduling, HTTP client, auth, and other runtime dependencies
 visible at the consumer boundary.
 
 Examples:
 
-- `CommonHealthModule` imports `CommonCacheModule` for Redis readiness.
-- `DemoCacheModule` imports `CommonCacheModule`.
-- `DemoHttpModule` imports `CommonHttpClientModule`.
-- `DemoQueueModule` imports `CommonQueueModule` before registering its queues.
-- `DemoScheduleModule` imports `CommonScheduleModule`.
-- Auth-consuming features import `CommonAuthModule` explicitly.
+- `HealthModule` imports `CacheModule` for Redis readiness.
+- `DemoCacheModule` imports `CacheModule`.
+- `DemoHttpModule` imports `HttpClientModule`.
+- `DemoQueueModule` imports `QueueModule` before registering its queues.
+- `DemoScheduleModule` imports `ScheduleModule`.
+- Auth-consuming business modules import `AuthModule` explicitly.
 
-平台模块不使用 `@Global()`；注入平台 provider 的模块必须显式导入其所属模块。
+能力模块不使用 `@Global()`；注入其 provider 的模块必须显式导入所属模块。
 
 ### Deliberate exceptions / 明确例外
 
@@ -153,9 +144,9 @@ The exceptions are narrow and live at composition boundaries:
    have application-wide behavior. Their owning modules are nevertheless
    explicitly imported by `AppModule`.
 4. Framework root registrations stay with the narrowest owning module:
-   BullMQ with queue infrastructure, Nest Schedule with schedule runtime,
+   BullMQ with queue, Nest Schedule with schedule,
    Terminus with health, EventEmitter with the demo-events feature, and
-   `nestjs-i18n` via `I18nCatalogModule` / `CommonI18nModule`.
+   `nestjs-i18n` via `I18nCatalogModule` / `I18nModule`.
 
 这些例外只解决框架根注册问题，不授权新增隐藏依赖或新的全局业务模块。
 
@@ -173,7 +164,9 @@ can initialize before Nest and application modules load.
 
 ## Migration ownership / 迁移所有权
 
-Application migrations that production may execute live in `src/migrations/`.
+Application migrations that production may execute live in `src/database/migrations/`.
+Business schema changes are owned by their business module but stored in this
+production migration directory so the data source discovers them.
 The Demo database migration is owned by its example at
 `src/examples/demo-database/migrations/`.
 
@@ -199,15 +192,14 @@ existing history instead of treating it as a new migration.
 Before adding or moving a file, ask:
 
 1. Is it order-sensitive process or HTTP setup? Put it in `bootstrap`.
-2. Is it a reusable runtime mechanism? Put it in the matching `platform`
-   category.
+2. Is it a reusable runtime mechanism? Put it in its own top-level capability folder.
 3. Is it supported production business behavior? Keep it inside the owning
-   feature.
+   top-level business folder.
 4. Is it removable teaching or integration code? Keep it inside the owning
    example.
 5. Is it pure TypeScript and genuinely shared across owners? It may belong in
    `contracts`.
-6. Would the proposed dependency point from platform to a feature or example?
+6. Would the proposed dependency point from a capability to a business folder or example?
    Redesign the seam instead.
 
 新增或移动文件时，应先判断所有权和依赖方向，而不是按“看起来通用”放入共享目录。

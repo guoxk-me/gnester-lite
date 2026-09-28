@@ -1,6 +1,6 @@
 import { Controller, Get, Post, VERSION_NEUTRAL } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { SkipHttpThrottle } from '../../platform/security/rate-limit/skip-http-throttle.decorator';
+import { SkipHttpThrottle } from '../../rate-limit/skip-http-throttle.decorator';
 import { DemoRateLimitScenarioDto } from './dto/demo-rate-limit-scenario.dto';
 import { DemoRateLimitOverviewDto } from './dto/demo-rate-limit-overview.dto';
 import { DemoRateLimitService } from './demo-rate-limit.service';

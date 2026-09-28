@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectFlowProducer, InjectQueue } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 import { FlowProducer, Queue, type JobsOptions } from 'bullmq';
-import { CommonQueueService } from '../../platform/infrastructure/queue/queue.service';
+import { QueueService } from '../../queue/queue.service';
 import {
   DEMO_QUEUE,
   DEMO_QUEUE_FLOW_PRODUCER,
@@ -28,7 +28,7 @@ export class DemoQueueService {
     private readonly demoQueue: Queue<DemoQueueJobData, DemoQueueResultDto>,
     @InjectFlowProducer(DEMO_QUEUE_FLOW_PRODUCER)
     private readonly demoFlowProducer: FlowProducer,
-    private readonly commonQueueService: CommonQueueService,
+    private readonly commonQueueService: QueueService,
     private readonly configService: ConfigService,
   ) {}
 

@@ -10,7 +10,7 @@ describe('DemoRateLimitService', () => {
   it('documents the global throttler wiring', () => {
     const overview = service.getOverview();
 
-    expect(overview.module).toBe('CommonRateLimitModule');
+    expect(overview.module).toBe('RateLimitModule');
     expect(overview.package).toBe('@nestjs/throttler');
     expect(overview.registration).toContain('APP_GUARD');
     expect(overview.scenarios).toEqual(

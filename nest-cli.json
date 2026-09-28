@@ -6,7 +6,7 @@
     "builder": {
       "type": "swc",
       "options": {
-        "filenames": ["src", "config"],
+        "filenames": ["src"],
         "stripLeadingPaths": false,
         "swcrcPath": ".swcrc.build"
       }
@@ -24,15 +24,15 @@
     ],
     "assets": [
       {
-        "include": "../config/*.yaml",
-        "outDir": "./dist/config"
+        "include": "config/*.yaml",
+        "outDir": "./dist/src"
       },
       {
         "include": "**/*.cjs",
         "outDir": "./dist/src"
       },
       {
-        "include": "platform/runtime/i18n/locales/**/*",
+        "include": "i18n/locales/**/*",
         "outDir": "./dist/src"
       }
     ]

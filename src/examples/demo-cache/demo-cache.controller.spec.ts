@@ -7,8 +7,8 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import request from 'supertest';
 
-import { CacheService } from '../../platform/infrastructure/cache/cache.service';
-import { HttpCacheInterceptor } from '../../platform/infrastructure/cache/http-cache.interceptor';
+import { CacheService } from '../../cache/cache.service';
+import { HttpCacheInterceptor } from '../../cache/http-cache.interceptor';
 import { DemoCacheController } from './demo-cache.controller';
 import { DemoCacheService } from './demo-cache.service';
 import {

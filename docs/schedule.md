@@ -16,9 +16,9 @@ scheduled jobs safely.
 
 ## Configuration / 配置
 
-Schedule defaults live in `config/config.yaml`:
+Schedule defaults live in `src/config/config.yaml`:
 
-定时任务默认配置在 `config/config.yaml`：
+定时任务默认配置在 `src/config/config.yaml`：
 
 ```yaml
 schedule:
@@ -37,12 +37,12 @@ Do not use `UTC+8` or `Beijing`; validation rejects non-IANA values.
 
 ## Key Files / 关键文件
 
-- `src/platform/runtime/schedule/schedule.module.ts`: owns `ScheduleModule.forRoot()` and
+- `src/schedule/schedule.module.ts`: owns `ScheduleModule.forRoot()` and
   exports the shared scheduler runtime service.
-- `config/config.yaml`: schedule defaults.
-- `config/configuration.ts`: validates `schedule.enabled` and
+- `src/config/config.yaml`: schedule defaults.
+- `src/config/configuration.ts`: validates `schedule.enabled` and
   `schedule.timeZone`.
-- `src/platform/runtime/schedule/schedule.service.ts`: shared runtime helpers.
+- `src/schedule/schedule.service.ts`: shared runtime helpers.
 - `src/examples/demo-schedule/*`: declarative and dynamic job examples.
 
 ## Current API / 当前接口
@@ -128,8 +128,8 @@ Rules / 规则：
    默认使用 `waitForCompletion: true`，除非明确允许重叠。
 4. Disable auto-running jobs in tests.
    测试环境禁用自动运行。
-5. For dynamic jobs, use `CommonScheduleService.addCronJob()`.
-   动态任务使用 `CommonScheduleService.addCronJob()`。
+5. For dynamic jobs, use `ScheduleService.addCronJob()`.
+   动态任务使用 `ScheduleService.addCronJob()`。
 6. Dynamic interval and timeout callbacks may be synchronous or asynchronous.
    The common service records rejected callbacks, prevents interval overlap,
    and waits for callbacks already in progress during shutdown.
@@ -139,7 +139,7 @@ Rules / 规则：
 ## Verify / 验证
 
 ```bash
-pnpm run test -- src/platform/runtime/schedule src/examples/demo-schedule
+pnpm run test -- src/schedule src/examples/demo-schedule
 pnpm run test
 pnpm run build
 ```

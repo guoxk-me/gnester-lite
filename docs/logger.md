@@ -10,9 +10,9 @@ access logs. Sentry remains responsible for error/performance monitoring.
 
 ## Layout / 结构
 
-- `src/platform/observability/logger/logger.module.ts`: wraps `LoggerModule.forRootAsync`.
+- `src/logger/logger.module.ts`: wraps `LoggerModule.forRootAsync`.
   封装 `LoggerModule.forRootAsync`。
-- `src/platform/observability/logger/logger.config.ts`: maps `LOGGER_*` / `app.name` to Pino
+- `src/logger/logger.config.ts`: maps `LOGGER_*` / `app.name` to Pino
   options.
   将 `LOGGER_*` / `app.name` 映射为 Pino 配置。
 - `src/main.ts`: `bufferLogs: true` + `app.useLogger(app.get(Logger))`.
@@ -73,7 +73,7 @@ For request-scoped bindings, inject nestjs-pino’s `Logger` or
 ## Verify / 验证
 
 ```bash
-pnpm run test -- src/platform/observability/logger/logger.config.spec.ts
+pnpm run test -- src/logger/logger.config.spec.ts
 pnpm run lint:check
 pnpm run build
 ```

@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CacheService } from '../../platform/infrastructure/cache/cache.service';
+import { CacheService } from '../../cache/cache.service';
 import { CreateDemoCacheDto } from './dto/create-demo-cache.dto';
 import { DemoCacheItemDto } from './dto/demo-cache-item.dto';
 import { DemoHttpCacheResponseDto } from './dto/demo-http-cache-response.dto';

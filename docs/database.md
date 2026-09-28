@@ -12,8 +12,8 @@ Auth does not run schema synchronization during application startup.
 
 - `src/app.module.ts` registers the TypeORM connection.
   `src/app.module.ts` 注册 TypeORM 连接。
-- `config/database.config.ts` builds runtime and CLI options.
-  `config/database.config.ts` 构建运行时和 CLI 配置。
+- `src/config/database.config.ts` builds runtime and CLI options.
+  `src/config/database.config.ts` 构建运行时和 CLI 配置。
 - The driver is always `mysql`; env does not choose the database type.
   驱动固定为 `mysql`；环境变量不选择数据库类型。
 - Runtime entities use compiled JS globs plus `autoLoadEntities`.
@@ -72,16 +72,16 @@ For circular constructor injection, wrap the injected type the same way (or use 
 
 ## Migrations / 迁移
 
-Place application migrations that production may execute in `src/migrations/`.
+Place application migrations that production may execute in `src/database/migrations/`.
 Feature-only Demo schema belongs to
 `src/examples/demo-database/migrations/` instead.
 
-生产环境可执行的应用迁移放在 `src/migrations/`；仅服务 Demo 的 schema 迁移放在
+生产环境可执行的应用迁移放在 `src/database/migrations/`；仅服务 Demo 的 schema 迁移放在
 `src/examples/demo-database/migrations/`。
 
 ```bash
-pnpm migration:create src/migrations/CreateExample
-pnpm migration:generate src/migrations/CreateExample
+pnpm migration:create src/database/migrations/CreateExample
+pnpm migration:generate src/database/migrations/CreateExample
 pnpm migration:run
 pnpm migration:revert
 
@@ -138,7 +138,7 @@ regenerate/diff the official schema and add a new application migration; do not
 edit a migration that may already have run.
 
 The production scripts run TypeORM with
-`NODE_ENV=production` and `dist/config/typeorm.data-source.js`. Both source and
+`NODE_ENV=production` and `dist/src/config/typeorm.data-source.js`. Both source and
 compiled data sources load the same project env-file precedence while preserving
 parent-process values. Production data-source construction requires all five
 `DB_*` connection fields and never falls back to localhost/root/blank/test.
@@ -155,13 +155,13 @@ healthy and starts `app` only after that service succeeds.
 
 ## How To Change / 如何修改
 
-- Database defaults: `config/database.config.ts`
+- Database defaults: `src/config/database.config.ts`
   数据库默认值。
-- Env validation: `config/validation.ts`
+- Env validation: `src/config/validation.ts`
   环境变量校验。
-- CLI data source: `config/typeorm.data-source.ts`
+- CLI data source: `src/config/typeorm.data-source.ts`
   CLI 数据源。
-- Production-visible migrations: `src/migrations/*`
+- Production-visible migrations: `src/database/migrations/*`
   生产环境可发现的迁移。
 - Demo module/entity/migration/tests: `src/examples/demo-database/*`
   Demo 模块、实体、迁移和测试。
@@ -169,8 +169,8 @@ healthy and starts `app` only after that service succeeds.
 Common changes / 常见修改：
 
 - Add an application table: create an entity, register it in the owning module,
-  and add its production migration to `src/migrations/`.
-  新增应用表：创建 entity，在所属模块注册，并将生产迁移放到 `src/migrations/`。
+  and add its production migration to `src/database/migrations/`.
+  新增应用表：创建 entity，在所属模块注册，并将生产迁移放到 `src/database/migrations/`。
 - Add Demo-only schema: keep its migration inside the owning Demo example and
   verify the non-production discovery boundary.
   新增仅 Demo 使用的 schema：迁移保留在所属 Demo Example 内，并验证非生产发现边界。

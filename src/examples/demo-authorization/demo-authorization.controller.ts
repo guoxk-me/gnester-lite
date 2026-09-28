@@ -12,16 +12,16 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
-import { AuthGuard } from '../../platform/security/auth/auth.guard';
-import { CurrentUser } from '../../platform/security/auth/decorators/current-user.decorator';
-import { Public } from '../../platform/security/auth/decorators/public.decorator';
-import type { JwtAuthenticatedUser } from '../../platform/security/auth/types/jwt-authenticated-user.type';
-import { CheckPolicies } from '../../platform/security/authorization/decorators/check-policies.decorator';
-import { RequirePermissions } from '../../platform/security/authorization/decorators/permissions.decorator';
-import { Roles } from '../../platform/security/authorization/decorators/roles.decorator';
-import { PermissionsGuard } from '../../platform/security/authorization/guards/permissions.guard';
-import { PoliciesGuard } from '../../platform/security/authorization/guards/policies.guard';
-import { RolesGuard } from '../../platform/security/authorization/guards/roles.guard';
+import { AuthGuard } from '../../auth/auth.guard';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { Public } from '../../auth/decorators/public.decorator';
+import type { JwtAuthenticatedUser } from '../../auth/types/jwt-authenticated-user.type';
+import { CheckPolicies } from '../../authorization/decorators/check-policies.decorator';
+import { RequirePermissions } from '../../authorization/decorators/permissions.decorator';
+import { Roles } from '../../authorization/decorators/roles.decorator';
+import { PermissionsGuard } from '../../authorization/guards/permissions.guard';
+import { PoliciesGuard } from '../../authorization/guards/policies.guard';
+import { RolesGuard } from '../../authorization/guards/roles.guard';
 import { DemoAuthorizationService } from './demo-authorization.service';
 import { DemoAdminReportDto } from './dto/demo-admin-report.dto';
 import { DemoAuditLogEntryDto } from './dto/demo-audit-log-entry.dto';

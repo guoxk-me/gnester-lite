@@ -1,7 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import type { Server } from 'socket.io';
-import { MAX_BEARER_TOKEN_LENGTH } from '../../platform/security/auth/bearer-token';
+import { MAX_BEARER_TOKEN_LENGTH } from '../../auth/bearer-token';
 import {
   DemoWebsocketGateway,
   type DemoWebsocketSocket,

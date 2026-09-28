@@ -1,7 +1,7 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FlowProducer, Queue } from 'bullmq';
-import { CommonQueueService } from '../../platform/infrastructure/queue/queue.service';
+import { QueueService } from '../../queue/queue.service';
 import {
   DEMO_QUEUE,
   DEMO_QUEUE_LONG_TASK_JOB,
@@ -21,7 +21,7 @@ describe('DemoQueueService', () => {
   };
   const commonQueueService: jest.Mocked<
     Pick<
-      CommonQueueService,
+      QueueService,
       | 'addWithinPendingCapacity'
       | 'getCounts'
       | 'isEnabled'
@@ -99,7 +99,7 @@ describe('DemoQueueService', () => {
     service = new DemoQueueService(
       queue,
       flowProducer as unknown as FlowProducer,
-      commonQueueService as unknown as CommonQueueService,
+      commonQueueService as unknown as QueueService,
       configService as unknown as ConfigService,
     );
   });

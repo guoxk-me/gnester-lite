@@ -40,8 +40,7 @@ describe('DemoCryptoController', () => {
         method: 'POST',
         route: '/api/demo-crypto/encrypt-secret',
         useCase: 'Encrypt a recoverable token before database storage.',
-        nestPattern:
-          'Inject SymmetricEncryptionService from CommonCryptoModule.',
+        nestPattern: 'Inject SymmetricEncryptionService from CryptoModule.',
       },
     ];
     service.getScenarios.mockReturnValueOnce(scenarios);

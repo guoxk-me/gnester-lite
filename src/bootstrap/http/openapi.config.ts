@@ -6,8 +6,8 @@ import {
 } from '@nestjs/swagger';
 
 import { Environment } from 'config/config.types';
-import { SKIP_API_ENVELOPE_OPENAPI_EXTENSION } from '../../platform/runtime/i18n/i18n.constants';
-import { CsrfService } from '../../platform/security/csrf/csrf.service';
+import { SKIP_API_ENVELOPE_OPENAPI_EXTENSION } from '../../i18n/i18n.constants';
+import { CsrfService } from '../../csrf/csrf.service';
 
 type OpenApiPluginMetadataFactory = Parameters<
   typeof SwaggerModule.loadPluginMetadata

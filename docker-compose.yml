@@ -44,7 +44,7 @@ services:
         'node',
         'node_modules/typeorm/cli.js',
         '-d',
-        'dist/config/typeorm.data-source.js',
+        'dist/src/config/typeorm.data-source.js',
         'migration:run',
       ]
     environment:

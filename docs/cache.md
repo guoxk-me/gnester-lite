@@ -9,12 +9,12 @@ response cache interceptor.
 
 ## Layout / 结构
 
-- `src/platform/infrastructure/cache/cache.module.ts`: owns `CacheModule.registerAsync`, the
+- `src/cache/cache.module.ts`: owns `CacheModule.registerAsync`, the
   Keyv Redis store, `CacheService`, and `HttpCacheInterceptor`.
   集中注册 `CacheModule`、Keyv Redis store，并全局导出缓存服务与拦截器。
-- `src/platform/infrastructure/cache/cache.service.ts`: `get` / `set` / `remember` / `del` /
+- `src/cache/cache.service.ts`: `get` / `set` / `remember` / `del` /
   `clear`.
-- `src/platform/infrastructure/cache/http-cache.interceptor.ts`: GET-only track keys with
+- `src/cache/http-cache.interceptor.ts`: GET-only track keys with
   `authorization` / `x-tenant-id` vary hashing.
   仅缓存 GET；按 `authorization` / `x-tenant-id` 做 vary 哈希。
 - `src/examples/demo-cache/`: CRUD-style demo over `CacheService`.
@@ -22,7 +22,7 @@ response cache interceptor.
 
 ## Configuration / 配置
 
-YAML (`config/config.yaml`):
+YAML (`src/config/config.yaml`):
 
 ```yaml
 cache:
@@ -50,9 +50,9 @@ Notes / 说明：
   Redis 与 BullMQ 共用；业务键仍应自带前缀以区分功能。Keyv 命名空间由
   `app.name` 和 `NODE_ENV` 生成，格式为
   `<app-name>:<environment>:cache`，用于隔离共用同一 Redis 的应用与环境。
-- `CommonCacheModule` is the single cache composition boundary; importing it
+- `CacheModule` is the single cache composition boundary; importing it
   registers the Redis-backed Nest cache and shared providers together.
-  `CommonCacheModule` 是唯一缓存装配边界，导入后同时注册 Redis 缓存与共享
+  `CacheModule` 是唯一缓存装配边界，导入后同时注册 Redis 缓存与共享
   provider。
 - The Redis client bounds connection setup and disables offline command
   buffering. Every cache operation also has a three-second availability
@@ -140,6 +140,6 @@ All cache/event mutations require the README CSRF cookie-jar/token flow when
 ## Verify / 验证
 
 ```bash
-pnpm run test -- src/platform/infrastructure/cache/
+pnpm run test -- src/cache/
 pnpm run test -- src/examples/demo-cache/
 ```
