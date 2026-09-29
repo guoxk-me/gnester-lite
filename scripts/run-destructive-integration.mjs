@@ -84,6 +84,8 @@ export function integrationEnvironment(environment) {
   return {
     ...environment,
     NODE_ENV: 'provision',
+    // AI modified: guarded integration runs must not depend on a developer's private env files.
+    PORT: environment.PORT ?? '3000',
     CORS_ENABLED: 'false',
     CSRF_ENABLED: 'false',
     DB_AUTO_LOAD_ENTITIES: 'true',
