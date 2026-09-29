@@ -1,16 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { I18nService } from 'nestjs-i18n';
-import { AppController } from './app.controller.js';
+
 import { AppService } from './app.service.js';
 
-describe('AppController', () => {
-  let appController: AppController;
+describe('AppService', () => {
+  let service: AppService;
 
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    const app: TestingModule = await Test.createTestingModule({
-      controllers: [AppController],
+    const module: TestingModule = await Test.createTestingModule({
       providers: [
         AppService,
         {
@@ -22,12 +21,10 @@ describe('AppController', () => {
       ],
     }).compile();
 
-    appController = app.get(AppController);
+    service = module.get(AppService);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
-    });
+  it('returns a greeting', () => {
+    expect(service.getHello()).toBe('Hello World!');
   });
 });
