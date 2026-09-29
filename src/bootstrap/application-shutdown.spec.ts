@@ -280,9 +280,7 @@ describe('application shutdown', () => {
     vi.useFakeTimers();
 
     try {
-      const applicationClose = vi.fn(
-        () => new Promise<void>(() => undefined),
-      );
+      const applicationClose = vi.fn(() => new Promise<void>(() => undefined));
       const closeTelemetry = vi.fn().mockResolvedValue('closed');
       const onShutdownTimeout = vi.fn();
       const shutdown = registerApplicationShutdownHandlers(

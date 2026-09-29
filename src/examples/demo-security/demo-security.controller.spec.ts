@@ -5,8 +5,8 @@ import { DemoSecurityService } from './demo-security.service.js';
 
 describe('DemoSecurityController', () => {
   const service = {
-      getSecurityOverview: vi.fn(),
-    } as Mocked<Pick<DemoSecurityService, 'getSecurityOverview'>>;
+    getSecurityOverview: vi.fn(),
+  } as Mocked<Pick<DemoSecurityService, 'getSecurityOverview'>>;
   let controller: DemoSecurityController;
 
   beforeEach(async () => {

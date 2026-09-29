@@ -106,9 +106,7 @@ describe('CacheService', () => {
         throwOnConnectError: true,
         throwOnErrors: true,
       });
-      vi
-        .spyOn(redisStore, 'getClient')
-        .mockResolvedValue(redisClient as never);
+      vi.spyOn(redisStore, 'getClient').mockResolvedValue(redisClient as never);
       cacheStore = new Keyv<string>({
         namespace: getCacheNamespace('gnester-lite', 'test'),
         store: redisStore,
@@ -281,9 +279,9 @@ describe('CacheService', () => {
       const disconnect = vi
         .spyOn(redisStore, 'disconnect')
         .mockResolvedValue(undefined);
-      vi
-        .mocked(indexedCacheManager.get)
-        .mockImplementationOnce(() => new Promise(() => undefined));
+      vi.mocked(indexedCacheManager.get).mockImplementationOnce(
+        () => new Promise(() => undefined),
+      );
 
       const rejection = expect(
         indexedService.get('stalled-command'),

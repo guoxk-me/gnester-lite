@@ -6,9 +6,7 @@ import { DemoConfigService } from './demo-config.service.js';
 describe('DemoConfigController', () => {
   const service = {
     getConfigurationExample: vi.fn(),
-  } as Mocked<
-    Pick<DemoConfigService, 'getConfigurationExample'>
-  >;
+  } as Mocked<Pick<DemoConfigService, 'getConfigurationExample'>>;
   let controller: DemoConfigController;
 
   beforeEach(async () => {

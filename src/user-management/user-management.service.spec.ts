@@ -31,14 +31,15 @@ const invitation = {
 // AI modified: exercise authorization and one-time invitation writes at the database boundary.
 describe('UserManagementService', () => {
   const query = vi.fn<(...args: [string, unknown[]?]) => Promise<unknown>>();
-  const domainQuery = vi.fn<(...args: [string, unknown[]?]) => Promise<unknown>>();
-  const runnerQuery = vi.fn<(...args: [string, unknown[]?]) => Promise<unknown>>(
-    (sql, parameters) => {
-      if (sql.includes('GET_LOCK')) return Promise.resolve([{ acquired: 1 }]);
-      if (sql.includes('RELEASE_LOCK')) return Promise.resolve([]);
-      return domainQuery(sql, parameters);
-    },
-  );
+  const domainQuery =
+    vi.fn<(...args: [string, unknown[]?]) => Promise<unknown>>();
+  const runnerQuery = vi.fn<
+    (...args: [string, unknown[]?]) => Promise<unknown>
+  >((sql, parameters) => {
+    if (sql.includes('GET_LOCK')) return Promise.resolve([{ acquired: 1 }]);
+    if (sql.includes('RELEASE_LOCK')) return Promise.resolve([]);
+    return domainQuery(sql, parameters);
+  });
   const commitTransaction = vi.fn().mockResolvedValue(undefined);
   const rollbackTransaction = vi.fn().mockResolvedValue(undefined);
   const runner = {

@@ -18,6 +18,21 @@
     "skipLibCheck": true,
     "strict": true,
     "strictPropertyInitialization": false,
-    "types": ["vitest/globals", "node", "multer"]
-  }
+    "types": [
+      "vitest/globals",
+      "node",
+      "multer"
+    ]
+  },
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "vitest.config*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "documentation",
+    "coverage"
+  ]
 }

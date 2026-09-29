@@ -4,7 +4,8 @@ import { CreateDemoTable1760000000000 } from './1760000000000-CreateDemoTable.js
 
 describe('CreateDemoTable1760000000000', () => {
   it('uses MySQL string literals that remain valid with ANSI_QUOTES enabled', async () => {
-    const query = vi.fn<(...args: [string]) => Promise<unknown>>()
+    const query = vi
+      .fn<(...args: [string]) => Promise<unknown>>()
       .mockResolvedValue(undefined);
     const migration = new CreateDemoTable1760000000000();
 

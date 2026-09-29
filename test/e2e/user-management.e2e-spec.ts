@@ -26,7 +26,8 @@ interface CsrfTokenBody {
 describe('user management (e2e)', () => {
   let app: NestExpressApplication | undefined;
   let management: UserManagementService;
-  const databaseQuery = vi.fn<(...args: [string, unknown[]?]) => Promise<unknown>>();
+  const databaseQuery =
+    vi.fn<(...args: [string, unknown[]?]) => Promise<unknown>>();
   const getSession = vi.fn().mockResolvedValue({ user: { id: 'admin-1' } });
 
   beforeAll(async () => {

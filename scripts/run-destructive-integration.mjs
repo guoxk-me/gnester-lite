@@ -84,6 +84,8 @@ export function integrationEnvironment(environment) {
   return {
     ...environment,
     NODE_ENV: 'provision',
+    // AI modified: guarded integration runs must not depend on a developer's private env files.
+    PORT: environment.PORT ?? '3000',
     CORS_ENABLED: 'false',
     CSRF_ENABLED: 'false',
     DB_AUTO_LOAD_ENTITIES: 'true',
@@ -142,10 +144,10 @@ if (
     case 'full-app':
       runNode(
         [
-          'node_modules/jest/bin/jest.js',
+          'node_modules/vitest/vitest.mjs',
+          'run',
           '--config',
-          './test/jest-full-app.json',
-          '--runInBand',
+          './vitest.config.full-app.ts',
         ],
         childEnvironment,
       );
@@ -167,9 +169,7 @@ function runNode(arguments_, childEnvironment) {
   const execution = spawnSync(process.execPath, arguments_, {
     env: {
       ...childEnvironment,
-      NODE_OPTIONS: [childEnvironment.NODE_OPTIONS, '--experimental-vm-modules']
-        .filter(Boolean)
-        .join(' '),
+      NODE_OPTIONS: childEnvironment.NODE_OPTIONS,
     },
     stdio: 'inherit',
   });

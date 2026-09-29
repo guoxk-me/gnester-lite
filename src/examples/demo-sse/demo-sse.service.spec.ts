@@ -69,8 +69,7 @@ describe('DemoSseService', () => {
       return data.progress === 100;
     });
     const completedData = completedEvent?.data as
-      | { progress: number; status: string }
-      | undefined;
+      { progress: number; status: string } | undefined;
 
     expect(completedEvent?.type).toBe('job.progress');
     expect(completedData?.progress).toBe(100);
@@ -102,9 +101,7 @@ describe('DemoSseService', () => {
       firstValueFrom(stream.pipe(toArray())),
     );
 
-    await vi.advanceTimersByTimeAsync(
-      DEMO_SSE_MAX_EVENTS_PER_CONNECTION * 10,
-    );
+    await vi.advanceTimersByTimeAsync(DEMO_SSE_MAX_EVENTS_PER_CONNECTION * 10);
     const eventGroups = await Promise.all(completedStreams);
 
     eventGroups.forEach((events) => {

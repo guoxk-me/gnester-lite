@@ -43,15 +43,14 @@ describe('ApiEnvelopeInterceptor', () => {
 
     // AI modified: Vitest awaits the Observable directly instead of using deprecated done callbacks.
     const payload = await firstValueFrom(interceptor.intercept(context, next));
-      expect(payload).toEqual({
-        code: 201,
-        message: 'Success',
-        data: { id: 1 },
-        errors: null,
-      });
-      expect(response.vary).toHaveBeenCalledWith('Accept-Language');
-      expect(response.setHeader).toHaveBeenCalledWith('Content-Language', 'en');
-
+    expect(payload).toEqual({
+      code: 201,
+      message: 'Success',
+      data: { id: 1 },
+      errors: null,
+    });
+    expect(response.vary).toHaveBeenCalledWith('Accept-Language');
+    expect(response.setHeader).toHaveBeenCalledWith('Content-Language', 'en');
   });
 
   it('skips wrapping when SkipApiEnvelope metadata is set', async () => {
@@ -73,9 +72,8 @@ describe('ApiEnvelopeInterceptor', () => {
 
     // AI modified: Vitest awaits the Observable directly instead of using deprecated done callbacks.
     const payload = await firstValueFrom(interceptor.intercept(context, next));
-      expect(payload).toEqual({ status: 'ok' });
-      expect(response.locals).toEqual({ [SKIP_API_ENVELOPE_KEY]: true });
-
+    expect(payload).toEqual({ status: 'ok' });
+    expect(response.locals).toEqual({ [SKIP_API_ENVELOPE_KEY]: true });
   });
 
   it('marks native response routes before controller guards execute', () => {
@@ -115,8 +113,7 @@ describe('ApiEnvelopeInterceptor', () => {
 
     // AI modified: Vitest awaits the Observable directly instead of using deprecated done callbacks.
     const payload = await firstValueFrom(interceptor.intercept(context, next));
-      expect(payload).toBe(file);
-
+    expect(payload).toBe(file);
   });
 
   it('bypasses SSE handlers before mapping their emitted MessageEvent values', async () => {
@@ -141,7 +138,6 @@ describe('ApiEnvelopeInterceptor', () => {
 
     // AI modified: Vitest awaits the Observable directly instead of using deprecated done callbacks.
     const payload = await firstValueFrom(interceptor.intercept(context, next));
-      expect(payload).toBe(messageEvent);
-
+    expect(payload).toBe(messageEvent);
   });
 });

@@ -17,10 +17,13 @@ type DatabaseQueryCallback = (failure: Error | null) => void;
 
 describe('DatabaseHealthIndicator', () => {
   const databaseConnection: {
-    query: Mock<(...args: [DatabaseQueryOptions, DatabaseQueryCallback]) => void>;
+    query: Mock<
+      (...args: [DatabaseQueryOptions, DatabaseQueryCallback]) => void
+    >;
     destroy: Mock<(...args: []) => void>;
   } = {
-    query: vi.fn<(...args: [DatabaseQueryOptions, DatabaseQueryCallback]) => void>(),
+    query:
+      vi.fn<(...args: [DatabaseQueryOptions, DatabaseQueryCallback]) => void>(),
     destroy: vi.fn<(...args: []) => void>(),
   };
   const queryRunner: {

@@ -385,7 +385,8 @@ describe('ScheduleService', () => {
     const firstTick = new Promise<void>((resolve) => {
       finishFirstTick = resolve;
     });
-    const onTick = vi.fn<(...args: []) => Promise<void>>()
+    const onTick = vi
+      .fn<(...args: []) => Promise<void>>()
       .mockReturnValueOnce(firstTick)
       .mockResolvedValue(undefined);
 
@@ -417,8 +418,7 @@ describe('ScheduleService', () => {
       onTick,
     });
     const intervalRef = schedulerRegistry.addInterval.mock.calls[0][1] as
-      | NodeJS.Timeout
-      | undefined;
+      NodeJS.Timeout | undefined;
     schedulerRegistry.doesExist.mockImplementation(
       (type, name) => type === 'interval' && name === 'shutdown-interval',
     );

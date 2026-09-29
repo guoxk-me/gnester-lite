@@ -10,8 +10,7 @@ import { RedisHealthIndicator } from './redis-health.indicator.js';
 
 type HealthIndicatorResult = Record<string, { status: 'up' | 'down' }>;
 type HealthIndicatorFunction = () =>
-  | PromiseLike<HealthIndicatorResult>
-  | HealthIndicatorResult;
+  PromiseLike<HealthIndicatorResult> | HealthIndicatorResult;
 
 function mergeIndicatorResults(
   results: readonly HealthIndicatorResult[],
@@ -29,7 +28,9 @@ describe('HealthController', () => {
   let controller: HealthController;
   let applicationReadinessService: ApplicationReadinessService;
   let healthCheckService: {
-    check: Mock<(...args: [HealthIndicatorFunction[]]) => Promise<HealthCheckResult>>;
+    check: Mock<
+      (...args: [HealthIndicatorFunction[]]) => Promise<HealthCheckResult>
+    >;
   };
   let databaseHealthIndicator: {
     pingCheck: Mock<(...args: [string]) => Promise<HealthIndicatorResult>>;

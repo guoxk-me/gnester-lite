@@ -25,7 +25,8 @@ describe('closeSentryTelemetry', () => {
   ] as const)(
     'maps an initialized SDK close result of %s',
     async (didClose, result) => {
-      const close = vi.fn<(...args: [number]) => Promise<boolean>>()
+      const close = vi
+        .fn<(...args: [number]) => Promise<boolean>>()
         .mockResolvedValue(didClose);
 
       await expect(

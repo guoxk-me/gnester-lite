@@ -7,9 +7,7 @@ import { DemoWebsocketService } from './demo-websocket.service.js';
 describe('DemoWebsocketService', () => {
   const authTokenService = {
     verifyAccessToken: vi.fn(),
-  } as Mocked<
-    Pick<AuthTokenService, 'verifyAccessToken'>
-  >;
+  } as Mocked<Pick<AuthTokenService, 'verifyAccessToken'>>;
   let service: DemoWebsocketService;
 
   beforeEach(() => {

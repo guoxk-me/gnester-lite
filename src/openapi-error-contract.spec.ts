@@ -288,8 +288,7 @@ function getDocumentedResponseStatuses(
 ): number[] {
   const handler = getControllerHandler(controller, methodName);
   const responses = Reflect.getMetadata(DECORATORS.API_RESPONSE, handler) as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
 
   return Object.keys(responses ?? {})
     .map(Number)
@@ -302,8 +301,7 @@ function getExpectedSuccessStatus(
 ): number {
   const handler = getControllerHandler(controller, methodName);
   const declaredStatus = Reflect.getMetadata(HTTP_CODE_METADATA, handler) as
-    | number
-    | undefined;
+    number | undefined;
 
   if (declaredStatus !== undefined) {
     return declaredStatus;

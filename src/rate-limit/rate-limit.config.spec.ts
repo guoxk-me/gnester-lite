@@ -1,6 +1,9 @@
 import { ExecutionContext } from '@nestjs/common';
 import { ThrottlerModuleOptions } from '@nestjs/throttler';
-import { createThrottlerModuleOptions, getClientIp } from './rate-limit.config.js';
+import {
+  createThrottlerModuleOptions,
+  getClientIp,
+} from './rate-limit.config.js';
 
 type ConfiguredThrottlerOptions = Exclude<ThrottlerModuleOptions, unknown[]>;
 

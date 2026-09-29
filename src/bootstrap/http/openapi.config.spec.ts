@@ -15,9 +15,7 @@ describe('setupOpenApi', () => {
   const csrfService = {
     getHeaderName: vi.fn(),
     isEnabled: vi.fn(),
-  } as Mocked<
-    Pick<CsrfService, 'getHeaderName' | 'isEnabled'>
-  >;
+  } as Mocked<Pick<CsrfService, 'getHeaderName' | 'isEnabled'>>;
   const getProvider = vi.fn();
   const app = {
     get: getProvider,
@@ -44,7 +42,9 @@ describe('setupOpenApi', () => {
     const createDocument = vi
       .spyOn(SwaggerModule, 'createDocument')
       .mockReturnValue(document as never);
-    const setup = vi.spyOn(SwaggerModule, 'setup').mockImplementation(() => undefined);
+    const setup = vi
+      .spyOn(SwaggerModule, 'setup')
+      .mockImplementation(() => undefined);
 
     await setupOpenApi(app, Environment.Development, metadataLoader);
 

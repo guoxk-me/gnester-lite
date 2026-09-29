@@ -72,9 +72,9 @@ describe('DemoScheduleService', () => {
 
   it('uses named task results for declarative and dynamic cron examples', () => {
     scheduleService.isEnabled.mockReturnValue(true);
-    vi
-      .useFakeTimers()
-      .setSystemTime(new Date('2026-06-01T01:00:00.000Z').getTime());
+    vi.useFakeTimers().setSystemTime(
+      new Date('2026-06-01T01:00:00.000Z').getTime(),
+    );
 
     expect(service.handleDeclarativeCron()).toEqual({
       task: DEMO_DECLARATIVE_CRON_JOB,

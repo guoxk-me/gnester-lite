@@ -16,15 +16,11 @@ describe('DemoCsrfController', () => {
   const csrfService = {
     createToken: vi.fn(),
     getHeaderName: vi.fn(),
-  } as Mocked<
-    Pick<CsrfService, 'createToken' | 'getHeaderName'>
-  >;
+  } as Mocked<Pick<CsrfService, 'createToken' | 'getHeaderName'>>;
   const demoCsrfService = {
     getOverview: vi.fn(),
     previewTransfer: vi.fn(),
-  } as Mocked<
-    Pick<DemoCsrfService, 'getOverview' | 'previewTransfer'>
-  >;
+  } as Mocked<Pick<DemoCsrfService, 'getOverview' | 'previewTransfer'>>;
   let controller: DemoCsrfController;
 
   beforeEach(async () => {

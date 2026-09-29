@@ -12,14 +12,9 @@ import { Test } from '@nestjs/testing';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as yaml from 'js-yaml';
 
-const [openApiMetadataModule, openApiConfigModule] = await Promise.all([
-  import('../dist/src/metadata.js'),
-  import('../dist/src/bootstrap/http/openapi.config.js'),
-]);
-const openApiMetadata =
-  typeof openApiMetadataModule.default === 'function'
-    ? openApiMetadataModule.default
-    : openApiMetadataModule.default.default;
+// AI modified: NestJS 12 embeds OpenAPI metadata in compiled DTOs.
+const openApiConfigModule =
+  await import('../dist/src/bootstrap/http/openapi.config.js');
 const applyCsrfOpenApiContract =
   openApiConfigModule.applyCsrfOpenApiContract ??
   openApiConfigModule.default.applyCsrfOpenApiContract;
@@ -474,7 +469,6 @@ app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });
 await app.init();
 
 try {
-  await SwaggerModule.loadPluginMetadata(openApiMetadata);
   const openApiConfig = new DocumentBuilder().addBearerAuth().build();
   const document = SwaggerModule.createDocument(app, openApiConfig);
   applyCsrfOpenApiContract(document, {

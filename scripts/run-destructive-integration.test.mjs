@@ -80,6 +80,7 @@ test('forces deterministic integration-only runtime switches', () => {
     }),
     {
       NODE_ENV: 'provision',
+      PORT: '3000',
       CORS_ENABLED: 'false',
       CSRF_ENABLED: 'false',
       DB_AUTO_LOAD_ENTITIES: 'true',
@@ -98,6 +99,7 @@ test('uses production assembly for the emitted-entry smoke test', () => {
     }),
     {
       NODE_ENV: 'production',
+      PORT: '3000',
       CORS_ENABLED: 'false',
       CSRF_ENABLED: 'false',
       DB_AUTO_LOAD_ENTITIES: 'true',

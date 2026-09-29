@@ -40,7 +40,12 @@ describe('DemoQueueProcessor', () => {
     close: closeWorker,
     on: registerWorkerListener,
   } as unknown as Mocked<DemoQueueWorker>;
-  const workerFactory = vi.fn<(...args: Parameters<DemoQueueWorkerFactory>) => ReturnType<DemoQueueWorkerFactory>>();
+  const workerFactory =
+    vi.fn<
+      (
+        ...args: Parameters<DemoQueueWorkerFactory>
+      ) => ReturnType<DemoQueueWorkerFactory>
+    >();
   let processor: DemoQueueProcessor;
 
   beforeEach(() => {

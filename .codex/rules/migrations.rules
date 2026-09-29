@@ -1,0 +1,24 @@
+# AI modified: production migration commands need an explicit escalation decision.
+prefix_rule(
+    pattern = ["pnpm", "migration:run:prod"],
+    decision = "prompt",
+    justification = "Confirm the target database and migration plan before running production migrations.",
+)
+
+prefix_rule(
+    pattern = ["pnpm", "migration:revert:prod"],
+    decision = "prompt",
+    justification = "Confirm the target database and rollback plan before reverting production migrations.",
+)
+
+prefix_rule(
+    pattern = ["pnpm", "run", "migration:run:prod"],
+    decision = "prompt",
+    justification = "Confirm the target database and migration plan before running production migrations.",
+)
+
+prefix_rule(
+    pattern = ["pnpm", "run", "migration:revert:prod"],
+    decision = "prompt",
+    justification = "Confirm the target database and rollback plan before reverting production migrations.",
+)

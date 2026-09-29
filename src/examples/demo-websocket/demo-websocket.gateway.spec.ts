@@ -119,8 +119,7 @@ describe('DemoWebsocketGateway', () => {
 
   it('does not register a client that disconnects while JWT verification is pending', async () => {
     let resolveVerification:
-      | ((authenticatedUser: typeof user) => void)
-      | undefined;
+      ((authenticatedUser: typeof user) => void) | undefined;
     const client = createClient({ token: 'valid.jwt' });
     service.verifyAccessToken.mockReturnValueOnce(
       new Promise((resolve) => {

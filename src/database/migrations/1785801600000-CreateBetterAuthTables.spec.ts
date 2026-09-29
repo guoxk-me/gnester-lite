@@ -4,7 +4,8 @@ import { CreateBetterAuthTables1785801600000 } from './1785801600000-CreateBette
 
 describe('CreateBetterAuthTables1785801600000', () => {
   it('creates the Better Auth core schema with indexed ownership relations', async () => {
-    const query = vi.fn<(...args: [string]) => Promise<unknown>>()
+    const query = vi
+      .fn<(...args: [string]) => Promise<unknown>>()
       .mockResolvedValue(undefined);
     const migration = new CreateBetterAuthTables1785801600000();
 
@@ -26,7 +27,8 @@ describe('CreateBetterAuthTables1785801600000', () => {
   });
 
   it('drops dependent tables before the user table', async () => {
-    const query = vi.fn<(...args: [string]) => Promise<unknown>>()
+    const query = vi
+      .fn<(...args: [string]) => Promise<unknown>>()
       .mockResolvedValue(undefined);
     const migration = new CreateBetterAuthTables1785801600000();
 

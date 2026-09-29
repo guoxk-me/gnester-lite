@@ -2,7 +2,10 @@ import type { Mocked } from 'vitest';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CacheService } from '../../cache/cache.service.js';
-import { DEMO_CACHE_MAX_ENTRIES, DemoCacheService } from './demo-cache.service.js';
+import {
+  DEMO_CACHE_MAX_ENTRIES,
+  DemoCacheService,
+} from './demo-cache.service.js';
 
 describe('DemoCacheService', () => {
   const cacheService = {

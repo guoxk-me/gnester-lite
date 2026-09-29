@@ -13,9 +13,7 @@ describe('QueueService', () => {
     getJobCounts: vi.fn(),
     pause: vi.fn(),
     resume: vi.fn(),
-  } as Mocked<
-    Pick<Queue, 'add' | 'getJobCounts' | 'pause' | 'resume'>
-  >;
+  } as Mocked<Pick<Queue, 'add' | 'getJobCounts' | 'pause' | 'resume'>>;
   let service: QueueService;
 
   beforeEach(() => {
@@ -124,27 +122,25 @@ describe('QueueService', () => {
     });
     const redisClient = {
       defineCommand: vi.fn(),
-      runCommand: vi.fn(
-        (commandName: string, commandArguments: unknown[]) => {
-          const commandToken = String(commandArguments[1]);
+      runCommand: vi.fn((commandName: string, commandArguments: unknown[]) => {
+        const commandToken = String(commandArguments[1]);
 
-          if (commandName.includes('Acquire')) {
-            if (lockToken !== undefined) {
-              return Promise.resolve(0);
-            }
-
-            lockToken = commandToken;
-            return Promise.resolve(1);
+        if (commandName.includes('Acquire')) {
+          if (lockToken !== undefined) {
+            return Promise.resolve(0);
           }
 
-          if (lockToken === commandToken) {
-            lockToken = undefined;
-            return Promise.resolve(1);
-          }
+          lockToken = commandToken;
+          return Promise.resolve(1);
+        }
 
-          return Promise.resolve(0);
-        },
-      ),
+        if (lockToken === commandToken) {
+          lockToken = undefined;
+          return Promise.resolve(1);
+        }
+
+        return Promise.resolve(0);
+      }),
     };
     const add = vi.fn(async (name: string) => {
       if (name === 'first') {

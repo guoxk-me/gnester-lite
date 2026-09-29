@@ -11,9 +11,7 @@ describe('DemoAuthController', () => {
     getScenarios: vi.fn(),
     login: vi.fn(),
     getProfile: vi.fn(),
-  } as Mocked<
-    Pick<DemoAuthService, 'getScenarios' | 'login' | 'getProfile'>
-  >;
+  } as Mocked<Pick<DemoAuthService, 'getScenarios' | 'login' | 'getProfile'>>;
   let controller: DemoAuthController;
 
   beforeEach(async () => {

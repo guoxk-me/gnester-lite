@@ -9,10 +9,6 @@ type SentryOptions = NonNullable<Parameters<typeof Sentry.init>[0]>;
 type SentrySpanPayload = Parameters<
   NonNullable<SentryOptions['beforeSendSpan']>
 >[0];
-type SentryStaticSpanPayload = NonNullable<
-  Parameters<NonNullable<SentryOptions['beforeSendTransaction']>>[0]['spans']
->[number];
-
 export function stripSentryUrlDetails(url: string): string {
   const detailSeparatorIndex = url.search(/[?#]/);
   const urlWithoutDetails =
@@ -76,27 +72,6 @@ export function removeSensitiveSpanData(
   };
 }
 
-function removeSensitiveStaticSpanData(
-  span: SentryStaticSpanPayload,
-): SentryStaticSpanPayload {
-  const safeAttributes: SentryStaticSpanPayload['data'] = {};
-  for (const [attributeName, attributeValue] of Object.entries(span.data)) {
-    if (sensitiveSpanAttributePattern.test(attributeName)) continue;
-    safeAttributes[attributeName] =
-      typeof attributeValue === 'string' &&
-      urlLikeSpanAttributePattern.test(attributeName)
-        ? stripSentryUrlDetails(attributeValue)
-        : attributeValue;
-  }
-  return {
-    ...span,
-    data: safeAttributes,
-    description: span.description
-      ? stripPossibleUrlDetails(span.description)
-      : span.description,
-  };
-}
-
 // AI modified: explicit deny-by-default collection survives SDK default changes.
 export const sentryPrivacyOptions: SentryOptions = {
   maxBreadcrumbs: 0,
@@ -149,16 +124,7 @@ export const sentryPrivacyOptions: SentryOptions = {
   beforeSend(event) {
     return removeSensitiveRequestData(event);
   },
-  beforeSendTransaction(event) {
-    removeSensitiveRequestData(event);
-    event.transaction =
-      event.transaction === undefined
-        ? undefined
-        : stripPossibleUrlDetails(event.transaction);
-    event.spans = event.spans?.map(removeSensitiveStaticSpanData);
-
-    return event;
-  },
+  // AI modified: Sentry 11 streams spans, so privacy filtering belongs in beforeSendSpan.
   beforeSendSpan(span) {
     return removeSensitiveSpanData(span);
   },
