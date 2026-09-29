@@ -85,7 +85,11 @@ describe('DemoDatabaseService', () => {
     // AI modified: isolate transaction-state mutations across cleanup failure tests.
     queryRunner.isTransactionActive = false;
     repository.save.mockImplementation((value: CreateDemoDto) =>
-      Promise.resolve({ id: 1, ...value }),
+      Promise.resolve({
+        id: 1,
+        name: value.name,
+        description: value.description,
+      }),
     );
     repository.find.mockResolvedValue([]);
     repository.findAndCount.mockResolvedValue([[], 0]);

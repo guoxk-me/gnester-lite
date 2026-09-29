@@ -281,18 +281,12 @@ function createClient(options: {
 
   return {
     id: socketId,
-    data: {
-      ...(options.user ? { user: options.user } : {}),
-    },
+    data: options.user ? { user: options.user } : {},
     handshake: {
-      auth: {
-        ...(options.token ? { token: options.token } : {}),
-      },
-      headers: {
-        ...(options.authorization
-          ? { authorization: options.authorization }
-          : {}),
-      },
+      auth: options.token ? { token: options.token } : {},
+      headers: options.authorization
+        ? { authorization: options.authorization }
+        : {},
     },
     emit: vi.fn(),
     disconnect: vi.fn(),

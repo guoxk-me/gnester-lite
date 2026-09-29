@@ -39,7 +39,10 @@ export class DemoQueueService {
       this.demoQueue,
       DEMO_QUEUE_SEND_EMAIL_JOB,
       {
-        ...createDemoEmailJobDto,
+        // AI modified: queue payloads contain declared fields, independent of DTO prototypes.
+        to: createDemoEmailJobDto.to,
+        subject: createDemoEmailJobDto.subject,
+        body: createDemoEmailJobDto.body,
         requestedAt: new Date().toISOString(),
       },
       DEMO_QUEUE_MAX_PENDING_JOBS,
@@ -62,7 +65,9 @@ export class DemoQueueService {
       this.demoQueue,
       DEMO_QUEUE_LONG_TASK_JOB,
       {
-        ...createDemoLongTaskJobDto,
+        taskName: createDemoLongTaskJobDto.taskName,
+        durationMs: createDemoLongTaskJobDto.durationMs,
+        steps: createDemoLongTaskJobDto.steps,
         requestedAt: new Date().toISOString(),
       },
       DEMO_QUEUE_MAX_PENDING_JOBS,

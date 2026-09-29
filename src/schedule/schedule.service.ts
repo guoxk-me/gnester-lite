@@ -57,7 +57,7 @@ export class ScheduleService implements OnApplicationShutdown {
         );
       }
     });
-    await Promise.allSettled([...this.runningTimerCallbacks]);
+    await Promise.allSettled(this.runningTimerCallbacks);
   }
 
   isEnabled(): boolean {

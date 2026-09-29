@@ -67,7 +67,7 @@ export class DemoUploadService implements OnModuleInit, OnModuleDestroy {
 
     try {
       await this.maintenanceOperation;
-      await Promise.allSettled([...this.uploadOperations.values()]);
+      await Promise.allSettled(this.uploadOperations.values());
       // AI modified: shutdown removes only this process's upload artifacts and propagates cleanup failure.
       await this.chunkStorage.clearAll();
     } finally {

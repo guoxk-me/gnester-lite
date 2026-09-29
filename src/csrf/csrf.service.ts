@@ -213,7 +213,7 @@ export class CsrfService {
 
     const identifier = randomUUID();
     request.cookies = {
-      ...((request.cookies as Record<string, unknown> | undefined) ?? {}),
+      ...(request.cookies as Record<string, unknown> | undefined),
       [identifierCookieName]: identifier,
     };
     response.cookie(identifierCookieName, identifier, {
