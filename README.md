@@ -12,6 +12,10 @@ serialization, Sentry, and structured Pino logging.
 - MySQL 8
 - Redis 7
 
+Dependency versions are managed in `pnpm-workspace.yaml`: direct ranges in
+the default catalog and security override pins in the named `security` catalog.
+`package.json` uses `catalog:` references.
+
 ## Quick start
 
 ```bash
