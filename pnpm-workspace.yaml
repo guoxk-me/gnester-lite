@@ -1,4 +1,5 @@
-# AI modified: optional telemetry and native optimization builds are unnecessary for this service.
+# AI modified: allow Nest package setup while denying optional telemetry and native optimizer hooks.
 allowBuilds:
+  '@nestjs/core': true
   '@scarf/scarf': false
   msgpackr-extract: false
