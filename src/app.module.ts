@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import configuration from './config/configuration.js';
 import { databaseConfig } from './config/database.config.js';
+import { shouldEnableDemos } from './config/demo-catalog.js';
 import { environmentFilePaths } from './config/environment-files.js';
 import { validate } from './config/validation.js';
 import { AppController } from './app.controller.js';
@@ -15,8 +16,13 @@ import { RateLimitModule } from './rate-limit/rate-limit.module.js';
 import { I18nModule } from './i18n/i18n.module.js';
 import { SentryModule } from './sentry/sentry.module.js';
 import { UserManagementModule } from './user-management/user-management.module.js';
+import { DemosModule } from './examples/demos.module.js';
 
-// AI modified: compose production capabilities while the removable Demo catalog migrates separately.
+const demoImports = shouldEnableDemos(process.env.NODE_ENV)
+  ? [DemosModule]
+  : [];
+
+// AI modified: Demo modules remain outside the production graph after the ESM migration.
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -37,7 +43,7 @@ import { UserManagementModule } from './user-management/user-management.module.j
     LoggerModule,
     RateLimitModule,
     // AI modified: optional infrastructure is composed inside the feature that consumes it.
-    // AI modified: production capabilities boot independently while examples migrate in the next phase.
+    ...demoImports,
   ],
   controllers: [AppController],
   providers: [AppService],
