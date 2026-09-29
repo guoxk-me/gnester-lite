@@ -94,8 +94,11 @@ jobs:
       - name: Production and test type check
         run: pnpm run typecheck
 
+      # AI modified: local-default tests must not inherit CI credentials or production probe switches.
       - name: Unit tests and coverage
-        run: pnpm run test:cov
+        run: |
+          unset BETTER_AUTH_SECRET BETTER_AUTH_URL CORS_ORIGINS CSRF_ENABLED CSRF_SECRET SESSION_ENABLED JWT_SECRET ENCRYPTION_KEY HMAC_SECRET
+          pnpm run test:cov
 
       - name: Destructive integration safety contract
         run: pnpm run test:integration-policy
@@ -128,7 +131,9 @@ jobs:
           pnpm run verify:docker-image
 
       - name: E2E tests
-        run: pnpm run test:e2e
+        run: |
+          unset BETTER_AUTH_SECRET BETTER_AUTH_URL CORS_ORIGINS CSRF_ENABLED CSRF_SECRET SESSION_ENABLED JWT_SECRET ENCRYPTION_KEY HMAC_SECRET
+          pnpm run test:e2e
 
       - name: Verify migration round trip
         run: pnpm run verify:migrations
