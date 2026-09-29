@@ -1,0 +1,4 @@
+# AI modified: optional telemetry and native optimization builds are unnecessary for this service.
+allowBuilds:
+  '@scarf/scarf': false
+  msgpackr-extract: false
