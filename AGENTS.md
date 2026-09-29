@@ -6,6 +6,13 @@ This file provides repository guidance to coding agents working in this project.
 
 NestJS 12 ESM TypeScript service template using pnpm 11.1.2 on Node.js 24. Production-oriented examples for configuration, validation, database, auth, security, caching, queues, scheduling, HTTP clients, file uploads, SSE, WebSocket, and serialization. Requires MySQL 8 and Redis 7.
 
+## Dependency Versions
+
+All direct dependency versions live in the default `catalog` in
+`pnpm-workspace.yaml`. Keep `package.json` dependency entries on `catalog:`;
+add or upgrade a package by editing the catalog, then regenerate
+`pnpm-lock.yaml`. `catalogMode: strict` keeps pnpm additions aligned with it.
+
 ## Commands
 
 ```bash

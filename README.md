@@ -14,6 +14,9 @@ See [the v12 migration guide](docs/v12-migration.md) for branch, runtime, and da
 - MySQL 8
 - Redis 7
 
+Dependency versions are managed in the default catalog in
+`pnpm-workspace.yaml`; `package.json` uses `catalog:` references.
+
 ## Quick start
 
 ```bash
