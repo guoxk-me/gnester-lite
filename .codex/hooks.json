@@ -1,0 +1,18 @@
+{
+  "description": "Show existing worktree changes at the start of a Codex session.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git status --short --branch",
+            "timeout": 5,
+            "statusMessage": "Checking existing changes"
+          }
+        ]
+      }
+    ]
+  }
+}

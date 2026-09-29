@@ -31,6 +31,7 @@ describe('BetterAuthService', () => {
         emailAndPassword: {
           enabled: true,
         },
+        disabledPaths: ['/sign-up/email'],
         rateLimit: {
           enabled: true,
         },

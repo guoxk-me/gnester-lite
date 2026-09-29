@@ -38,6 +38,7 @@
     "migration:run:prod": "NODE_ENV=production node node_modules/typeorm/cli.js -d dist/src/config/typeorm.data-source.js migration:run",
     "migration:revert": "pnpm typeorm migration:revert",
     "migration:revert:prod": "NODE_ENV=production node node_modules/typeorm/cli.js -d dist/src/config/typeorm.data-source.js migration:revert",
+    "admin:bootstrap": "node scripts/bootstrap-admin.mjs",
     "peers:check": "pnpm peers check",
     "test": "NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest",
     "test:watch": "NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --watch",

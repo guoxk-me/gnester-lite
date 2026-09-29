@@ -50,10 +50,13 @@ GET /docs-json         development OpenAPI JSON
 GET /api/async-api         non-production AsyncAPI index
 GET /api/async-api-json
 GET /api/async-api-yaml
-POST /api/auth/sign-up/email
 POST /api/auth/sign-in/email
 GET /api/auth/get-session
 POST /api/auth/sign-out
+GET /api/admin/users
+GET /api/admin/invitations
+POST /api/invitations/preview
+POST /api/invitations/accept
 ```
 
 OpenAPI describes HTTP contracts, AsyncAPI describes Socket.IO events, and
@@ -177,13 +180,25 @@ generated source metadata is ignored by git.
 
 Better Auth 1.6 is mounted at the unversioned `/api/auth/*` boundary with email
 and password authentication enabled. It stores users, credential accounts, and
-opaque cookie sessions in MySQL. Apply migrations before using these endpoints.
+opaque cookie sessions in MySQL. Public `/api/auth/sign-up/email` is disabled;
+only the protected account-management and one-time invitation flows create users.
+Apply migrations before using these endpoints.
 
 Local development uses the clone-ready URL in `.env.example`. Production
 requires an independent `BETTER_AUTH_SECRET` of at least 32 bytes and the public
 `BETTER_AUTH_URL`; all production URLs and trusted origins must use HTTPS and
 must not be loopback origins. `BETTER_AUTH_TRUSTED_ORIGINS` is explicit when
 set, otherwise enabled credentialed CORS origins are reused.
+
+For local Gvueter Lite integration, run this service on port 3000 after applying
+the Better Auth migration to an isolated development database. Gvueter Lite
+proxies `/api` to `http://127.0.0.1:3000` and keeps the session cookie on
+its own browser origin. Set `BIND_HOST=127.0.0.1` for a loopback-only demo
+service. Keep its dev server on port 5173 and include the exact
+origin you open (`http://localhost:5173` or `http://127.0.0.1:5173`) in
+`BETTER_AUTH_TRUSTED_ORIGINS` whenever you set that variable or override
+credentialed CORS origins. The production smoke verifier also checks sign-in
+from a separate trusted frontend origin.
 
 Minimal cookie-session flow:
 
@@ -194,8 +209,8 @@ COOKIE_JAR="$(mktemp)"
 curl -fsS -c "$COOKIE_JAR" \
   -H "Origin: $AUTH_ORIGIN" \
   -H 'content-type: application/json' \
-  -d '{"name":"Alice","email":"alice@example.com","password":"correct-horse-battery-staple"}' \
-  "$AUTH_ORIGIN/api/auth/sign-up/email"
+  -d "{\"email\":\"$AUTH_EMAIL\",\"password\":\"$AUTH_PASSWORD\"}" \
+  "$AUTH_ORIGIN/api/auth/sign-in/email"
 
 curl -fsS -b "$COOKIE_JAR" \
   -H "Origin: $AUTH_ORIGIN" \
@@ -207,6 +222,20 @@ curl -fsS -b "$COOKIE_JAR" \
   -d '{}' \
   "$AUTH_ORIGIN/api/auth/sign-out"
 ```
+
+Set `AUTH_EMAIL` and `AUTH_PASSWORD` to an account created through the
+administrator API or an accepted invitation. On a fresh database, run
+`pnpm admin:bootstrap` once after migrations with explicit
+`GNESTER_ALLOW_ADMIN_BOOTSTRAP=true`, `ADMIN_EMAIL`, `ADMIN_NAME`,
+`ADMIN_PASSWORD`, and the target `DB_*` settings. Supply the password through
+your secret manager or private shell environment, and remove those variables
+afterwards. The command refuses to run when an administrator already exists;
+the service never auto-promotes a registered user. Existing installations can
+grant `admin` to a deliberately selected account through their controlled
+database administration process. `GET /api/security/csrf-token` supplies the
+header for writes to Nest's `/api/admin/*` and `/api/invitations/*` endpoints.
+Invitation links expire in seven days, are shown only on create/renew, and are
+delivered by an administrator; this service does not send invitation emails.
 
 The Better Auth handler owns origin/CSRF validation for this exact path and
 receives the raw request stream before any body parser. Declared bodies over 1
@@ -333,8 +362,9 @@ and exits within a 17-second internal maximum. The production verifier waits
 grace period longer than the internal budget.
 
 `verify:migrations` and `test:full-app` mutate infrastructure;
-`verify:production-start` connects to those same services and exercises real
-Better Auth sign-up, session lookup, sign-out revocation, and sign-in. All three are
+`verify:production-start` connects to those same services and checks that public
+sign-up is closed, then exercises sign-in, session lookup, and sign-out with an
+isolated test credential. All three are
 fail-closed and must run only against disposable local/CI services with explicit
 loopback `DB_HOST`/`REDIS_URL`, an integer `DB_PORT` from 1 to 65535, explicit
 `DB_USERNAME`/`DB_PASSWORD`, a database name ending in `_test`, `-test`, `_ci`,

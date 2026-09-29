@@ -75,7 +75,13 @@ async function bootstrap(): Promise<void> {
   app.useLogger(logger);
 
   const port = await configureApplication(app);
-  await app.listen(port);
+  // AI modified: local auth demos can bind to loopback without changing production's default listener.
+  const bindHost = app.get(ConfigService).get<string>('BIND_HOST');
+  if (bindHost) {
+    await app.listen(port, bindHost);
+  } else {
+    await app.listen(port);
+  }
   logger.log(`Application is running on port ${port}`, 'Bootstrap');
 }
 bootstrap().catch(async (err) => {

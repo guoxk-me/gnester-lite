@@ -33,6 +33,13 @@ function createProductionEnv(
 const productionEnv = createProductionEnv();
 
 describe('environment validation', () => {
+  it('accepts an explicit loopback bind host for isolated local services', () => {
+    expect(validate({ ...baseEnv, BIND_HOST: '127.0.0.1' }).BIND_HOST).toBe(
+      '127.0.0.1',
+    );
+    expect(() => validate({ ...baseEnv, BIND_HOST: '' })).toThrow();
+  });
+
   it('defaults CORS support to enabled with browser-app defaults', () => {
     const config = validate(baseEnv);
 

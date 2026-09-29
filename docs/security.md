@@ -16,7 +16,7 @@ enabled.
 
 Common endpoints / 常用端点：
 
-- `POST /api/auth/sign-up/email`
+- `POST /api/auth/sign-up/email` (disabled; returns 404)
 - `POST /api/auth/sign-in/email`
 - `GET /api/auth/get-session`
 - `POST /api/auth/sign-out`
@@ -56,11 +56,15 @@ BETTER_AUTH_TRUSTED_ORIGINS=https://app.example.com
 are the same browser applications. A disabled or non-credentialed CORS origin is
 never promoted into Better Auth's trust boundary. Wildcards are rejected.
 
-This baseline keeps Better Auth's default self-service sign-up behavior:
-registration is open, email verification is not required, and a successful
-sign-up creates a session immediately. Before treating email ownership as a
-trusted business fact, connect a mail sender and require verification, or close
-public sign-up with an application-specific enrollment policy.
+Public self-service sign-up is closed. New accounts come from the guarded
+`/api/admin/users` endpoint or a one-time invitation accepted through
+`/api/invitations/accept`. An administrator must be selected and granted the
+`admin` role in an explicit deployment step, or a fresh installation can run
+the guarded one-time `pnpm admin:bootstrap` command after migration. No account
+is auto-promoted at startup.
+Invitations are not emailed by the service and are never evidence of verified
+email ownership. Management routes reload the caller's current role from
+the database and reject regular users. Disabling an account revokes its sessions.
 
 The existing JWT/Passport and authorization examples live under removable Demo
 features. Their bearer tokens are intentionally independent from Better Auth's

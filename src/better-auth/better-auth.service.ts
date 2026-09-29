@@ -8,10 +8,25 @@ import {
   type BetterAuthConfig,
   readBetterAuthConfig,
 } from 'config/better-auth.config';
-import { loadBetterAuthModules } from './better-auth.loader.cjs';
+import {
+  loadBetterAuthModules,
+  type BetterAuthModules,
+} from './better-auth.loader.cjs';
 
-async function startBetterAuth(database: Pool, config: BetterAuthConfig) {
-  const { betterAuth, toNodeHandler } = await loadBetterAuthModules();
+export type BetterAuthInstance = ReturnType<BetterAuthModules['betterAuth']>;
+export type BetterAuthRequestHandler = ReturnType<
+  BetterAuthModules['toNodeHandler']
+>;
+
+async function startBetterAuth(
+  database: Pool,
+  config: BetterAuthConfig,
+): Promise<{
+  auth: BetterAuthInstance;
+  requestHandler: BetterAuthRequestHandler;
+}> {
+  const { betterAuth, toNodeHandler, admin, defaultAc } =
+    await loadBetterAuthModules();
   const auth = betterAuth({
     appName: 'gnester-lite',
     baseURL: config.baseURL,
@@ -22,6 +37,17 @@ async function startBetterAuth(database: Pool, config: BetterAuthConfig) {
     emailAndPassword: {
       enabled: true,
     },
+    // AI modified: management enrollment is restricted to server-validated admin and invitation flows.
+    disabledPaths: ['/sign-up/email'],
+    plugins: [
+      admin({
+        roles: {
+          // AI modified: business controllers own management writes, so plugin admin routes grant no extra powers.
+          admin: defaultAc.newRole({ user: [], session: [] }),
+          user: defaultAc.newRole({ user: [], session: [] }),
+        },
+      }),
+    ],
     rateLimit: {
       enabled: config.isRateLimitEnabled,
     },
@@ -34,14 +60,13 @@ async function startBetterAuth(database: Pool, config: BetterAuthConfig) {
   });
 
   return {
-    auth,
+    // AI modified: plugin fields extend the core auth instance while consumers use its stable base API.
+    auth: auth as unknown as BetterAuthInstance,
     requestHandler: toNodeHandler(auth),
   };
 }
 
 type BetterAuthRuntime = Awaited<ReturnType<typeof startBetterAuth>>;
-export type BetterAuthInstance = BetterAuthRuntime['auth'];
-export type BetterAuthRequestHandler = BetterAuthRuntime['requestHandler'];
 
 @Injectable()
 export class BetterAuthService implements OnApplicationShutdown {

@@ -1,6 +1,8 @@
 import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:net';
 import { createConnection } from 'mysql2/promise';
+import { hashPassword } from 'better-auth/crypto';
 import { assertDisposableInfrastructure } from './run-destructive-integration.mjs';
 import { PRODUCTION_SHUTDOWN_TIMEOUT_MS } from './verify-shutdown-contract.mjs';
 
@@ -19,6 +21,8 @@ const applicationProcess = spawn(process.execPath, ['dist/src/main.js'], {
     NODE_ENV: 'production',
     PORT: String(port),
     BETTER_AUTH_URL: 'https://auth-smoke.example.com',
+    // AI modified: verify the separate Gvueter Lite origin through the trusted-origin boundary.
+    BETTER_AUTH_TRUSTED_ORIGINS: 'https://app-smoke.example.com',
     CORS_ORIGINS: 'https://auth-smoke.example.com',
   },
   stdio: 'inherit',
@@ -124,12 +128,13 @@ if (cleanupErrors.length > 0) {
 
 async function verifyBetterAuth(applicationPort, email, recordCreatedUser) {
   const authBaseURL = `http://127.0.0.1:${applicationPort}/api/auth`;
-  const applicationOrigin = 'https://auth-smoke.example.com';
+  const applicationOrigin = 'https://app-smoke.example.com';
   const forwardedRequestHeaders = {
     host: 'auth-smoke.example.com',
     'x-forwarded-proto': 'https',
   };
   const password = `Better-Auth-${Date.now()}!`;
+  // AI modified: enrollment is admin-only; the smoke seeds one isolated credential instead of using public signup.
   const signUpResponse = await fetch(`${authBaseURL}/sign-up/email`, {
     method: 'POST',
     headers: {
@@ -144,18 +149,30 @@ async function verifyBetterAuth(applicationPort, email, recordCreatedUser) {
     }),
     signal: AbortSignal.timeout(5_000),
   });
-  const signUpBody = await expectJsonResponse(signUpResponse, 'sign up');
-
-  if (
-    signUpBody?.user?.email !== email ||
-    typeof signUpBody?.user?.id !== 'string'
-  ) {
-    throw new Error('Better Auth sign up returned an unexpected user.');
+  if (signUpResponse.status !== 404) {
+    throw new Error('Public Better Auth sign up must be disabled.');
   }
-
-  recordCreatedUser(signUpBody.user.id);
-  expectSecureSessionCookie(signUpResponse, 'sign up');
-  const cookie = responseCookies(signUpResponse);
+  const createdUserId = await createSmokeUser(email, password);
+  recordCreatedUser(createdUserId);
+  const initialSignInResponse = await fetch(`${authBaseURL}/sign-in/email`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      origin: applicationOrigin,
+      ...forwardedRequestHeaders,
+    },
+    body: JSON.stringify({ email, password }),
+    signal: AbortSignal.timeout(5_000),
+  });
+  const initialSignInBody = await expectJsonResponse(
+    initialSignInResponse,
+    'initial sign in',
+  );
+  if (initialSignInBody?.user?.id !== createdUserId) {
+    throw new Error('Better Auth sign in returned an unexpected user.');
+  }
+  expectSecureSessionCookie(initialSignInResponse, 'initial sign in');
+  const cookie = responseCookies(initialSignInResponse);
   const sessionResponse = await fetch(`${authBaseURL}/get-session`, {
     headers: {
       cookie,
@@ -300,10 +317,40 @@ function responseCookies(response) {
     .filter(Boolean);
 
   if (cookies.length === 0) {
-    throw new Error('Better Auth sign up did not set a session cookie.');
+    throw new Error('Better Auth sign in did not set a session cookie.');
   }
 
   return cookies.join('; ');
+}
+
+async function createSmokeUser(email, password) {
+  const connection = await createConnection({
+    host: process.env.DB_HOST,
+    port: Number(process.env.DB_PORT ?? 3306),
+    user: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+  });
+  const userId = randomUUID();
+  try {
+    await connection.beginTransaction();
+    const passwordHash = await hashPassword(password);
+    await connection.execute(
+      'INSERT INTO `user` (`id`, `name`, `email`, `emailVerified`, `role`, `banned`, `createdAt`, `updatedAt`) VALUES (?, ?, ?, false, ?, false, NOW(3), NOW(3))',
+      [userId, 'Production Smoke User', email, 'user'],
+    );
+    await connection.execute(
+      'INSERT INTO `account` (`id`, `accountId`, `providerId`, `userId`, `password`, `createdAt`, `updatedAt`) VALUES (?, ?, ?, ?, ?, NOW(3), NOW(3))',
+      [randomUUID(), userId, 'credential', userId, passwordHash],
+    );
+    await connection.commit();
+    return userId;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    await connection.end();
+  }
 }
 
 async function removeBetterAuthUser(userId, email) {

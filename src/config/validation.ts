@@ -82,6 +82,11 @@ class EnvironmentVariables {
   PORT!: number;
 
   @IsString()
+  @IsNotEmpty()
+  @IsOptional()
+  BIND_HOST?: string;
+
+  @IsString()
   @IsOptional()
   DB_HOST!: string;
 

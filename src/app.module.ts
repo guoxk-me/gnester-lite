@@ -16,6 +16,7 @@ import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { I18nModule } from './i18n/i18n.module';
 import { SentryModule } from './sentry/sentry.module';
 import { DemosModule } from './examples/demos.module';
+import { UserManagementModule } from './user-management/user-management.module';
 
 const demoImports = shouldEnableDemos(process.env.NODE_ENV)
   ? [DemosModule]
@@ -34,6 +35,7 @@ const demoImports = shouldEnableDemos(process.env.NODE_ENV)
     }),
     TypeOrmModule.forRootAsync(databaseConfig.asProvider()),
     BetterAuthModule,
+    UserManagementModule,
     SentryModule,
     I18nModule,
     CsrfModule,

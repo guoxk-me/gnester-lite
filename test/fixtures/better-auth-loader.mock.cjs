@@ -5,5 +5,8 @@ exports.loadBetterAuthModules = async function loadBetterAuthModules() {
   return {
     ...require('./better-auth.mock.cjs'),
     ...require('./better-auth-node.mock.cjs'),
+    admin: (options) => ({ id: 'admin', options }),
+    defaultAc: { newRole: (permissions) => permissions },
+    hashPassword: async (password) => `hashed:${password}`,
   };
 };

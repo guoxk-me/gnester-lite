@@ -39,32 +39,9 @@ pnpm migration:run
 pnpm migration:revert
 ```
 
-**CI verification sequence:**
-
-```bash
-pnpm install --frozen-lockfile
-pnpm run verify:container-references
-pnpm run peers:check
-pnpm run format:check
-pnpm run lint:check
-pnpm run typecheck
-pnpm run test:cov
-pnpm run test:integration-policy
-pnpm run build
-pnpm run verify:architecture
-pnpm run verify:artifact
-pnpm run verify:openapi
-pnpm run compodoc
-pnpm run verify:shutdown-contract
-docker compose config --quiet
-docker build --tag gnester-lite:ci .
-pnpm run verify:docker-image
-pnpm run test:e2e
-pnpm run verify:migrations
-pnpm run test:full-app
-pnpm run verify:production-start
-pnpm run audit:prod
-```
+For task-specific verification, use the repository `gnester-verify` skill in
+`.agents/skills/gnester-verify/`. The complete CI sequence lives in
+`.github/workflows/ci.yml` and should be read when preparing a full CI run.
 
 ## Architecture
 
@@ -91,6 +68,10 @@ Dependency direction is `bootstrap/business/examples -> capabilities -> contract
 Capabilities must not import business folders, examples, or bootstrap;
 business folders and bootstrap must not import examples. Do not import another
 business folder's private implementation. See `docs/architecture.md`.
+
+For a change to one area, read its focused guide in `docs/` when relevant:
+`database.md` for schema or TypeORM work, `configuration.md` for configuration,
+`security.md` for security controls, and `openapi.md` for API documentation.
 
 Capability modules are explicit dependencies and must not use `@Global()`.
 A consumer that injects a capability provider imports its owning module in
@@ -157,7 +138,7 @@ BullMQ (queues via `@nestjs/bullmq`), TypeORM + MySQL, Redis (`@keyv/redis` for 
 
 ## Verification & Safety
 
-- Verify changes with type checking, linting, tests, and build.
+- Verify changes with the applicable type checks, lint checks, tests, and build.
 - Tag conclusions as `Executed`, `Inspected`, or `Assumed` when reporting.
 - Do not disable lint rules or ignore TypeScript errors.
 - Require confirmation before: database schema changes, production data modifications, public API changes, auth/authz changes, large cross-module refactors, or irreversible operations.
