@@ -3,6 +3,29 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
-    "deleteOutDir": true
+    "deleteOutDir": true,
+    "plugins": [
+      {
+        "name": "@nestjs/swagger",
+        "options": {
+          "classValidatorShim": true,
+          "introspectComments": true
+        }
+      }
+    ],
+    "assets": [
+      {
+        "include": "config/*.yaml",
+        "outDir": "./dist"
+      },
+      {
+        "include": "**/*.cjs",
+        "outDir": "./dist"
+      },
+      {
+        "include": "i18n/locales/**/*",
+        "outDir": "./dist"
+      }
+    ]
   }
 }
