@@ -6,7 +6,7 @@ import {
   createDatabaseCliOptions,
   createDatabaseOptions,
 } from './database.config.js';
-import { DbConnection } from './config.types.js';
+import { DbConnection } from './config-enums.js';
 import { loadProjectEnvironmentFiles } from './environment-files.js';
 
 describe('databaseConfig', () => {

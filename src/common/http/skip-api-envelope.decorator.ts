@@ -4,7 +4,7 @@ import { ApiExtension } from '@nestjs/swagger';
 import {
   SKIP_API_ENVELOPE_KEY,
   SKIP_API_ENVELOPE_OPENAPI_EXTENSION,
-} from './i18n.constants.js';
+} from './http-metadata.js';
 
 // AI modified: one marker now drives runtime and generated OpenAPI native-response boundaries.
 export const SkipApiEnvelope = (): MethodDecorator & ClassDecorator =>

@@ -1,5 +1,5 @@
 import { HttpModuleOptions } from '@nestjs/axios';
-import { HttpConfig } from '../config/config.types.js';
+import { HttpConfig } from '../config/application-config.types.js';
 
 // AI modified: extracted factory so outbound axios options can be unit-tested like rate-limit/logger configs.
 export function createHttpModuleOptions(config: HttpConfig): HttpModuleOptions {

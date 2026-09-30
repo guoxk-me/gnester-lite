@@ -1,6 +1,6 @@
 import type { Mocked } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Environment } from '../../config/config.types.js';
+import { Environment } from '../../config/config-enums.js';
 import { DemoSentryController } from './demo-sentry.controller.js';
 import { DemoSentryService } from './demo-sentry.service.js';
 

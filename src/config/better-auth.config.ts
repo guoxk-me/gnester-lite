@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 
-import { Environment } from './config.types.js';
+import { Environment } from './config-enums.js';
 import { assertCanonicalCorsOrigins } from './cors-origin.js';
 
 export const BETTER_AUTH_BASE_PATH = '/api/auth';

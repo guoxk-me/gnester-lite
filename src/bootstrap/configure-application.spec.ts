@@ -8,7 +8,8 @@ import session from 'express-session';
 import helmet from 'helmet';
 import { I18nService } from 'nestjs-i18n';
 
-import { Environment, type RateLimitConfig } from '../config/config.types.js';
+import { Environment } from '../config/config-enums.js';
+import { type RateLimitConfig } from '../config/application-config.types.js';
 import { BetterAuthService } from '../better-auth/better-auth.service.js';
 import { CsrfService } from '../csrf/csrf.service.js';
 import { createHelmetOptions } from './http/helmet-options.js';

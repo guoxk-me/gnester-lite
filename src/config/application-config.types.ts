@@ -1,14 +1,3 @@
-export enum Environment {
-  Development = 'development',
-  Production = 'production',
-  Test = 'test',
-  Provision = 'provision',
-}
-
-export enum DbConnection {
-  MYSQL = 'mysql',
-}
-
 export interface AppConfig {
   readonly name: string;
   readonly apiPrefix: string;
@@ -72,7 +61,7 @@ export interface YamlConfig {
 
 export interface DatabaseOptions {
   readonly name?: string;
-  readonly type: DbConnection;
+  readonly type: 'mysql';
   readonly host: string;
   readonly port: number;
   readonly username: string;

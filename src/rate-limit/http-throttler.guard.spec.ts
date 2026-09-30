@@ -6,7 +6,7 @@ import {
 } from '@nestjs/throttler';
 
 import { HttpThrottlerGuard } from './http-throttler.guard.js';
-import { SkipHttpThrottle } from './skip-http-throttle.decorator.js';
+import { SkipHttpThrottle } from '../common/http/skip-http-throttle.decorator.js';
 
 class TestableHttpThrottlerGuard extends HttpThrottlerGuard {
   isSkipped(context: ExecutionContext): Promise<boolean> {

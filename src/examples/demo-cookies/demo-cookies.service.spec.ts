@@ -5,7 +5,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { Environment } from '../../config/config.types.js';
+import { Environment } from '../../config/config-enums.js';
 import {
   DEMO_PREFERENCES_COOKIE,
   DEMO_SESSION_COOKIE,

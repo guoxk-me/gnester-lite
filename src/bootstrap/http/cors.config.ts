@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 
 import { assertCanonicalCorsOrigins } from '../../config/cors-origin.js';
-import { Environment } from '../../config/config.types.js';
+import { Environment } from '../../config/config-enums.js';
 
 export interface CorsOptions {
   readonly origin: string | string[];

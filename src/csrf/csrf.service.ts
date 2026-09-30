@@ -15,7 +15,7 @@ import {
   csrfTokenCookieName,
 } from '../config/cookie-name.js';
 import { isBetterAuthRequestPath } from '../config/better-auth.config.js';
-import { Environment } from '../config/config.types.js';
+import { Environment } from '../config/config-enums.js';
 import { resolveSupportedLanguage } from '../i18n/i18n.translate.js';
 
 export const CSRF_LOCAL_DEVELOPMENT_SECRET =

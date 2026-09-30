@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 
-import { Environment } from './config.types.js';
+import { Environment } from './config-enums.js';
 import {
   BETTER_AUTH_LOCAL_DEVELOPMENT_SECRET,
   isBetterAuthRequestPath,

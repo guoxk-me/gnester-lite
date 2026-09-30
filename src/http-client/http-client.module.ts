@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { HttpConfig } from '../config/config.types.js';
+import { HttpConfig } from '../config/application-config.types.js';
 import { createHttpModuleOptions } from './http-client.config.js';
 
 // AI modified: HTTP clients are opt-in infrastructure owned by their consuming feature.

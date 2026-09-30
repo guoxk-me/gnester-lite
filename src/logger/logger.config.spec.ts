@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Writable } from 'node:stream';
 
 import { ConfigService } from '@nestjs/config';
-import { Environment } from '../config/config.types.js';
+import { Environment } from '../config/config-enums.js';
 import pino, { type LoggerOptions } from 'pino';
 import { pinoHttp, type Options as PinoHttpOptions } from 'pino-http';
 import {

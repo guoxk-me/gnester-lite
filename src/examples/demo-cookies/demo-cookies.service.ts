@@ -6,7 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { CookieOptions } from 'express';
 
-import { Environment } from '../../config/config.types.js';
+import { Environment } from '../../config/config-enums.js';
 import { DemoCookieReadDto } from './dto/demo-cookie-read.dto.js';
 import { DemoCookieWriteDto } from './dto/demo-cookie-write.dto.js';
 import { SetDemoPreferenceCookieDto } from './dto/set-demo-preference-cookie.dto.js';

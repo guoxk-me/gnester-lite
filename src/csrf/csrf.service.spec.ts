@@ -3,7 +3,7 @@ import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NextFunction, Request, Response } from 'express';
 
-import { Environment } from '../config/config.types.js';
+import { Environment } from '../config/config-enums.js';
 import {
   CSRF_LOCAL_DEVELOPMENT_SECRET,
   CsrfService,

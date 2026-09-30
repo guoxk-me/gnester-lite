@@ -7,7 +7,7 @@ import {
   MaxLength,
 } from 'class-validator';
 
-import { MAX_EMAIL_ADDRESS_LENGTH } from '../../../contracts/input-validation.constants.js';
+import { MAX_EMAIL_ADDRESS_LENGTH } from '../../../common/validation/input-validation.constants.js';
 
 export const DEMO_QUEUE_EMAIL_SUBJECT_MAX_LENGTH = 120;
 export const DEMO_QUEUE_EMAIL_BODY_MAX_LENGTH = 2_000;

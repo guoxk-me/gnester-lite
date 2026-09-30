@@ -2,7 +2,7 @@ import type { Mock } from 'vitest';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { HealthCheckResult, HealthCheckService } from '@nestjs/terminus';
 
-import { SKIP_HTTP_THROTTLE_KEY } from '../rate-limit/skip-http-throttle.decorator.js';
+import { SKIP_HTTP_THROTTLE_KEY } from '../common/http/skip-http-throttle.decorator.js';
 import { ApplicationReadinessService } from './application-readiness.service.js';
 import { DatabaseHealthIndicator } from './database-health.indicator.js';
 import { HealthController } from './health.controller.js';

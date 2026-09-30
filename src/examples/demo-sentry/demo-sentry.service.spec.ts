@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { Environment } from '../../config/config.types.js';
+import { Environment } from '../../config/config-enums.js';
 import { DemoSentryService } from './demo-sentry.service.js';
 
 describe('DemoSentryService', () => {
@@ -73,7 +73,7 @@ function createConfigService(
   values: Record<string, string | number | boolean>,
 ): ConfigService {
   return {
-    get: <ConfigValue>(
+    get: <ConfigValue,>(
       key: string,
       defaultValue?: ConfigValue,
     ): ConfigValue => {

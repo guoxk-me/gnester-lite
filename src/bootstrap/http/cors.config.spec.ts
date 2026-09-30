@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 
-import { Environment } from '../../config/config.types.js';
+import { Environment } from '../../config/config-enums.js';
 import { createCorsOptions } from './cors.config.js';
 
 function createConfigService(

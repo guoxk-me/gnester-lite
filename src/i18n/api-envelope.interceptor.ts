@@ -12,11 +12,10 @@ import { I18nContext } from 'nestjs-i18n';
 import { isObservable, map, type Observable } from 'rxjs';
 import type { Response } from 'express';
 
-import { type ApiEnvelope, isApiEnvelope } from '../contracts/api-envelope.js';
-import {
-  I18N_FALLBACK_LANGUAGE,
-  SKIP_API_ENVELOPE_KEY,
-} from './i18n.constants.js';
+import { type ApiEnvelope } from '../common/http/api-envelope.types.js';
+import { isApiEnvelope } from '../common/http/api-envelope.js';
+import { I18N_FALLBACK_LANGUAGE } from './i18n.constants.js';
+import { SKIP_API_ENVELOPE_KEY } from '../common/http/http-metadata.js';
 import { httpStatusMessageKey, translateKey } from './i18n.translate.js';
 
 function isNativeResponseBoundary(

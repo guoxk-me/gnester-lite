@@ -7,7 +7,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-import { MAX_EMAIL_ADDRESS_LENGTH } from '../../../contracts/input-validation.constants.js';
+import { MAX_EMAIL_ADDRESS_LENGTH } from '../../../common/validation/input-validation.constants.js';
 
 export class RegisterDemoUserDto {
   // AI modified: bound event payload identity fields before they enter the in-process bus.

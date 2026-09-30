@@ -19,7 +19,7 @@ import {
   ValidateNested,
   validateSync,
 } from 'class-validator';
-import { YamlConfig } from './config.types.js';
+import { YamlConfig } from './application-config.types.js';
 
 const YAML_CONFIG_FILENAME = 'config.yaml';
 const REDIS_NAMESPACE_SEGMENT_MAX_LENGTH = 64;

@@ -1,6 +1,6 @@
 import type { Mocked } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { SKIP_HTTP_THROTTLE_KEY } from '../../rate-limit/skip-http-throttle.decorator.js';
+import { SKIP_HTTP_THROTTLE_KEY } from '../../common/http/skip-http-throttle.decorator.js';
 import { DemoRateLimitController } from './demo-rate-limit.controller.js';
 import { DemoRateLimitService } from './demo-rate-limit.service.js';
 

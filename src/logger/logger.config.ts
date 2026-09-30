@@ -4,7 +4,7 @@ import type { IncomingMessage } from 'node:http';
 import type { Level } from 'pino';
 import type { StdSerializedResults } from 'pino-http';
 import type { Params } from 'nestjs-pino';
-import { Environment } from '../config/config.types.js';
+import { Environment } from '../config/config-enums.js';
 
 const standardSensitiveLogPaths = [
   'req.headers.authorization',

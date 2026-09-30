@@ -5,8 +5,8 @@ import {
   HealthCheckService,
 } from '@nestjs/terminus';
 import { ApiResponse, ApiResponseSchemaHost } from '@nestjs/swagger';
-import { SkipApiEnvelope } from '../i18n/skip-api-envelope.decorator.js';
-import { SkipHttpThrottle } from '../rate-limit/skip-http-throttle.decorator.js';
+import { SkipApiEnvelope } from '../common/http/skip-api-envelope.decorator.js';
+import { SkipHttpThrottle } from '../common/http/skip-http-throttle.decorator.js';
 import { ApplicationReadinessService } from './application-readiness.service.js';
 import { DatabaseHealthIndicator } from './database-health.indicator.js';
 import { RedisHealthIndicator } from './redis-health.indicator.js';

@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { RateLimitConfig } from '../config/config.types.js';
+import { RateLimitConfig } from '../config/application-config.types.js';
 import { HttpThrottlerGuard } from './http-throttler.guard.js';
 import { createThrottlerModuleOptions } from './rate-limit.config.js';
 

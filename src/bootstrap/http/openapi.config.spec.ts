@@ -2,8 +2,8 @@ import type { Mocked } from 'vitest';
 import { INestApplication } from '@nestjs/common';
 import { type OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 
-import { Environment } from '../../config/config.types.js';
-import { SKIP_API_ENVELOPE_OPENAPI_EXTENSION } from '../../i18n/i18n.constants.js';
+import { Environment } from '../../config/config-enums.js';
+import { SKIP_API_ENVELOPE_OPENAPI_EXTENSION } from '../../common/http/http-metadata.js';
 import { CsrfService } from '../../csrf/csrf.service.js';
 import {
   applyCsrfOpenApiContract,

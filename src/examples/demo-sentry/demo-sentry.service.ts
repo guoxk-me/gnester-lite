@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Environment } from '../../config/config.types.js';
+import { Environment } from '../../config/config-enums.js';
 import { shouldInitializeSentry } from '../../config/environment-files.js';
 import { DemoSentryScenarioDto } from './dto/demo-sentry-scenario.dto.js';
 import { DemoSentryStatusDto } from './dto/demo-sentry-status.dto.js';

@@ -1,7 +1,7 @@
 import { ExecutionContext, Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
-import { SKIP_HTTP_THROTTLE_KEY } from './skip-http-throttle.decorator.js';
+import { SKIP_HTTP_THROTTLE_KEY } from '../common/http/skip-http-throttle.decorator.js';
 
 @Injectable()
 export class HttpThrottlerGuard extends ThrottlerGuard {

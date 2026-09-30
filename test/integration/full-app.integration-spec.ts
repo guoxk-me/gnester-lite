@@ -12,7 +12,7 @@ import type { Repository } from 'typeorm';
 
 import { AppModule } from '../../src/app.module.js';
 import { configureApplication } from '../../src/bootstrap/configure-application.js';
-import type { ApiEnvelope } from '../../src/contracts/api-envelope.js';
+import type { ApiEnvelope } from '../../src/common/http/api-envelope.types.js';
 import { CacheService } from '../../src/cache/cache.service.js';
 import { getQueueWorkerConnectionOptions } from '../../src/queue/queue-connection.js';
 import type { AccessTokenDto } from '../../src/examples/demo-auth/dto/access-token.dto.js';

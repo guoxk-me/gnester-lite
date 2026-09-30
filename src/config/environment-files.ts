@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { loadEnvFile } from 'node:process';
 
-import { Environment } from './config.types.js';
+import { Environment } from './config-enums.js';
 
 export interface SentryBootstrapEnvironment {
   readonly isEnabled: boolean;

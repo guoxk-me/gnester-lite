@@ -1,5 +1,5 @@
 import { ThrottlerModuleOptions } from '@nestjs/throttler';
-import { RateLimitConfig } from '../config/config.types.js';
+import { RateLimitConfig } from '../config/application-config.types.js';
 
 function getStringProperty(
   request: Record<string, unknown>,

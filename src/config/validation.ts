@@ -24,7 +24,7 @@ import {
   csrfIdentifierCookieName,
   csrfTokenCookieName,
 } from './cookie-name.js';
-import { Environment } from './config.types.js';
+import { Environment } from './config-enums.js';
 import { assertCanonicalCorsOrigins } from './cors-origin.js';
 import { environmentBooleanValue } from './environment-files.js';
 

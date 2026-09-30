@@ -1,4 +1,4 @@
-import { Environment } from './config.types.js';
+import { Environment } from './config-enums.js';
 
 export const DEFAULT_CSRF_TOKEN_COOKIE_NAME = 'gnester.csrf-token';
 export const DEFAULT_CSRF_IDENTIFIER_COOKIE_NAME = 'gnester.csrf-id';

@@ -1,5 +1,6 @@
 import { registerAs } from '@nestjs/config';
-import { DatabaseOptions, DbConnection } from './config.types.js';
+import { DatabaseOptions } from './application-config.types.js';
+import { DbConnection } from './config-enums.js';
 import { shouldEnableDemos } from './demo-catalog.js';
 
 const RUNTIME_ENTITY_GLOBS = ['dist/**/*.entity.js'];

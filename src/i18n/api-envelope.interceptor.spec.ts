@@ -8,7 +8,7 @@ import {
   ApiEnvelopeBoundaryGuard,
   ApiEnvelopeInterceptor,
 } from './api-envelope.interceptor.js';
-import { SKIP_API_ENVELOPE_KEY } from './i18n.constants.js';
+import { SKIP_API_ENVELOPE_KEY } from '../common/http/http-metadata.js';
 
 describe('ApiEnvelopeInterceptor', () => {
   const reflector = {

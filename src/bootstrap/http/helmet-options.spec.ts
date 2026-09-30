@@ -2,7 +2,7 @@ import { IncomingMessage, ServerResponse } from 'node:http';
 import { Socket } from 'node:net';
 import type { NestMiddleware } from '@nestjs/common';
 import helmet from 'helmet';
-import { Environment } from '../../config/config.types.js';
+import { Environment } from '../../config/config-enums.js';
 import { createHelmetOptions } from './helmet-options.js';
 
 describe('createHelmetOptions', () => {
