@@ -91,7 +91,6 @@ export function integrationEnvironment(environment) {
     DB_AUTO_LOAD_ENTITIES: 'true',
     DB_SYNCHRONIZE: 'false',
     SENTRY_ENABLED: 'false',
-    SESSION_ENABLED: 'false',
   };
 }
 
@@ -100,6 +99,8 @@ export function productionVerificationEnvironment(environment) {
     ...integrationEnvironment(environment),
     // AI modified: the artifact smoke test must traverse production-only validation and assembly.
     NODE_ENV: 'production',
+    // AI modified: application login and refresh must exercise the real browser CSRF boundary.
+    CSRF_ENABLED: 'true',
   };
 }
 
@@ -117,7 +118,7 @@ if (
         [
           'node_modules/typeorm/cli.js',
           '-d',
-          'dist/src/config/typeorm.data-source.js',
+          'dist/src/infra/database/typeorm.data-source.js',
           'migration:run',
         ],
         childEnvironment,
@@ -126,7 +127,7 @@ if (
         [
           'node_modules/typeorm/cli.js',
           '-d',
-          'dist/src/config/typeorm.data-source.js',
+          'dist/src/infra/database/typeorm.data-source.js',
           'migration:revert',
         ],
         childEnvironment,
@@ -135,7 +136,7 @@ if (
         [
           'node_modules/typeorm/cli.js',
           '-d',
-          'dist/src/config/typeorm.data-source.js',
+          'dist/src/infra/database/typeorm.data-source.js',
           'migration:run',
         ],
         childEnvironment,

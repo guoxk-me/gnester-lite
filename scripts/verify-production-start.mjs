@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID, scrypt } from 'node:crypto';
 import { createServer } from 'node:net';
+import { promisify } from 'node:util';
 import { createConnection } from 'mysql2/promise';
-import { hashPassword } from 'better-auth/crypto';
 import { assertDisposableInfrastructure } from './run-destructive-integration.mjs';
 import { PRODUCTION_SHUTDOWN_TIMEOUT_MS } from './verify-shutdown-contract.mjs';
 
@@ -14,22 +14,19 @@ const PROBE_INTERVAL_MS = 100;
 assertDisposableInfrastructure(process.env);
 
 const port = await reserveLoopbackPort();
-const betterAuthEmail = `production-smoke-${process.pid}-${Date.now()}@example.com`;
+const smokeEmail = `production-smoke-${process.pid}-${Date.now()}@example.com`;
 const applicationProcess = spawn(process.execPath, ['dist/src/main.js'], {
   env: {
     ...process.env,
     NODE_ENV: 'production',
     PORT: String(port),
-    BETTER_AUTH_URL: 'https://auth-smoke.example.com',
-    // AI modified: verify the separate Gvueter Lite origin through the trusted-origin boundary.
-    BETTER_AUTH_TRUSTED_ORIGINS: 'https://app-smoke.example.com',
     CORS_ORIGINS: 'https://auth-smoke.example.com',
   },
   stdio: 'inherit',
 });
 let hasApplicationExited = false;
 let applicationExit;
-let betterAuthUserId;
+let smokeUserId;
 
 applicationProcess.once('exit', (code, signal) => {
   hasApplicationExited = true;
@@ -53,10 +50,12 @@ try {
     '你好，世界！',
     'zh-CN, zh;q=0.9, en;q=0.8',
   );
-  // AI modified: exercise the real ESM Better Auth handler, MySQL schema, and opaque cookie session.
-  await verifyBetterAuth(port, betterAuthEmail, (createdUserId) => {
+  // AI modified: keep readiness probes outside the login route's one-second rate budget.
+  await new Promise((resolve) => setTimeout(resolve, 1_100));
+  // AI modified: production smoke verifies the application-owned access and refresh cookies.
+  await verifyApplicationSession(port, smokeEmail, (createdUserId) => {
     // AI modified: retain the exact smoke-owned record ID so cleanup cannot delete a pre-existing user after an email collision.
-    betterAuthUserId = createdUserId;
+    smokeUserId = createdUserId;
   });
 
   applicationProcess.kill('SIGTERM');
@@ -74,7 +73,7 @@ try {
   }
 
   process.stdout.write(
-    'Production entry passed health and Better Auth probes, then shut down cleanly.\n',
+    'Production entry passed health and application session probes, then shut down cleanly.\n',
   );
 } catch (error) {
   verificationError = error;
@@ -103,9 +102,9 @@ try {
   cleanupErrors.push(error);
 }
 
-if (betterAuthUserId) {
+if (smokeUserId) {
   try {
-    await removeBetterAuthUser(betterAuthUserId, betterAuthEmail);
+    await removeSmokeUser(smokeUserId, smokeEmail);
   } catch (error) {
     cleanupErrors.push(error);
   }
@@ -126,201 +125,152 @@ if (cleanupErrors.length > 0) {
   throw new AggregateError(cleanupErrors, 'Production cleanup failed.');
 }
 
-async function verifyBetterAuth(applicationPort, email, recordCreatedUser) {
-  const authBaseURL = `http://127.0.0.1:${applicationPort}/api/auth`;
-  const applicationOrigin = 'https://app-smoke.example.com';
-  const forwardedRequestHeaders = {
-    host: 'auth-smoke.example.com',
-    'x-forwarded-proto': 'https',
-  };
-  const password = `Better-Auth-${Date.now()}!`;
-  // AI modified: enrollment is admin-only; the smoke seeds one isolated credential instead of using public signup.
-  const signUpResponse = await fetch(`${authBaseURL}/sign-up/email`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      origin: applicationOrigin,
-      ...forwardedRequestHeaders,
-    },
-    body: JSON.stringify({
-      name: 'Production Smoke User',
-      email,
-      password,
-    }),
-    signal: AbortSignal.timeout(5_000),
-  });
-  if (signUpResponse.status !== 404) {
-    throw new Error('Public Better Auth sign up must be disabled.');
-  }
+async function verifyApplicationSession(
+  applicationPort,
+  email,
+  recordCreatedUser,
+) {
+  const baseURL = 'http://127.0.0.1:' + applicationPort + '/api/session';
+  const password = 'Application-Smoke-' + Date.now() + '!';
+  const origin = 'https://auth-smoke.example.com';
   const createdUserId = await createSmokeUser(email, password);
   recordCreatedUser(createdUserId);
-  const initialSignInResponse = await fetch(`${authBaseURL}/sign-in/email`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      origin: applicationOrigin,
-      ...forwardedRequestHeaders,
-    },
-    body: JSON.stringify({ email, password }),
+
+  // AI modified: the session check issues XSRF before any credential-bearing mutation.
+  const initial = await fetch(baseURL, {
+    headers: { origin },
     signal: AbortSignal.timeout(5_000),
   });
-  const initialSignInBody = await expectJsonResponse(
-    initialSignInResponse,
-    'initial sign in',
+  await expectApplicationResponse(initial, 401, 'anonymous session');
+  const cookies = new Map();
+  collectCookies(initial, cookies);
+  let csrf = decodeURIComponent(cookies.get('XSRF-TOKEN') ?? '');
+  if (!csrf || !cookies.has('__Host-gnester.csrf-id')) {
+    throw new Error('Session check did not issue both CSRF cookies.');
+  }
+
+  const requestHeaders = () => ({
+    'content-type': 'application/json',
+    origin,
+    cookie: [...cookies].map(([name, token]) => name + '=' + token).join('; '),
+    'x-xsrf-token': csrf,
+  });
+  const signedIn = await fetch(baseURL + '/login', {
+    method: 'POST',
+    headers: requestHeaders(),
+    body: JSON.stringify({ email, password, rememberMe: true }),
+    signal: AbortSignal.timeout(5_000),
+  });
+  const signedInBody = await expectApplicationResponse(signedIn, 200, 'login');
+  if (signedInBody.data?.id !== createdUserId) {
+    throw new Error('Application login returned an unexpected user.');
+  }
+  expectSecureAuthCookies(signedIn, 'login');
+  collectCookies(signedIn, cookies);
+  const originalRefresh = cookies.get('gvueter_refresh');
+  if (!originalRefresh || !cookies.get('gvueter_access')) {
+    throw new Error(
+      'Application login did not set both authentication cookies.',
+    );
+  }
+
+  const active = await fetch(baseURL, {
+    headers: requestHeaders(),
+    signal: AbortSignal.timeout(5_000),
+  });
+  const activeBody = await expectApplicationResponse(
+    active,
+    200,
+    'active session',
   );
-  if (initialSignInBody?.user?.id !== createdUserId) {
-    throw new Error('Better Auth sign in returned an unexpected user.');
+  if (activeBody.data?.email !== email) {
+    throw new Error(
+      'Application session did not resolve the signed-in account.',
+    );
   }
-  expectSecureSessionCookie(initialSignInResponse, 'initial sign in');
-  const cookie = responseCookies(initialSignInResponse);
-  const sessionResponse = await fetch(`${authBaseURL}/get-session`, {
-    headers: {
-      cookie,
-      origin: applicationOrigin,
-      ...forwardedRequestHeaders,
-    },
-    signal: AbortSignal.timeout(5_000),
-  });
-  const sessionBody = await expectJsonResponse(sessionResponse, 'get session');
+  collectCookies(active, cookies);
+  csrf = decodeURIComponent(cookies.get('XSRF-TOKEN') ?? '');
+  await new Promise((resolve) => setTimeout(resolve, 1_100));
 
-  if (sessionBody?.user?.email !== email || !sessionBody?.session?.id) {
-    throw new Error('Better Auth did not persist the signed-in session.');
-  }
-
-  const signOutResponse = await fetch(`${authBaseURL}/sign-out`, {
+  const renewed = await fetch(baseURL + '/refresh', {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      cookie,
-      origin: applicationOrigin,
-      ...forwardedRequestHeaders,
-    },
+    headers: requestHeaders(),
     body: '{}',
     signal: AbortSignal.timeout(5_000),
   });
-  const signOutBody = await expectJsonResponse(signOutResponse, 'sign out');
-
-  if (signOutBody?.success !== true) {
-    throw new Error('Better Auth sign out did not report success.');
+  await expectApplicationResponse(renewed, 200, 'refresh');
+  expectSecureAuthCookies(renewed, 'refresh');
+  collectCookies(renewed, cookies);
+  if (cookies.get('gvueter_refresh') === originalRefresh) {
+    throw new Error('Refresh did not rotate the refresh token.');
   }
 
-  expectClearedSessionCookie(signOutResponse);
-  const revokedSessionResponse = await fetch(
-    `${authBaseURL}/get-session?disableCookieCache=true`,
-    {
-      headers: {
-        cookie,
-        origin: applicationOrigin,
-        ...forwardedRequestHeaders,
-      },
-      signal: AbortSignal.timeout(5_000),
-    },
-  );
-  const revokedSessionBody = await expectJsonResponse(
-    revokedSessionResponse,
-    'verify revoked session',
-  );
-
-  if (revokedSessionBody !== null) {
-    throw new Error('Better Auth sign out did not revoke the server session.');
-  }
-
-  const signInResponse = await fetch(`${authBaseURL}/sign-in/email`, {
+  const revoked = await fetch(baseURL + '/logout', {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      origin: applicationOrigin,
-      ...forwardedRequestHeaders,
-    },
-    body: JSON.stringify({ email, password }),
+    headers: requestHeaders(),
+    body: '{}',
     signal: AbortSignal.timeout(5_000),
   });
-  const signInBody = await expectJsonResponse(signInResponse, 'sign in');
-
-  if (signInBody?.user?.email !== email) {
-    throw new Error('Better Auth sign in returned an unexpected user.');
+  const revokedBody = await expectApplicationResponse(revoked, 200, 'logout');
+  if (revokedBody.data !== null) {
+    throw new Error('Logout did not return an empty application payload.');
   }
-
-  expectSecureSessionCookie(signInResponse, 'sign in');
-  const signedInCookie = responseCookies(signInResponse);
-  const signedInSessionResponse = await fetch(`${authBaseURL}/get-session`, {
-    headers: {
-      cookie: signedInCookie,
-      origin: applicationOrigin,
-      ...forwardedRequestHeaders,
-    },
+  for (const name of ['gvueter_access', 'gvueter_refresh']) {
+    const cleared = revoked.headers.getSetCookie().some((cookie) => {
+      if (!cookie.startsWith(name + '=;')) return false;
+      const expires = /;\s*Expires=([^;]+)/i.exec(cookie)?.[1];
+      return Boolean(expires && Date.parse(expires) < Date.now());
+    });
+    if (!cleared) throw new Error('Logout did not clear ' + name + '.');
+  }
+  const oldAccess = await fetch(baseURL, {
+    headers: requestHeaders(),
     signal: AbortSignal.timeout(5_000),
   });
-  const signedInSessionBody = await expectJsonResponse(
-    signedInSessionResponse,
-    'get signed-in session',
-  );
-
-  if (
-    signedInSessionBody?.user?.email !== email ||
-    !signedInSessionBody?.session?.id
-  ) {
-    throw new Error('Better Auth sign in did not create a persisted session.');
-  }
+  await expectApplicationResponse(oldAccess, 401, 'revoked session');
 }
 
-async function expectJsonResponse(response, operation) {
+async function expectApplicationResponse(response, status, operation) {
   const responseText = await response.text();
-
-  if (response.status !== 200) {
+  if (response.status !== status) {
     throw new Error(
-      `Better Auth ${operation} failed with ${response.status}: ${responseText}`,
+      operation + ' failed with ' + response.status + ': ' + responseText,
     );
   }
-
   if (!response.headers.get('content-type')?.includes('application/json')) {
-    throw new Error(`Better Auth ${operation} did not return JSON.`);
+    throw new Error(operation + ' did not return JSON.');
   }
-
   try {
     return JSON.parse(responseText);
   } catch {
-    throw new Error(`Better Auth ${operation} did not return JSON.`);
+    throw new Error(operation + ' did not return JSON.');
   }
 }
 
-function expectSecureSessionCookie(response, operation) {
-  const sessionCookie = response.headers
-    .getSetCookie()
-    .find((setCookie) => setCookie.includes('better-auth.session_token='));
-
-  if (!sessionCookie || !/;\s*Secure(?:;|$)/i.test(sessionCookie)) {
-    throw new Error(
-      `Better Auth ${operation} did not set a Secure session cookie.`,
-    );
+function collectCookies(response, cookies) {
+  for (const cookie of response.headers.getSetCookie()) {
+    const [pair] = cookie.split(';', 1);
+    const separator = pair?.indexOf('=');
+    if (separator > 0)
+      cookies.set(pair.slice(0, separator), pair.slice(separator + 1));
   }
 }
 
-function expectClearedSessionCookie(response) {
-  const hasClearedSessionCookie = response.headers
-    .getSetCookie()
-    .some(
-      (setCookie) =>
-        setCookie.includes('better-auth.session_token=') &&
-        /;\s*Max-Age=0(?:;|$)/i.test(setCookie),
-    );
-
-  if (!hasClearedSessionCookie) {
-    throw new Error('Better Auth sign out did not clear the session cookie.');
+function expectSecureAuthCookies(response, operation) {
+  for (const name of ['gvueter_access', 'gvueter_refresh']) {
+    const cookie = response.headers
+      .getSetCookie()
+      .find((entry) => entry.startsWith(name + '='));
+    if (
+      !cookie ||
+      !/;\s*Secure(?:;|$)/i.test(cookie) ||
+      !/;\s*HttpOnly(?:;|$)/i.test(cookie)
+    ) {
+      throw new Error(
+        operation + ' did not set a Secure HttpOnly ' + name + ' cookie.',
+      );
+    }
   }
-}
-
-function responseCookies(response) {
-  const cookies = response.headers
-    .getSetCookie()
-    .map((setCookie) => setCookie.split(';', 1)[0])
-    .filter(Boolean);
-
-  if (cookies.length === 0) {
-    throw new Error('Better Auth sign in did not set a session cookie.');
-  }
-
-  return cookies.join('; ');
 }
 
 async function createSmokeUser(email, password) {
@@ -334,7 +284,9 @@ async function createSmokeUser(email, password) {
   const userId = randomUUID();
   try {
     await connection.beginTransaction();
-    const passwordHash = await hashPassword(password);
+    const salt = randomBytes(16).toString('base64url');
+    const passwordKey = await promisify(scrypt)(password, salt, 64);
+    const passwordHash = `scrypt$${salt}$${passwordKey.toString('base64url')}`;
     await connection.execute(
       'INSERT INTO `user` (`id`, `name`, `email`, `emailVerified`, `role`, `banned`, `createdAt`, `updatedAt`) VALUES (?, ?, ?, false, ?, false, NOW(3), NOW(3))',
       [userId, 'Production Smoke User', email, 'user'],
@@ -353,7 +305,7 @@ async function createSmokeUser(email, password) {
   }
 }
 
-async function removeBetterAuthUser(userId, email) {
+async function removeSmokeUser(userId, email) {
   const connection = await createConnection({
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT ?? 3306),
@@ -379,7 +331,7 @@ async function removeBetterAuthUser(userId, email) {
     if (deletionErrors.length > 0) {
       throw new AggregateError(
         deletionErrors,
-        'Could not remove every Better Auth smoke record.',
+        'Could not remove every application session smoke record.',
       );
     }
   } finally {

@@ -19,9 +19,6 @@ services:
       DB_RETRY_DELAY: 3000
       REDIS_URL: redis://redis:6379
       CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
-      SESSION_ENABLED: false
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?BETTER_AUTH_URL is required}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_ISSUER: ${JWT_ISSUER:-gnester-lite}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-gnester-lite}
@@ -39,12 +36,13 @@ services:
 
   migrate:
     build: .
+    # AI modified: the migration service follows the relocated data source and unchanged application history.
     command:
       [
         'node',
         'node_modules/typeorm/cli.js',
         '-d',
-        'dist/src/config/typeorm.data-source.js',
+        'dist/src/infra/database/typeorm.data-source.js',
         'migration:run',
       ]
     environment:
