@@ -75,7 +75,7 @@ test('forces deterministic integration-only runtime switches', () => {
   assert.deepEqual(
     integrationEnvironment({
       CSRF_ENABLED: 'true',
-      SESSION_ENABLED: 'true',
+
       SENTRY_ENABLED: 'true',
     }),
     {
@@ -85,7 +85,7 @@ test('forces deterministic integration-only runtime switches', () => {
       CSRF_ENABLED: 'false',
       DB_AUTO_LOAD_ENTITIES: 'true',
       DB_SYNCHRONIZE: 'false',
-      SESSION_ENABLED: 'false',
+
       SENTRY_ENABLED: 'false',
     },
   );
@@ -94,17 +94,16 @@ test('forces deterministic integration-only runtime switches', () => {
 test('uses production assembly for the emitted-entry smoke test', () => {
   assert.deepEqual(
     productionVerificationEnvironment({
-      SESSION_ENABLED: 'true',
       SENTRY_ENABLED: 'true',
     }),
     {
       NODE_ENV: 'production',
       PORT: '3000',
       CORS_ENABLED: 'false',
-      CSRF_ENABLED: 'false',
+      CSRF_ENABLED: 'true',
       DB_AUTO_LOAD_ENTITIES: 'true',
       DB_SYNCHRONIZE: 'false',
-      SESSION_ENABLED: 'false',
+
       SENTRY_ENABLED: 'false',
     },
   );

@@ -3,20 +3,16 @@ import { join, relative } from 'node:path';
 
 const projectRoot = process.cwd();
 const outputDirectory = join(projectRoot, 'dist');
-// AI modified: guarded provision runs use the example-owned Demo migration from the compiled artifact.
+// AI modified: the artifact contains the application and infrastructure ownership tree.
 const requiredArtifacts = [
   'dist/src/main.js',
   'dist/src/config/config.yaml',
-  'dist/src/config/typeorm.data-source.js',
-  'dist/src/database/migrations/1785801600000-CreateBetterAuthTables.js',
-  'dist/src/better-auth/better-auth.loader.cjs',
-  'dist/src/examples/demo-database/migrations/1760000000000-CreateDemoTable.js',
+  'dist/src/infra/database/typeorm.data-source.js',
+  'dist/src/infra/database/migrations/1785801600000-CreateBetterAuthTables.js',
+  'dist/src/modules/identity/application-auth.service.js',
 ];
 const forbiddenArtifactPaths = new Set([
-  join(
-    projectRoot,
-    'dist/src/database/migrations/1760000000000-CreateDemoTable.js',
-  ),
+  join(projectRoot, 'dist/src/examples'),
 ]);
 
 async function listFiles(directory) {
@@ -35,8 +31,8 @@ for (const requiredArtifact of requiredArtifacts) {
   await access(join(projectRoot, requiredArtifact));
 }
 
-const sourceLocaleDirectory = join(projectRoot, 'src/i18n/locales');
-const outputLocaleDirectory = join(outputDirectory, 'src/i18n/locales');
+const sourceLocaleDirectory = join(projectRoot, 'src/infra/i18n/locales');
+const outputLocaleDirectory = join(outputDirectory, 'src/infra/i18n/locales');
 const sourceLocaleFiles = (await listFiles(sourceLocaleDirectory)).filter(
   (filePath) => filePath.endsWith('.json'),
 );
@@ -82,7 +78,9 @@ const forbiddenArtifacts = outputFiles.filter(
     outputFile.endsWith('.map') ||
     outputFile.endsWith('.spec.js') ||
     outputFile.endsWith('.spec.d.ts') ||
-    forbiddenArtifactPaths.has(outputFile),
+    forbiddenArtifactPaths.has(outputFile) ||
+    outputFile.includes('/src/examples/') ||
+    outputFile.includes('/src/types/'),
 );
 
 if (forbiddenArtifacts.length > 0) {

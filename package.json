@@ -46,7 +46,8 @@
     "migration:generate": "pnpm run build && NODE_ENV=development node node_modules/typeorm/cli.js -d dist/src/infra/database/typeorm.data-source.js migration:generate",
     "migration:run": "pnpm run build && NODE_ENV=development node node_modules/typeorm/cli.js -d dist/src/infra/database/typeorm.data-source.js migration:run",
     "migration:revert": "pnpm run build && NODE_ENV=development node node_modules/typeorm/cli.js -d dist/src/infra/database/typeorm.data-source.js migration:revert",
-    "start:repl": "NODE_ENV=development nest start --watch --entryFile repl"
+    "start:repl": "NODE_ENV=development nest start --watch --entryFile repl",
+    "test:architecture": "node --test scripts/verify-source-boundaries.test.mjs"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "catalog:",
