@@ -1,3 +1,4 @@
+import type { YamlConfig } from './application-config.types.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import * as yaml from 'js-yaml';
@@ -19,7 +20,6 @@ import {
   ValidateNested,
   validateSync,
 } from 'class-validator';
-import { YamlConfig } from './application-config.types.js';
 
 const YAML_CONFIG_FILENAME = 'config.yaml';
 const REDIS_NAMESPACE_SEGMENT_MAX_LENGTH = 64;

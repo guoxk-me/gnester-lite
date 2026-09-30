@@ -1,3 +1,4 @@
+import { IdentityModule } from './modules/identity/identity.module.js';
 import { HttpModule, HttpService } from '@nestjs/axios';
 import {
   BullModule,
@@ -14,16 +15,13 @@ import {
   MODULE_METADATA,
 } from '@nestjs/common/constants';
 import { ConfigModule } from '@nestjs/config';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import {
   ScheduleModule as NestScheduleModule,
   SchedulerRegistry,
 } from '@nestjs/schedule';
 import { Test } from '@nestjs/testing';
 import type { Cache } from 'cache-manager';
-import { randomBytes } from 'node:crypto';
 
-import { shouldEnableDemos } from './config/demo-catalog.js';
 import { AppModule } from './app.module.js';
 import { CacheModule } from './infra/cache/cache.module.js';
 import { CacheService } from './infra/cache/cache.service.js';
@@ -34,12 +32,6 @@ import { QueueModule } from './infra/queue/queue.module.js';
 import { QueueService } from './infra/queue/queue.service.js';
 import { ScheduleModule } from './infra/schedule/schedule.module.js';
 import { ScheduleService } from './infra/schedule/schedule.service.js';
-import { DemoCacheModule } from './examples/demo-cache/demo-cache.module.js';
-import { DemoEventsModule } from './examples/demo-events/demo-events.module.js';
-import { DemoHttpModule } from './examples/demo-http/demo-http.module.js';
-import { DemoQueueModule } from './examples/demo-queue/demo-queue.module.js';
-import { DemoScheduleModule } from './examples/demo-schedule/demo-schedule.module.js';
-import { DemosModule } from './examples/demos.module.js';
 
 @Injectable()
 class ExplicitInfrastructureConsumer {
@@ -73,72 +65,12 @@ describe('AppModule infrastructure boundaries', () => {
     }
   });
 
-  it('excludes the educational demo catalog from production', () => {
-    expect(shouldEnableDemos('production')).toBe(false);
-    expect(shouldEnableDemos('development')).toBe(true);
-    expect(shouldEnableDemos('test')).toBe(true);
-    expect(shouldEnableDemos('provision')).toBe(true);
-    expect(shouldEnableDemos(undefined)).toBe(true);
-  });
-
-  it('omits DemosModule from the production Nest module graph', async () => {
-    vi.resetModules();
-    const productionEnvironment = {
-      NODE_ENV: 'production',
-      CORS_ORIGINS: 'https://app.example.com',
-      CSRF_ENABLED: 'false',
-      DB_HOST: 'database.internal',
-      DB_PORT: '3306',
-      DB_USERNAME: 'application',
-      DB_PASSWORD: 'runtime-only-password',
-      DB_DATABASE: 'application',
-      REDIS_URL: 'redis://redis.internal:6379',
-      BETTER_AUTH_SECRET: randomBytes(48).toString('base64url'),
-      BETTER_AUTH_URL: 'https://api.example.com',
-      JWT_SECRET: randomBytes(48).toString('base64url'),
-      ENCRYPTION_KEY: randomBytes(32).toString('base64url'),
-      HMAC_SECRET: randomBytes(48).toString('base64url'),
-    };
-    const originalEnvironment = Object.fromEntries(
-      Object.keys(productionEnvironment).map((key) => [key, process.env[key]]),
-    );
-
-    Object.assign(process.env, productionEnvironment);
-
-    try {
-      const modulePath = './app.module';
-      const productionExports = (await import(modulePath)) as {
-        readonly AppModule: object;
-      };
-      const productionImports = getModuleImports(productionExports.AppModule);
-
-      expect(
-        productionImports.some(
-          (importedModule) =>
-            typeof importedModule === 'function' &&
-            importedModule.name === 'DemosModule',
-        ),
-      ).toBe(false);
-    } finally {
-      for (const [key, value] of Object.entries(originalEnvironment)) {
-        if (value === undefined) {
-          delete process.env[key];
-        } else {
-          process.env[key] = value;
-        }
-      }
-    }
-  });
-
   it('keeps root registration inside explicit capability modules', () => {
     expect(getDynamicModuleImport(CacheModule, NestCacheModule)).toBeDefined();
     expect(getDynamicModuleImport(HttpClientModule, HttpModule)).toBeDefined();
     expect(getDynamicModuleImport(QueueModule, BullModule)).toBeDefined();
     expect(
       getDynamicModuleImport(ScheduleModule, NestScheduleModule),
-    ).toBeDefined();
-    expect(
-      getDynamicModuleImport(DemoEventsModule, EventEmitterModule),
     ).toBeDefined();
 
     expect(
@@ -169,29 +101,16 @@ describe('AppModule infrastructure boundaries', () => {
     expect(hasImportedModule(appImports, NestCacheModule)).toBe(false);
     expect(hasImportedModule(appImports, BullModule)).toBe(false);
     expect(hasImportedModule(appImports, NestScheduleModule)).toBe(false);
-    expect(hasImportedModule(appImports, EventEmitterModule)).toBe(false);
     expect(countImportedModule(appImports, CacheModule)).toBe(0);
     expect(countImportedModule(appImports, HttpClientModule)).toBe(0);
     expect(countImportedModule(appImports, QueueModule)).toBe(0);
     expect(countImportedModule(appImports, ScheduleModule)).toBe(0);
-    expect(countImportedModule(appImports, DemosModule)).toBe(1);
+    expect(countImportedModule(appImports, IdentityModule)).toBe(1);
   });
 
   it('makes every feature and readiness module declare its capability imports', () => {
     expect(
       countImportedModule(getModuleImports(HealthModule), CacheModule),
-    ).toBe(1);
-    expect(
-      countImportedModule(getModuleImports(DemoCacheModule), CacheModule),
-    ).toBe(1);
-    expect(
-      countImportedModule(getModuleImports(DemoHttpModule), HttpClientModule),
-    ).toBe(1);
-    expect(
-      countImportedModule(getModuleImports(DemoQueueModule), QueueModule),
-    ).toBe(1);
-    expect(
-      countImportedModule(getModuleImports(DemoScheduleModule), ScheduleModule),
     ).toBe(1);
   });
 

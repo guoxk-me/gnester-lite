@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID, scrypt } from 'node:crypto';
+import { promisify } from 'node:util';
 import { createConnection } from 'mysql2/promise';
-import { hashPassword } from 'better-auth/crypto';
 
 // AI modified: initial administrator creation is an explicit one-time operator action, never an app startup side effect.
 if (process.env.GNESTER_ALLOW_ADMIN_BOOTSTRAP !== 'true') {
@@ -80,7 +80,10 @@ try {
   if (existingAccount.length)
     throw new Error('Email already belongs to an account. Bootstrap refused.');
   const userId = randomUUID();
-  const passwordHash = await hashPassword(ADMIN_PASSWORD);
+  // AI modified: operator-created accounts use the application password format.
+  const salt = randomBytes(16).toString('base64url');
+  const passwordKey = await promisify(scrypt)(ADMIN_PASSWORD, salt, 64);
+  const passwordHash = `scrypt$${salt}$${passwordKey.toString('base64url')}`;
   await connection.execute(
     'INSERT INTO `user` (`id`, `name`, `email`, `emailVerified`, `role`, `banned`, `createdAt`, `updatedAt`) VALUES (?, ?, ?, false, ?, false, NOW(3), NOW(3))',
     [userId, ADMIN_NAME.trim(), ADMIN_EMAIL.trim().toLowerCase(), 'admin'],

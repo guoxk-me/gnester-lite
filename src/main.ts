@@ -1,3 +1,4 @@
+import type { ShutdownConfig } from './config/application-config.types.js';
 // AI modified: import Sentry instrumentation before any Nest or app modules.
 import './instrument.js';
 
@@ -7,7 +8,6 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
 
-import type { ShutdownConfig } from './config/application-config.types.js';
 import { AppModule } from './app.module.js';
 import {
   DEFAULT_APPLICATION_SHUTDOWN_BUDGETS,

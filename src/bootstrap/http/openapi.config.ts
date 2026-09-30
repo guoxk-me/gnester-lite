@@ -5,30 +5,17 @@ import {
   SwaggerModule,
 } from '@nestjs/swagger';
 
+import type {
+  OpenApiPluginMetadataLoader,
+  HttpMethod,
+  UnsafeHttpMethod,
+  OpenApiOperation,
+  InlineOpenApiResponse,
+  OpenApiResponseSchema,
+} from './openapi.types.js';
 import { Environment } from '../../config/config-enums.js';
 import { SKIP_API_ENVELOPE_OPENAPI_EXTENSION } from '../../common/http/http-metadata.js';
 import { CsrfService } from '../../infra/csrf/csrf.service.js';
-
-type OpenApiPluginMetadataFactory = Parameters<
-  typeof SwaggerModule.loadPluginMetadata
->[0];
-
-export type OpenApiPluginMetadataLoader =
-  () => Promise<OpenApiPluginMetadataFactory>;
-
-type OpenApiPath = OpenAPIObject['paths'][string];
-type HttpMethod =
-  'delete' | 'get' | 'head' | 'options' | 'patch' | 'post' | 'put' | 'trace';
-type UnsafeHttpMethod = 'delete' | 'patch' | 'post' | 'put';
-type OpenApiOperation = NonNullable<OpenApiPath[HttpMethod]> &
-  Partial<Record<typeof SKIP_API_ENVELOPE_OPENAPI_EXTENSION, boolean>>;
-type OpenApiResponse = NonNullable<OpenApiOperation['responses'][string]>;
-type InlineOpenApiResponse = Exclude<OpenApiResponse, { $ref: string }>;
-type OpenApiResponseSchema = NonNullable<
-  NonNullable<
-    NonNullable<InlineOpenApiResponse['content']>['application/json']
-  >['schema']
->;
 
 const httpMethods: readonly HttpMethod[] = [
   'delete',
@@ -50,7 +37,7 @@ const unsafeHttpMethods: readonly UnsafeHttpMethod[] = [
 
 // AI modified: generated JSON schemas must describe the global localized envelope instead of controller return values at the response root.
 export function applyI18nOpenApiContract(document: OpenAPIObject): void {
-  for (const [routePath, pathContract] of Object.entries(document.paths)) {
+  for (const pathContract of Object.values(document.paths)) {
     for (const method of httpMethods) {
       const operation = pathContract[method];
 
@@ -58,7 +45,7 @@ export function applyI18nOpenApiContract(document: OpenAPIObject): void {
         continue;
       }
 
-      if (isEnvelopeBypassOperation(routePath, operation)) {
+      if (isEnvelopeBypassOperation(operation)) {
         continue;
       }
 
@@ -163,15 +150,8 @@ function addAcceptLanguageHeader(operation: OpenApiOperation): void {
   ];
 }
 
-function isEnvelopeBypassOperation(
-  routePath: string,
-  operation: OpenApiOperation,
-): boolean {
-  if (
-    operation[SKIP_API_ENVELOPE_OPENAPI_EXTENSION] === true ||
-    routePath === '/api/auth' ||
-    routePath.startsWith('/api/auth/')
-  ) {
+function isEnvelopeBypassOperation(operation: OpenApiOperation): boolean {
+  if (operation[SKIP_API_ENVELOPE_OPENAPI_EXTENSION] === true) {
     return true;
   }
 
@@ -383,6 +363,8 @@ export async function setupOpenApi(
     .setDescription('NestJS template API reference')
     .setVersion('1.0')
     .addBearerAuth()
+    .addCookieAuth('gvueter_access', { type: 'apiKey' }, 'application-session')
+    .addCookieAuth('gvueter_refresh', { type: 'apiKey' }, 'application-refresh')
     .build();
   const document = SwaggerModule.createDocument(app, openApiConfig);
 

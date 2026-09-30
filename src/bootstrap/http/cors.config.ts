@@ -1,17 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 
+import type { CorsOptions } from './cors.types.js';
 import { assertCanonicalCorsOrigins } from '../../config/cors-origin.js';
 import { Environment } from '../../config/config-enums.js';
-
-export interface CorsOptions {
-  readonly origin: string | string[];
-  readonly credentials: boolean;
-  readonly methods: string[];
-  readonly allowedHeaders?: string[];
-  readonly exposedHeaders?: string[];
-  readonly maxAge: number;
-  readonly optionsSuccessStatus: number;
-}
 
 const DEFAULT_DEVELOPMENT_ORIGINS = [
   'http://localhost:3000',

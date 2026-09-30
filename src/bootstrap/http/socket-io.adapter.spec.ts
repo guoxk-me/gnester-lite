@@ -1,5 +1,7 @@
-import { INestApplicationContext } from '@nestjs/common';
 import type { IncomingMessage } from 'node:http';
+
+import { INestApplicationContext } from '@nestjs/common';
+
 import { SocketIoAdapter } from './socket-io.adapter.js';
 
 describe('SocketIoAdapter', () => {

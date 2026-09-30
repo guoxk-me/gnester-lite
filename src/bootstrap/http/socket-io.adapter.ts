@@ -1,12 +1,14 @@
+import type { IncomingMessage } from 'node:http';
+
 import { INestApplicationContext } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
-import type { IncomingMessage } from 'node:http';
+
 import type { ServerOptions } from 'socket.io';
 
-export type SocketIoServerOptions = Partial<ServerOptions> & {
-  readonly namespace?: string;
-  readonly server?: unknown;
-};
+import type {
+  SocketIoServerOptions,
+  SocketAllowRequest,
+} from './socket-io.types.js';
 
 export class SocketIoAdapter extends IoAdapter {
   constructor(
@@ -49,8 +51,6 @@ export class SocketIoAdapter extends IoAdapter {
     };
   }
 }
-
-type SocketAllowRequest = NonNullable<ServerOptions['allowRequest']>;
 
 export function createSocketOriginAllowRequest(
   originPolicy: ServerOptions['cors'] | false | undefined,

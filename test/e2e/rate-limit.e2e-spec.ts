@@ -1,3 +1,6 @@
+import { Controller, Get, Post, VERSION_NEUTRAL } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { SkipHttpThrottle } from '../../src/common/http/skip-http-throttle.decorator.js';
 import { ConfigModule } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -6,8 +9,21 @@ import request from 'supertest';
 import { configureApplication } from '../../src/bootstrap/configure-application.js';
 import { CsrfModule } from '../../src/infra/csrf/csrf.module.js';
 import { RateLimitModule } from '../../src/infra/rate-limit/rate-limit.module.js';
-import { DemoRateLimitModule } from '../../src/examples/demo-rate-limit/demo-rate-limit.module.js';
-import { betterAuthTestProvider } from '../fixtures/better-auth.stub.js';
+// AI modified: test-owned HTTP routes exercise limits and opt-outs without retaining Demo controllers.
+@Controller({ path: 'rate-limit-fixture', version: VERSION_NEUTRAL })
+class RateLimitFixtureController {
+  @Get('default') read(): object {
+    return { ok: true };
+  }
+  @Post('login')
+  @Throttle({ short: { limit: 1, ttl: 60000 } })
+  login(): object {
+    return { ok: true };
+  }
+  @Get('health') @SkipHttpThrottle() health(): object {
+    return { ok: true };
+  }
+}
 
 describe('Rate limiting (e2e)', () => {
   let app: NestExpressApplication | undefined;
@@ -35,7 +51,7 @@ describe('Rate limiting (e2e)', () => {
               COMPRESSION_ENABLED: false,
               CORS_ENABLED: false,
               CSRF_ENABLED: false,
-              SESSION_ENABLED: false,
+
               app: {
                 apiPrefix: 'api',
               },
@@ -56,9 +72,8 @@ describe('Rate limiting (e2e)', () => {
         }),
         CsrfModule,
         RateLimitModule,
-        DemoRateLimitModule,
       ],
-      providers: [betterAuthTestProvider],
+      controllers: [RateLimitFixtureController],
     }).compile();
 
     const rateLimitApplication =
@@ -72,19 +87,19 @@ describe('Rate limiting (e2e)', () => {
     return rateLimitApplication;
   }
 
-  it('limits public demo routes after the configured default budget', async () => {
+  it('limits public routes after the configured default budget', async () => {
     if (!app) {
       throw new Error('Nest application was not initialized');
     }
 
     await request(app.getHttpServer())
-      .get('/api/demo-rate-limit/default')
+      .get('/api/rate-limit-fixture/default')
       .expect(200);
     await request(app.getHttpServer())
-      .get('/api/demo-rate-limit/default')
+      .get('/api/rate-limit-fixture/default')
       .expect(200);
     await request(app.getHttpServer())
-      .get('/api/demo-rate-limit/default')
+      .get('/api/rate-limit-fixture/default')
       .expect(429);
   });
 
@@ -94,10 +109,10 @@ describe('Rate limiting (e2e)', () => {
     }
 
     await request(app.getHttpServer())
-      .post('/api/demo-rate-limit/login')
+      .post('/api/rate-limit-fixture/login')
       .expect(201);
     await request(app.getHttpServer())
-      .post('/api/demo-rate-limit/login')
+      .post('/api/rate-limit-fixture/login')
       .expect(429);
   });
 
@@ -107,13 +122,13 @@ describe('Rate limiting (e2e)', () => {
     }
 
     await request(app.getHttpServer())
-      .get('/api/demo-rate-limit/health')
+      .get('/api/rate-limit-fixture/health')
       .expect(200);
     await request(app.getHttpServer())
-      .get('/api/demo-rate-limit/health')
+      .get('/api/rate-limit-fixture/health')
       .expect(200);
     await request(app.getHttpServer())
-      .get('/api/demo-rate-limit/health')
+      .get('/api/rate-limit-fixture/health')
       .expect(200);
   });
 
@@ -126,23 +141,23 @@ describe('Rate limiting (e2e)', () => {
     const secondClientIp = '203.0.113.20';
 
     await request(app.getHttpServer())
-      .get('/api/demo-rate-limit/default')
+      .get('/api/rate-limit-fixture/default')
       .set('X-Forwarded-For', firstClientIp)
       .expect(200);
     await request(app.getHttpServer())
-      .get('/api/demo-rate-limit/default')
+      .get('/api/rate-limit-fixture/default')
       .set('X-Forwarded-For', firstClientIp)
       .expect(200);
     await request(app.getHttpServer())
-      .get('/api/demo-rate-limit/default')
+      .get('/api/rate-limit-fixture/default')
       .set('X-Forwarded-For', secondClientIp)
       .expect(200);
     await request(app.getHttpServer())
-      .get('/api/demo-rate-limit/default')
+      .get('/api/rate-limit-fixture/default')
       .set('X-Forwarded-For', firstClientIp)
       .expect(429);
     await request(app.getHttpServer())
-      .get('/api/demo-rate-limit/default')
+      .get('/api/rate-limit-fixture/default')
       .set('X-Forwarded-For', secondClientIp)
       .expect(200);
   });
@@ -153,15 +168,15 @@ describe('Rate limiting (e2e)', () => {
     const httpServer = app.getHttpServer();
 
     await request(httpServer)
-      .get('/api/demo-rate-limit/default')
+      .get('/api/rate-limit-fixture/default')
       .set('X-Forwarded-For', '198.51.100.10')
       .expect(200);
     await request(httpServer)
-      .get('/api/demo-rate-limit/default')
+      .get('/api/rate-limit-fixture/default')
       .set('X-Forwarded-For', '203.0.113.20')
       .expect(200);
     await request(httpServer)
-      .get('/api/demo-rate-limit/default')
+      .get('/api/rate-limit-fixture/default')
       .set('X-Forwarded-For', '192.0.2.30')
       .expect(429);
   });

@@ -1,4 +1,5 @@
 import type { HelmetOptions } from 'helmet';
+
 import { Environment } from '../../config/config-enums.js';
 
 export function createHelmetOptions(nodeEnv: Environment): HelmetOptions {

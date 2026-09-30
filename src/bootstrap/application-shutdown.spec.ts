@@ -1,14 +1,16 @@
 import { once } from 'node:events';
 import { createServer } from 'node:http';
 
+import type {
+  ApplicationShutdownBudgets,
+  ApplicationShutdownOptions,
+} from './shutdown.types.js';
 import {
   getSignalExitCode,
   registerApplicationShutdownHandlers,
   reportStartupFailureAndShutdown,
   runShutdownActionWithinDeadline,
   stopAcceptingHttpRequests,
-  type ApplicationShutdownBudgets,
-  type ApplicationShutdownOptions,
 } from './application-shutdown.js';
 
 const immediateBudgets: ApplicationShutdownBudgets = {

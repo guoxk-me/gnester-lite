@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+
 import {
   BadRequestException,
   ConflictException,
@@ -6,59 +7,19 @@ import {
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
-  UnauthorizedException,
 } from '@nestjs/common';
+
 import { DataSource, type QueryRunner } from 'typeorm';
-import type { Request } from 'express';
 
-import { BetterAuthService } from '../better-auth/better-auth.service.js';
-import { loadBetterAuthModules } from '../better-auth/better-auth.loader.cjs';
-
-interface UserRow {
-  id: string;
-  name: string;
-  email: string;
-  emailVerified: number | boolean;
-  banned: number | boolean;
-  role: string;
-  createdAt: Date;
-}
-
-interface InvitationRow {
-  id: string;
-  email: string;
-  tokenHash: string;
-  createdAt: Date;
-  updatedAt: Date;
-  expiresAt: Date;
-  acceptedAt: Date | null;
-  revokedAt: Date | null;
-}
-
-interface CountRow {
-  total: number;
-}
-
-interface LockRow {
-  acquired: number | string | null;
-}
-
-export interface UserRecord {
-  id: string;
-  name: string;
-  email: string;
-  isEmailVerified: boolean;
-  status: 'active' | 'disabled';
-  createdAt: string;
-}
-
-export interface InvitationRecord {
-  id: string;
-  email: string;
-  status: 'pending' | 'expired' | 'accepted' | 'revoked';
-  sentAt: string;
-  expiresAt: string;
-}
+import type {
+  UserRow,
+  InvitationRow,
+  CountRow,
+  LockRow,
+} from './persistence.types.js';
+import type { UserRecord } from './user.types.js';
+import type { InvitationRecord } from './invitation.types.js';
+import { PasswordHashService } from '../../infra/auth/password-hash.service.js';
 
 function publicUser(user: UserRow): UserRecord {
   return {
@@ -100,21 +61,14 @@ function searchTerm(search: string): string {
 export class UserManagementService {
   constructor(
     private readonly database: DataSource,
-    private readonly betterAuth: BetterAuthService,
+    private readonly passwords: PasswordHashService,
   ) {}
 
-  // AI modified: every management request resolves the server cookie and reloads its role from the database.
-  async requireAdmin(request: Request): Promise<string> {
-    if (!request.headers.cookie) throw new UnauthorizedException();
-    const auth = await this.betterAuth.getInstance();
-    const session = await auth.api.getSession({
-      headers: new Headers({ cookie: request.headers.cookie }),
-      query: { disableCookieCache: true },
-    });
-    if (!session?.user?.id) throw new UnauthorizedException();
+  // AI modified: management writes require a live application session and current database role.
+  async requireAdminUser(userId: string): Promise<string> {
     const users = await this.database.query<Pick<UserRow, 'role' | 'banned'>[]>(
       'SELECT `role`, `banned` FROM `user` WHERE `id` = ? LIMIT 1',
-      [session.user.id],
+      [userId],
     );
     if (
       !users[0] ||
@@ -123,7 +77,7 @@ export class UserManagementService {
     ) {
       throw new ForbiddenException();
     }
-    return session.user.id;
+    return userId;
   }
 
   async listUsers(
@@ -542,8 +496,7 @@ export class UserManagementService {
   }
 
   private async passwordHash(password: string): Promise<string> {
-    const { hashPassword } = await loadBetterAuthModules();
-    return hashPassword(password);
+    return this.passwords.hash(password);
   }
 
   private throwConflictForDuplicateEmail(error: unknown): void {

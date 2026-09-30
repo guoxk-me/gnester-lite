@@ -23,19 +23,19 @@ export default defineConfig({
           lines: 90,
           statements: 90,
         },
-        'src/i18n/api-envelope.interceptor.ts': {
+        'src/infra/http/api-envelope.interceptor.ts': {
           branches: 50,
           functions: 100,
           lines: 85,
           statements: 85,
         },
-        'src/i18n/api-exception.filter.ts': {
+        'src/infra/http/api-exception.filter.ts': {
           branches: 60,
           functions: 90,
           lines: 80,
           statements: 80,
         },
-        'src/i18n/i18n.translate.ts': {
+        'src/infra/i18n/i18n.translate.ts': {
           branches: 60,
           functions: 85,
           lines: 85,

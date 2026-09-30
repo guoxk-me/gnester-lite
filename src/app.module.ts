@@ -1,28 +1,22 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { IdentityModule } from './modules/identity/identity.module.js';
 import configuration from './config/configuration.js';
 import { databaseConfig } from './infra/database/database.config.js';
-import { shouldEnableDemos } from './config/demo-catalog.js';
 import { environmentFilePaths } from './config/environment-files.js';
 import { validate } from './config/validation.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
-import { BetterAuthModule } from './better-auth/better-auth.module.js';
 import { CsrfModule } from './infra/csrf/csrf.module.js';
 import { HealthModule } from './infra/health/health.module.js';
 import { LoggerModule } from './infra/logger/logger.module.js';
 import { RateLimitModule } from './infra/rate-limit/rate-limit.module.js';
-import { HttpResponseModule as I18nModule } from './infra/http/http-response.module.js';
+import { HttpResponseModule } from './infra/http/http-response.module.js';
 import { SentryModule } from './infra/sentry/sentry.module.js';
-import { UserManagementModule } from './user-management/user-management.module.js';
-import { DemosModule } from './examples/demos.module.js';
 
-const demoImports = shouldEnableDemos(process.env.NODE_ENV)
-  ? [DemosModule]
-  : [];
-
-// AI modified: Demo modules remain outside the production graph after the ESM migration.
+// AI modified: infrastructure and replaceable application modules are composed explicitly.
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -34,16 +28,13 @@ const demoImports = shouldEnableDemos(process.env.NODE_ENV)
       validate,
     }),
     TypeOrmModule.forRootAsync(databaseConfig.asProvider()),
-    BetterAuthModule,
-    UserManagementModule,
+    IdentityModule,
     SentryModule,
-    I18nModule,
+    HttpResponseModule,
     CsrfModule,
     HealthModule,
     LoggerModule,
     RateLimitModule,
-    // AI modified: optional infrastructure is composed inside the feature that consumes it.
-    ...demoImports,
   ],
   controllers: [AppController],
   providers: [AppService],

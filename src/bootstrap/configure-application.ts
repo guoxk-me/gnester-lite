@@ -1,16 +1,13 @@
 import { VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
-import session from 'express-session';
 import helmet from 'helmet';
-import { I18nService } from 'nestjs-i18n';
 
+import type { RateLimitConfig } from '../config/application-config.types.js';
 import { Environment } from '../config/config-enums.js';
-import { type RateLimitConfig } from '../config/application-config.types.js';
-import { BetterAuthService } from '../better-auth/better-auth.service.js';
-import { createBetterAuthRequestMiddleware } from './http/better-auth.middleware.js';
 import { createCorsOptions } from './http/cors.config.js';
 import { CsrfService } from '../infra/csrf/csrf.service.js';
 import { createHelmetOptions } from './http/helmet-options.js';
@@ -38,10 +35,8 @@ export async function configureApplication(
     '1kb',
   );
   const compressionLevel = configService.get<number>('COMPRESSION_LEVEL', 6);
-  const isSessionEnabled = configService.get<boolean>('SESSION_ENABLED', true);
   const rateLimitConfig =
     configService.getOrThrow<RateLimitConfig>('rateLimit');
-  const isProduction = nodeEnv === Environment.Production;
   const corsOptions = createCorsOptions(configService, nodeEnv);
 
   // AI modified: HTTP and Socket.IO now share the same validated origin policy.
@@ -71,50 +66,12 @@ export async function configureApplication(
 
   app.use(cookieParser(cookieSecret));
 
-  if (isSessionEnabled) {
-    if (isProduction) {
-      throw new Error(
-        'SESSION_ENABLED=true uses the demo MemoryStore. Configure a production session store before enabling sessions in production.',
-      );
-    }
-
-    const sessionSecret =
-      configService.get<string>('SESSION_SECRET') ||
-      'gnester-lite-local-session-secret';
-
-    app.use(
-      session({
-        name: configService.get<string>('SESSION_COOKIE_NAME', 'gnester.sid'),
-        secret: sessionSecret,
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-          httpOnly: true,
-          secure: configService.get<boolean>('SESSION_COOKIE_SECURE', false),
-          sameSite: configService.get<'lax' | 'strict' | 'none'>(
-            'SESSION_COOKIE_SAME_SITE',
-            'lax',
-          ),
-          maxAge: configService.get<number>(
-            'SESSION_COOKIE_MAX_AGE',
-            86_400_000,
-          ),
-        },
-      }),
-    );
-  }
-
-  const betterAuthHandler = await app
-    .get(BetterAuthService)
-    .getRequestHandler();
-  const i18nService = app.get(I18nService);
-
-  // AI modified: mount the raw Better Auth handler before restoring Nest body parsers.
-  app.use(createBetterAuthRequestMiddleware(betterAuthHandler, i18nService));
+  // AI modified: database-backed application sessions replace the removed Demo MemoryStore.
+  const csrfService = app.get(CsrfService);
+  // AI modified: Nest controllers now own authentication, so body parsing precedes CSRF validation.
   app.useBodyParser('json');
   app.useBodyParser('urlencoded', { extended: true });
 
-  const csrfService = app.get(CsrfService);
   app.use(csrfService.createProtectionMiddleware());
   app.use(csrfService.createErrorHandler());
 

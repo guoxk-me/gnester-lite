@@ -1,16 +1,14 @@
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import type { ErrorRequestHandler, RequestHandler } from 'express';
-import session from 'express-session';
 import helmet from 'helmet';
-import { I18nService } from 'nestjs-i18n';
 
+import type { RateLimitConfig } from '../config/application-config.types.js';
 import { Environment } from '../config/config-enums.js';
-import { type RateLimitConfig } from '../config/application-config.types.js';
-import { BetterAuthService } from '../better-auth/better-auth.service.js';
 import { CsrfService } from '../infra/csrf/csrf.service.js';
 import { createHelmetOptions } from './http/helmet-options.js';
 import { setupOpenApi } from './http/openapi.config.js';
@@ -27,10 +25,6 @@ vi.mock('compression', () => ({
   ),
 }));
 vi.mock('cookie-parser', () => ({
-  __esModule: true,
-  default: vi.fn(() => vi.fn()),
-}));
-vi.mock('express-session', () => ({
   __esModule: true,
   default: vi.fn(() => vi.fn()),
 }));
@@ -51,23 +45,16 @@ describe('configureApplication', () => {
     const csrfProtection = vi.fn() as RequestHandler;
     const csrfErrorHandler = vi.fn() as ErrorRequestHandler;
     const csrfService = {
+      isEnabled: vi.fn(() => true),
+      createToken: vi.fn(),
       createProtectionMiddleware: vi.fn(() => csrfProtection),
       createErrorHandler: vi.fn(() => csrfErrorHandler),
-    };
-    const betterAuthHandler = vi.fn().mockResolvedValue(undefined);
-    const betterAuthService = {
-      getRequestHandler: vi.fn().mockResolvedValue(betterAuthHandler),
-    };
-    const i18nService = {
-      translate: vi.fn(),
     };
     const values = new Map<string, unknown>([
       ['PORT', 4100],
       ['NODE_ENV', Environment.Development],
       ['app.apiPrefix', 'api'],
       ['COMPRESSION_ENABLED', true],
-      ['SESSION_ENABLED', true],
-      ['SESSION_SECRET', 'test-session-secret'],
       ['COOKIE_SECRET', 'test-cookie-secret'],
       ['CORS_ENABLED', true],
       ['CORS_CREDENTIALS', true],
@@ -110,14 +97,6 @@ describe('configureApplication', () => {
           return csrfService;
         }
 
-        if (token === BetterAuthService) {
-          return betterAuthService;
-        }
-
-        if (token === I18nService) {
-          return i18nService;
-        }
-
         throw new Error('Unexpected provider lookup');
       }),
       set,
@@ -134,8 +113,6 @@ describe('configureApplication', () => {
     const compressionMiddleware = vi.mocked(compression).mock.results[0]
       ?.value as unknown as RequestHandler;
     const cookieMiddleware = vi.mocked(cookieParser).mock.results[0]
-      ?.value as unknown as RequestHandler;
-    const sessionMiddleware = vi.mocked(session).mock.results[0]
       ?.value as unknown as RequestHandler;
 
     expect(port).toBe(4100);
@@ -161,18 +138,6 @@ describe('configureApplication', () => {
       filter: expect.any(Function) as RequestHandler,
     });
     expect(cookieParser).toHaveBeenCalledWith('test-cookie-secret');
-    expect(session).toHaveBeenCalledWith({
-      name: 'gnester.sid',
-      secret: 'test-session-secret',
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
-        maxAge: 86_400_000,
-      },
-    });
     expect(useWebSocketAdapter).toHaveBeenCalledWith(
       expect.any(SocketIoAdapter),
     );
@@ -180,12 +145,9 @@ describe('configureApplication', () => {
       [helmetMiddleware],
       [compressionMiddleware],
       [cookieMiddleware],
-      [sessionMiddleware],
-      [expect.any(Function)],
       [csrfProtection],
       [csrfErrorHandler],
     ]);
-    expect(betterAuthService.getRequestHandler).toHaveBeenCalledTimes(1);
     expect(useBodyParser.mock.calls).toEqual([
       ['json'],
       ['urlencoded', { extended: true }],
@@ -211,13 +173,10 @@ describe('configureApplication', () => {
       use.mock.invocationCallOrder[1],
       vi.mocked(cookieParser).mock.invocationCallOrder[0],
       use.mock.invocationCallOrder[2],
-      vi.mocked(session).mock.invocationCallOrder[0],
-      use.mock.invocationCallOrder[3],
-      use.mock.invocationCallOrder[4],
       useBodyParser.mock.invocationCallOrder[0],
       useBodyParser.mock.invocationCallOrder[1],
-      use.mock.invocationCallOrder[5],
-      use.mock.invocationCallOrder[6],
+      use.mock.invocationCallOrder[3],
+      use.mock.invocationCallOrder[4],
       useGlobalPipes.mock.invocationCallOrder[0],
       setGlobalPrefix.mock.invocationCallOrder[0],
       enableVersioning.mock.invocationCallOrder[0],
@@ -227,51 +186,5 @@ describe('configureApplication', () => {
     expect(invocationOrder).toEqual(
       [...invocationOrder].sort((left, right) => left - right),
     );
-  });
-
-  it('rejects the demo MemoryStore when sessions are enabled in production', async () => {
-    const values = new Map<string, unknown>([
-      ['NODE_ENV', Environment.Production],
-      ['SESSION_ENABLED', true],
-      ['COMPRESSION_ENABLED', false],
-      ['CORS_ENABLED', true],
-      ['CORS_ORIGINS', 'https://example.com'],
-      [
-        'rateLimit',
-        {
-          trustProxy: 'loopback',
-        } satisfies Partial<RateLimitConfig>,
-      ],
-    ]);
-    const configService = {
-      get: vi.fn((key: string, fallback?: unknown) =>
-        values.has(key) ? values.get(key) : fallback,
-      ),
-      getOrThrow: vi.fn((key: string) => {
-        if (!values.has(key)) {
-          throw new Error(`Missing test config: ${key}`);
-        }
-
-        return values.get(key);
-      }),
-    };
-    const app = {
-      enableCors: vi.fn(),
-      get: vi.fn((token: unknown) => {
-        if (token === ConfigService) {
-          return configService;
-        }
-
-        throw new Error('Unexpected provider lookup');
-      }),
-      set: vi.fn(),
-      use: vi.fn(),
-      useWebSocketAdapter: vi.fn(),
-    } as unknown as NestExpressApplication;
-
-    await expect(configureApplication(app)).rejects.toThrow(
-      'SESSION_ENABLED=true uses the demo MemoryStore',
-    );
-    expect(session).not.toHaveBeenCalled();
   });
 });

@@ -1,21 +1,15 @@
 import { createHash } from 'node:crypto';
+
 import {
   ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import type { Request } from 'express';
+
 import type { DataSource, QueryRunner } from 'typeorm';
 
-import type { BetterAuthService } from '../better-auth/better-auth.service.js';
+import type { PasswordHashService } from '../../infra/auth/password-hash.service.js';
 import { UserManagementService } from './user-management.service.js';
-
-vi.mock('../better-auth/better-auth.loader.cjs', () => ({
-  loadBetterAuthModules: () =>
-    Promise.resolve({
-      hashPassword: () => Promise.resolve('hashed-password'),
-    }),
-}));
 
 const invitation = {
   id: 'invitation-1',
@@ -55,13 +49,10 @@ describe('UserManagementService', () => {
     query,
     createQueryRunner: () => runner,
   } as unknown as DataSource;
-  const betterAuth = {
-    getInstance: () =>
-      Promise.resolve({
-        api: { getSession: () => Promise.resolve({ user: { id: 'admin-1' } }) },
-      }),
-  } as unknown as BetterAuthService;
-  const service = new UserManagementService(database, betterAuth);
+  const passwords = {
+    hash: vi.fn().mockResolvedValue('hashed-password'),
+  } as unknown as PasswordHashService;
+  const service = new UserManagementService(database, passwords);
 
   beforeEach(() => {
     query.mockReset();
@@ -71,9 +62,9 @@ describe('UserManagementService', () => {
 
   it('does not trust the cookie unless its current database role is admin', async () => {
     query.mockResolvedValueOnce([{ role: 'user', banned: false }]);
-    await expect(
-      service.requireAdmin({ headers: { cookie: 'session=abc' } } as Request),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.requireAdminUser('admin-1')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 
   it('stores only the invitation token digest and returns the raw token once', async () => {

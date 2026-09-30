@@ -1,6 +1,7 @@
-import type { Mocked } from 'vitest';
 import { INestApplication } from '@nestjs/common';
 import { type OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
+
+import type { Mocked } from 'vitest';
 
 import { Environment } from '../../config/config-enums.js';
 import { SKIP_API_ENVELOPE_OPENAPI_EXTENSION } from '../../common/http/http-metadata.js';
@@ -171,7 +172,7 @@ describe('applyI18nOpenApiContract', () => {
         const isRawOperation =
           (SKIP_API_ENVELOPE_OPENAPI_EXTENSION in operation &&
             operation[SKIP_API_ENVELOPE_OPENAPI_EXTENSION] === true) ||
-          routePath === '/api/auth/get-session' ||
+          routePath === '/raw-response' ||
           routePath === '/demo-sse/notifications';
 
         if (isRawOperation) {
@@ -278,7 +279,7 @@ describe('applyI18nOpenApiContract', () => {
       },
     });
     expect(
-      responseContent(document, '/api/auth/get-session', 'get', '200')?.[
+      responseContent(document, '/raw-response', 'get', '200')?.[
         'application/json'
       ]?.schema,
     ).toEqual({ type: 'object' });
@@ -404,17 +405,19 @@ function createOpenApiDocument(): OpenAPIObject {
           },
         },
       },
-      '/api/auth/get-session': {
+      '/raw-response': {
         get: {
+          // AI modified: the explicit extension keeps the fixture raw without a retired auth route.
+          [SKIP_API_ENVELOPE_OPENAPI_EXTENSION]: true,
           responses: {
             200: {
-              description: 'Raw Better Auth response',
+              description: 'Explicit raw response',
               content: {
                 'application/json': { schema: { type: 'object' } },
               },
             },
           },
-        },
+        } as NonNullable<OpenAPIObject['paths'][string]['get']>,
       },
     },
   };

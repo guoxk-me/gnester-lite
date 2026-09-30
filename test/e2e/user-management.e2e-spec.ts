@@ -1,12 +1,12 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
-
+import { UnauthorizedException } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 
-import { BetterAuthService } from '../../src/better-auth/better-auth.service.js';
+import { ApplicationAuthService } from '../../src/modules/identity/application-auth.service.js';
+import { PasswordHashService } from '../../src/infra/auth/password-hash.service.js';
 import { configureApplication } from '../../src/bootstrap/configure-application.js';
 import { CsrfModule } from '../../src/infra/csrf/csrf.module.js';
 import {
@@ -14,8 +14,8 @@ import {
   AdminUsersController,
   PublicInvitationsController,
   SecurityTokenController,
-} from '../../src/user-management/user-management.controller.js';
-import { UserManagementService } from '../../src/user-management/user-management.service.js';
+} from '../../src/modules/identity/user-management.controller.js';
+import { UserManagementService } from '../../src/modules/identity/user-management.service.js';
 
 interface CsrfTokenBody {
   csrfToken: string;
@@ -28,7 +28,12 @@ describe('user management (e2e)', () => {
   let management: UserManagementService;
   const databaseQuery =
     vi.fn<(...args: [string, unknown[]?]) => Promise<unknown>>();
-  const getSession = vi.fn().mockResolvedValue({ user: { id: 'admin-1' } });
+  const requireUser = vi.fn(
+    (incomingRequest: { headers: { cookie?: string } }) => {
+      if (!incomingRequest.headers.cookie) throw new UnauthorizedException();
+      return Promise.resolve({ id: 'admin-1' });
+    },
+  );
 
   beforeAll(async () => {
     const moduleFixture = await Test.createTestingModule({
@@ -39,7 +44,7 @@ describe('user management (e2e)', () => {
           load: [
             () => ({
               NODE_ENV: 'test',
-              SESSION_ENABLED: false,
+
               CSRF_ENABLED: true,
               CSRF_SECRET: 'test-csrf-secret',
               COOKIE_SECRET: 'test-cookie-secret',
@@ -60,22 +65,10 @@ describe('user management (e2e)', () => {
         UserManagementService,
         { provide: DataSource, useValue: { query: databaseQuery } },
         {
-          provide: BetterAuthService,
-          useValue: {
-            getInstance: () => Promise.resolve({ api: { getSession } }),
-            getRequestHandler: () =>
-              Promise.resolve(
-                (
-                  _incomingRequest: IncomingMessage,
-                  response: ServerResponse,
-                ) => {
-                  response.statusCode = 404;
-                  response.end();
-                  return Promise.resolve();
-                },
-              ),
-          },
+          provide: ApplicationAuthService,
+          useValue: { requireUser },
         },
+        { provide: PasswordHashService, useValue: { hash: vi.fn() } },
       ],
     }).compile();
 
@@ -89,7 +82,7 @@ describe('user management (e2e)', () => {
 
   beforeEach(() => {
     databaseQuery.mockReset();
-    getSession.mockClear();
+    requireUser.mockClear();
     vi.restoreAllMocks();
   });
 
