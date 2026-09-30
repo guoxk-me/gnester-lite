@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { IdentityModule } from './modules/identity/identity.module.js';
+import { ApplicationModule } from './modules/application.module.js';
 import configuration from './config/configuration.js';
 import { databaseConfig } from './infra/database/database.config.js';
 import { environmentFilePaths } from './config/environment-files.js';
@@ -28,7 +28,7 @@ import { SentryModule } from './infra/sentry/sentry.module.js';
       validate,
     }),
     TypeOrmModule.forRootAsync(databaseConfig.asProvider()),
-    IdentityModule,
+    ApplicationModule,
     SentryModule,
     HttpResponseModule,
     CsrfModule,

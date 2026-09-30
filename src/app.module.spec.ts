@@ -1,9 +1,10 @@
-import { IdentityModule } from './modules/identity/identity.module.js';
+import { ApplicationModule } from './modules/application.module.js';
 import { HttpModule, HttpService } from '@nestjs/axios';
 import {
   BullModule,
   type BullRootModuleOptions,
   getSharedConfigToken,
+  getQueueToken,
 } from '@nestjs/bullmq';
 import {
   CACHE_MANAGER,
@@ -21,6 +22,11 @@ import {
 } from '@nestjs/schedule';
 import { Test } from '@nestjs/testing';
 import type { Cache } from 'cache-manager';
+import { DataSource } from 'typeorm';
+import { ASSISTANT_QUEUE } from './modules/assistant/assistant-generation.service.js';
+import { AssistantService } from './modules/assistant/assistant.service.js';
+import { SessionAuthGuard } from './modules/identity/session-auth.guard.js';
+import { IdentityAdminGuard } from './modules/identity/identity-admin.guard.js';
 
 import { AppModule } from './app.module.js';
 import { CacheModule } from './infra/cache/cache.module.js';
@@ -105,13 +111,32 @@ describe('AppModule infrastructure boundaries', () => {
     expect(countImportedModule(appImports, HttpClientModule)).toBe(0);
     expect(countImportedModule(appImports, QueueModule)).toBe(0);
     expect(countImportedModule(appImports, ScheduleModule)).toBe(0);
-    expect(countImportedModule(appImports, IdentityModule)).toBe(1);
+    expect(countImportedModule(appImports, ApplicationModule)).toBe(1);
   });
 
   it('makes every feature and readiness module declare its capability imports', () => {
     expect(
       countImportedModule(getModuleImports(HealthModule), CacheModule),
     ).toBe(1);
+  });
+
+  // AI modified: compile the complete business graph with inert database and queue adapters to catch missing explicit exports without external services.
+  it('resolves identity guards and assistant services through ApplicationModule', async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(DataSource)
+      .useValue({ isInitialized: false, entityMetadatas: [] })
+      .overrideProvider(getQueueToken(ASSISTANT_QUEUE))
+      .useValue({ close: vi.fn() })
+      .compile();
+    try {
+      expect(moduleRef.get(AssistantService)).toBeInstanceOf(AssistantService);
+      expect(moduleRef.get(SessionAuthGuard)).toBeInstanceOf(SessionAuthGuard);
+      expect(moduleRef.get(IdentityAdminGuard)).toBeInstanceOf(
+        IdentityAdminGuard,
+      );
+    } finally {
+      await moduleRef.close();
+    }
   });
 
   it('exposes one provider instance through explicit module imports', async () => {
