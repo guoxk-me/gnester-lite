@@ -12,7 +12,7 @@ import {
 import { CacheTTL } from '@nestjs/cache-manager';
 import { ApiParam, ApiResponse } from '@nestjs/swagger';
 
-import { HttpCacheInterceptor } from '../../cache/http-cache.interceptor.js';
+import { HttpCacheInterceptor } from '../../infra/cache/http-cache.interceptor.js';
 import {
   CreateDemoCacheDto,
   DEMO_CACHE_KEY_MAX_LENGTH,

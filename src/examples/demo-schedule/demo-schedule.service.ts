@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron, CronExpression, Interval, Timeout } from '@nestjs/schedule';
-import { ScheduleService } from '../../schedule/schedule.service.js';
+import { ScheduleService } from '../../infra/schedule/schedule.service.js';
 import {
   DEMO_CRON_PATTERN_JOB,
   DEMO_DECLARATIVE_CRON_JOB,
@@ -13,7 +13,7 @@ import {
   DEMO_TIME_ZONE_CRON_JOB,
   DEMO_UTC_OFFSET_CRON_JOB,
 } from './demo-schedule.constants.js';
-import { withSentryIsolation } from '../../sentry/with-sentry-isolation.js';
+import { withSentryIsolation } from '../../infra/sentry/with-sentry-isolation.js';
 import { DemoScheduleOverviewDto } from './dto/demo-schedule-overview.dto.js';
 import { DemoScheduleRunDto } from './dto/demo-schedule-run.dto.js';
 

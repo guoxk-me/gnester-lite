@@ -20,8 +20,8 @@
     "test:cov": "NODE_ENV=test vitest run --coverage",
     "test:debug": "NODE_ENV=test vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "NODE_ENV=test vitest run --config ./vitest.config.e2e.ts",
-    "migration:run:prod": "NODE_ENV=production node node_modules/typeorm/cli.js -d dist/src/config/typeorm.data-source.js migration:run",
-    "migration:revert:prod": "NODE_ENV=production node node_modules/typeorm/cli.js -d dist/src/config/typeorm.data-source.js migration:revert",
+    "migration:run:prod": "NODE_ENV=production node node_modules/typeorm/cli.js -d dist/src/infra/database/typeorm.data-source.js migration:run",
+    "migration:revert:prod": "NODE_ENV=production node node_modules/typeorm/cli.js -d dist/src/infra/database/typeorm.data-source.js migration:revert",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"src/config/**/*.{yml,yaml}\" \"scripts/**/*.mjs\" \"docs/**/*.md\" \"prompts/**/*.md\" \"README.md\" \"AGENTS.md\" \"CLAUDE.md\" \"*.json\" \"*.{yml,yaml}\" \".github/workflows/*.{yml,yaml}\"",
     "lint:check": "oxlint --type-aware src/ test/",
     "typecheck": "pnpm run typecheck:build && pnpm run typecheck:test",
@@ -43,9 +43,9 @@
     "compodoc": "compodoc -p tsconfig.compodoc.json -d documentation --silent",
     "compodoc:serve": "compodoc -p tsconfig.compodoc.json -d documentation -s",
     "migration:create": "typeorm migration:create",
-    "migration:generate": "pnpm run build && NODE_ENV=development node node_modules/typeorm/cli.js -d dist/src/config/typeorm.data-source.js migration:generate",
-    "migration:run": "pnpm run build && NODE_ENV=development node node_modules/typeorm/cli.js -d dist/src/config/typeorm.data-source.js migration:run",
-    "migration:revert": "pnpm run build && NODE_ENV=development node node_modules/typeorm/cli.js -d dist/src/config/typeorm.data-source.js migration:revert",
+    "migration:generate": "pnpm run build && NODE_ENV=development node node_modules/typeorm/cli.js -d dist/src/infra/database/typeorm.data-source.js migration:generate",
+    "migration:run": "pnpm run build && NODE_ENV=development node node_modules/typeorm/cli.js -d dist/src/infra/database/typeorm.data-source.js migration:run",
+    "migration:revert": "pnpm run build && NODE_ENV=development node node_modules/typeorm/cli.js -d dist/src/infra/database/typeorm.data-source.js migration:revert",
     "start:repl": "NODE_ENV=development nest start --watch --entryFile repl"
   },
   "dependencies": {

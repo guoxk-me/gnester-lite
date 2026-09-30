@@ -5,7 +5,7 @@ import {
   sentryBootstrapEnvironment,
   shouldInitializeSentry,
 } from './config/environment-files.js';
-import { sentryPrivacyOptions } from './sentry/sentry-privacy.js';
+import { sentryPrivacyOptions } from './infra/sentry/sentry-privacy.js';
 
 // AI modified: instrumentation needs the same dotenv inputs before Nest creates ConfigModule.
 loadProjectEnvironmentFiles();

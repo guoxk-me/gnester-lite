@@ -1,5 +1,5 @@
 import type { Mocked } from 'vitest';
-import { ScheduleService } from '../../schedule/schedule.service.js';
+import { ScheduleService } from '../../infra/schedule/schedule.service.js';
 import {
   DEMO_DECLARATIVE_CRON_JOB,
   DEMO_DYNAMIC_CRON_JOB,

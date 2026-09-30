@@ -7,11 +7,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Job, type WorkerOptions } from 'bullmq';
-import { getQueueWorkerConnectionOptions } from '../../queue/queue-connection.js';
+import { getQueueWorkerConnectionOptions } from '../../infra/queue/queue-connection.js';
 import {
   captureBackgroundException,
   withSentryIsolation,
-} from '../../sentry/with-sentry-isolation.js';
+} from '../../infra/sentry/with-sentry-isolation.js';
 import {
   DEMO_QUEUE_LONG_TASK_JOB,
   DEMO_QUEUE_SEND_EMAIL_JOB,

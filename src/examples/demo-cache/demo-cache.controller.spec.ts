@@ -8,8 +8,8 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import request from 'supertest';
 
-import { CacheService } from '../../cache/cache.service.js';
-import { HttpCacheInterceptor } from '../../cache/http-cache.interceptor.js';
+import { CacheService } from '../../infra/cache/cache.service.js';
+import { HttpCacheInterceptor } from '../../infra/cache/http-cache.interceptor.js';
 import { DemoCacheController } from './demo-cache.controller.js';
 import { DemoCacheService } from './demo-cache.service.js';
 import {

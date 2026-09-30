@@ -2,7 +2,7 @@ import type { Mocked } from 'vitest';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FlowProducer, Queue } from 'bullmq';
-import { QueueService } from '../../queue/queue.service.js';
+import { QueueService } from '../../infra/queue/queue.service.js';
 import {
   DEMO_QUEUE,
   DEMO_QUEUE_LONG_TASK_JOB,

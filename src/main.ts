@@ -16,8 +16,8 @@ import {
   stopAcceptingHttpRequests,
 } from './bootstrap/application-shutdown.js';
 import { configureApplication } from './bootstrap/configure-application.js';
-import { ApplicationReadinessService } from './health/application-readiness.service.js';
-import { closeSentryTelemetry } from './sentry/sentry-shutdown.js';
+import { ApplicationReadinessService } from './infra/health/application-readiness.service.js';
+import { closeSentryTelemetry } from './infra/sentry/sentry-shutdown.js';
 
 // AI modified: bootstrap starts with Nest Logger, then switches to nestjs-pino.
 let logger: NestLogger | Logger = new NestLogger('Bootstrap');

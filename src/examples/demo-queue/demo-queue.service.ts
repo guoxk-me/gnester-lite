@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectFlowProducer, InjectQueue } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 import { FlowProducer, Queue, type JobsOptions } from 'bullmq';
-import { QueueService } from '../../queue/queue.service.js';
+import { QueueService } from '../../infra/queue/queue.service.js';
 import {
   DEMO_QUEUE,
   DEMO_QUEUE_FLOW_PRODUCER,

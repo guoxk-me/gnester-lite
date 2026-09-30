@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 
-import { CacheModule } from '../../cache/cache.module.js';
+import { CacheModule } from '../../infra/cache/cache.module.js';
 import { DemoCacheController } from './demo-cache.controller.js';
 import { DemoCacheService } from './demo-cache.service.js';
 

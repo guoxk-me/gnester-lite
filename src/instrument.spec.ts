@@ -14,7 +14,7 @@ vi.mock('./config/environment-files.js', () => ({
   sentryBootstrapEnvironment: vi.fn(),
   shouldInitializeSentry: vi.fn(),
 }));
-vi.mock('./sentry/sentry-privacy.js', () => ({
+vi.mock('./infra/sentry/sentry-privacy.js', () => ({
   sentryPrivacyOptions: {
     maxBreadcrumbs: 0,
     dataCollection: {

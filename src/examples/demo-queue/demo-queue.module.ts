@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { Worker } from 'bullmq';
 
-import { QueueModule } from '../../queue/queue.module.js';
+import { QueueModule } from '../../infra/queue/queue.module.js';
 import {
   DEMO_QUEUE,
   DEMO_QUEUE_FLOW_PRODUCER,

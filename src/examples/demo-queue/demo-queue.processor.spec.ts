@@ -1,7 +1,7 @@
 import type { Mocked } from 'vitest';
 import { ConfigService } from '@nestjs/config';
 import { Job } from 'bullmq';
-import { captureBackgroundException } from '../../sentry/with-sentry-isolation.js';
+import { captureBackgroundException } from '../../infra/sentry/with-sentry-isolation.js';
 import {
   DEMO_QUEUE_LONG_TASK_JOB,
   DEMO_QUEUE_SEND_EMAIL_JOB,
@@ -25,7 +25,7 @@ import { DemoQueueResultDto } from './dto/demo-queue-result.dto.js';
 vi.mock('../../sentry/with-sentry-isolation', () => ({
   captureBackgroundException: vi.fn(),
   withSentryIsolation: vi.fn(
-    <OperationOutcome>(callback: () => OperationOutcome): OperationOutcome =>
+    <OperationOutcome,>(callback: () => OperationOutcome): OperationOutcome =>
       callback(),
   ),
 }));
