@@ -1,205 +1,94 @@
 # Architecture / 架构
 
-gnester-lite separates application composition, reusable runtime capabilities,
-feature ownership, and framework-free contracts. A file's directory should
-answer who owns it and which direction it may depend on.
+<!-- AI modified: the confirmed ownership model replaces flat capabilities, centralized types and the Demo catalog. -->
 
-gnester-lite 将应用装配、可复用运行能力、功能所有权和无框架契约分开。文件所在目录应能直接说明其所有者以及允许的依赖方向。
+gnester-lite is a reusable NestJS service template and the default companion server for gvueter-lite. Current identity and assistant behavior stays enabled through one replaceable application composition module. Both repositories remain independently delivered; this change does not reorganize the frontend.
 
-## Source layout / 源码布局
+gnester-lite 保持通用服务模板定位，当前身份与助手业务继续用于 gvueter-lite 对接。目录表达所有权；真正的运行边界由 Nest imports/providers/exports 和架构检查共同落实。
+
+## Source ownership / 目录所有权
 
 ```text
 src/
-├── app.module.ts              application composition root
-├── main.ts                    process entry point
-├── instrument.ts              pre-bootstrap telemetry initialization
-├── bootstrap/                 startup, HTTP pipeline, and shutdown policy
-│   └── http/                  CORS, Helmet, validation, OpenAPI, Socket.IO adapter
-├── auth/ authorization/       authentication and access rules
-├── better-auth/ crypto/ csrf/  security integrations
-├── cache/ http-client/ queue/  external resource integrations
-├── logger/ sentry/ health/     observability and operations
-├── i18n/ schedule/ rate-limit/ runtime capabilities
-├── config/                    YAML and environment configuration
-├── database/
-│   └── migrations/            application migrations visible to production
-├── <business-name>/           future production business capabilities
-├── examples/                  removable teaching and integration examples
-│   └── demo-database/
-│       └── migrations/        non-production Demo schema history
-└── contracts/                 pure, stable, framework-free shared contracts
+├── main.ts / instrument.ts / app.module.ts
+├── bootstrap/                 process startup, HTTP registration and shutdown
+├── config/                    configuration values, types and validation
+├── common/                    small shared protocols, metadata and validation constants
+│   ├── http/                  envelope contract and route metadata
+│   └── validation/            shared input constraints
+├── infra/                     complete non-business runtime facilities
+│   ├── auth/ authorization/   reusable token/password and access-control mechanisms
+│   ├── database/              TypeORM configuration, CLI entry and migrations
+│   ├── http/                  localized response and exception pipeline
+│   ├── i18n/                  catalog, translation and language negotiation
+│   ├── cache/ queue/ http-client/
+│   ├── crypto/ csrf/ rate-limit/
+│   └── health/ schedule/ logger/ sentry/
+└── modules/
+    ├── application.module.ts   current supported business composition
+    ├── identity/              accounts, sessions, invitations and user administration
+    └── assistant/             conversations, answer generation and personal models
 ```
 
-### `src/bootstrap`
+Only create directories that already have a responsibility. Small modules stay flat; larger modules split by actual behavior. Do not pre-create controllers/services/repositories folders for symmetry. DTOs, local types, constants, adapters and unit tests remain with their owner. There is no central `src/types/`, `platform/`, `features/`, or runnable Demo catalog.
 
-`bootstrap` owns order-sensitive integration with the running process and HTTP
-server. It configures middleware, CORS, Helmet, global validation, versioning,
-OpenAPI, the Socket.IO adapter, and graceful shutdown. It may orchestrate
-capability services, but it must not contain business behavior.
+小模块平铺，大模块按实际职责拆分。类型就近保存，单文件私有类型也可直接留在使用处；跨模块复用并不自动改变所有权。不要建立全局类型 barrel 或仅转发 ORM 方法的 Repository。
 
-`bootstrap` 负责与进程和 HTTP 服务有关、且顺序敏感的接入逻辑。它可以编排平台服务，但不能承载 Feature 业务逻辑。
+### Common and infrastructure
 
-### Top-level capabilities
+`common` stays small. HTTP envelope contracts and skip-envelope metadata do not import their runtime executors. Framework metadata decorators may use Nest/Swagger, but common must not import infrastructure, configuration or business implementation.
 
-Reusable capabilities live directly under `src/` in folders named for their
-responsibility. Each keeps its Nest module, providers, configuration adapter,
-and focused tests together. Capability code may depend on other capabilities
-and `contracts`, but not on a business module, `examples`, or `bootstrap`.
+`infra` includes both external resource adapters and non-business runtime mechanisms: database, Redis cache, queue, scheduling, HTTP clients, translation, logging, cryptography, CSRF, throttling and health probes. Each facility owns its module, providers, configuration adapter and tests together. A cache interceptor stays with cache; a telemetry filter stays with Sentry.
 
-可复用能力直接放在 `src/` 下，按职责命名；不能反向依赖业务模块、`examples` 或 `bootstrap`。
+`infra/http` owns response wrapping, localized failures and their global providers. It imports the catalog-only `infra/i18n` module. CSRF also imports that catalog without registering response providers a second time. `bootstrap` installs validation and middleware in their required order. Global registration does not change ownership.
 
-### Production business folders
+### Identity and assistant
 
-Production business folders live directly under `src/`, for example `users/`
-or `orders/`. A business folder keeps its controllers, services, DTOs, entities,
-local guards, adapters, tests, and documentation
-contracts together. A feature may be optional in a deployment, but it remains a
-feature when it is supported production behavior rather than teaching code.
+`identity` owns the `user`, `account`, `session`, `verification` and invitation lifecycle. Its session guard checks the existing signed access cookie and live account/session state. The admin guard checks the current database role. Controllers pass checked user IDs to business services; assistant services do not accept Express requests or query identity-owned tables.
 
-正式业务模块直接放在 `src/<business-name>/`，并拥有自己的完整纵向能力。
+`IdentityModule` exports the session boundary through `ApplicationAuthModule`. `AssistantModule` imports `IdentityModule` explicitly. Public identity entry points are the owning module, session guard, current-session-user decorator and session-user contract. Session persistence types and management services stay private.
 
-### `src/examples`
+`assistant` owns conversation/turn/answer persistence and personal provider credentials, model catalogs and preferences. Responsibilities are separated into conversation operations, durable generation transitions, personal configuration, provider protocols and scheduled catalog synchronization. Provider SDK access stays inside assistant because it is currently specific to its personal-model behavior. Secrets remain encrypted; the refactor does not introduce a shared credential store.
 
-Examples demonstrate reusable capabilities without defining production
-business behavior. `DemosModule` is the catalog boundary: it is enabled outside
-production and excluded from the production module graph. The entire directory
-must be removable without changing capability implementations or production
-business modules.
+The API and worker remain a modular monolith with one process by default. HTTP polling, queue names, cookie names and existing endpoint payloads remain compatible with gvueter-lite. Independent worker deployment, generated frontend clients and new authorization product features require separate work.
 
-Examples 用于教学和集成演示，可以整体删除，并且不会影响可复用能力或正式业务模块。
+## Dependency rules / 依赖规则
 
-### `src/contracts`
+| Owner                | Allowed project dependencies                                                            |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `modules/<business>` | Its own implementation, infra, common, config, another business's declared public entry |
+| `infra/<facility>`   | Other infra facilities, common, config                                                  |
+| `common`             | Common only; platform APIs and metadata framework dependencies are permitted            |
+| `config`             | Configuration only and external loading/validation libraries                            |
+| `bootstrap`          | Bootstrap, infra, common, config                                                        |
+| `AppModule`          | Application and infrastructure composition                                              |
 
-`contracts` is deliberately small. It contains only stable TypeScript values or
-types that are genuinely shared across ownership boundaries. It must not import
-NestJS, Express, TypeORM, capability modules, bootstrap code, business modules, or
-examples. API DTOs belong to their owning feature or example, not to
-`contracts`.
+Business modules must not access another owner's private service, persistence type or table. Use an explicitly exported business method. Cross-module dependencies must also be reflected in Nest imports/exports; re-registering another module's provider is forbidden. Circular source dependencies are forbidden, including type-only edges. Do not use `forwardRef()` to hide unclear ownership.
 
-`contracts` 不是新的杂物箱；只有稳定、无框架、确实跨边界共享的类型或常量才能放入其中。
+`scripts/verify-source-boundaries.mjs` resolves imports with the actual TypeScript configuration, including aliases, type queries, re-exports and literal dynamic imports. Its regression suite checks private business access, reverse dependencies and retired source layers. `verify:architecture` additionally checks compiled consumer imports, public Nest exports, migration discovery and the production graph.
 
-## Dependency direction / 依赖方向
+## Composition and deliberate exceptions
 
-```text
-main / AppModule
-    ├── bootstrap
-    ├── capabilities
-    ├── business folders
-    └── examples
+`AppModule` is the root: validated global configuration, one TypeORM root connection, HTTP response pipeline, CSRF, health, logging, Sentry, rate limiting and `ApplicationModule`. Current business modules are registered only through `ApplicationModule`, so template adopters have one clear replacement point.
 
-bootstrap        ──> capabilities ──> contracts
-business folders ──> capabilities ──> contracts
-examples         ──> capabilities ──> contracts
-bootstrap / capabilities / business folders / examples ──> config
-```
+Capability modules are not `@Global()`. Consumers import the module that exports the provider they inject. Framework root registrations stay with their owner: BullMQ with queue, Nest Schedule with schedule, Terminus with health, and the translation catalog with i18n.
 
-`src/config/` is a separate application-configuration boundary. `AppModule` loads
-and validates it once; bootstrap, capabilities, business folders, and examples may consume
-its typed values through `ConfigService` or import its TypeScript config types.
+`ConfigModule.forRoot({ isGlobal: true })` is the configuration exception. TypeORM connects once at the application root; a future ORM entity owner declares `TypeOrmModule.forFeature(...)` locally. APP_GUARD/FILTER/INTERCEPTOR providers are registered once in their owning infrastructure module.
 
-The following directions are forbidden:
+`instrument.ts` remains the first import in `main.ts`. Startup and shutdown preserve middleware order, readiness draining, dependency teardown and telemetry flushing.
 
-- `capability -> business folder | examples | bootstrap`
-- `business folder -> examples | bootstrap | another business folder's private implementation`
-- `bootstrap -> business folder | examples`
-- `contracts -> capability | business folder | examples | bootstrap | NestJS`
+## Database history / 数据库历史
 
-Cross-feature behavior should be expressed through a reusable capability, a
-small framework-free contract, or an application-level event—not by reaching
-into another feature's controller or service.
+All application migrations live in `src/infra/database/migrations/`; every environment discovers that same application history. CLI scripts use `dist/src/infra/database/typeorm.data-source.js`. Existing production migration class names and SQL stay unchanged.
 
-禁止能力目录反向依赖业务模块、Example 或 bootstrap，也禁止业务模块直接引用另一个业务模块的私有实现。
+The Demo source and migration discovery have been removed. This does not drop any existing Demo table or alter an existing TypeORM history row. No database reset or data migration is part of the architecture refactor. Do not enable synchronization in production.
 
-## Nest module composition / Nest 模块装配
+Business SQL stays in the owning module. Introduce a repository only when it isolates meaningful persistence behavior or repeated queries; do not move user queries into `infra/database` just because they use a database.
 
-Capability modules are not `@Global()`. A module that injects a capability provider
-must import the module that exports it in its own `imports` array. This keeps
-Redis, BullMQ, scheduling, HTTP client, auth, and other runtime dependencies
-visible at the consumer boundary.
+## Verification and maintenance
 
-Examples:
+Unit tests are colocated; HTTP E2E tests live in `test/e2e`, guarded real-infrastructure tests in `test/integration`. Test-owned fixtures can exercise generic protocol behavior without restoring teaching endpoints to the application.
 
-- `HealthModule` imports `CacheModule` for Redis readiness.
-- `DemoCacheModule` imports `CacheModule`.
-- `DemoHttpModule` imports `HttpClientModule`.
-- `DemoQueueModule` imports `QueueModule` before registering its queues.
-- `DemoScheduleModule` imports `ScheduleModule`.
-- Auth-consuming business modules import `AuthModule` explicitly.
+For changes to module ownership run type checks, lint, tests, build, architecture, OpenAPI and build-artifact checks. Full infrastructure verification follows CI and uses disposable MySQL/Redis only. Report executed commands separately from inspected assumptions.
 
-能力模块不使用 `@Global()`；注入其 provider 的模块必须显式导入所属模块。
-
-### Deliberate exceptions / 明确例外
-
-The exceptions are narrow and live at composition boundaries:
-
-1. `ConfigModule.forRoot({ isGlobal: true })` is registered once in
-   `AppModule`. `ConfigService` is therefore available without repeating
-   `ConfigModule` in every capability. Configuration values are still validated
-   centrally before providers consume them.
-2. `TypeOrmModule.forRootAsync(...)` is registered once in `AppModule` because
-   the database connection is application infrastructure. A feature that owns
-   repositories must still declare `TypeOrmModule.forFeature(...)` locally.
-3. `APP_GUARD` in the rate-limit module, `APP_FILTER` in the Sentry module, and
-   `APP_INTERCEPTOR` / `APP_FILTER` in the i18n envelope module intentionally
-   have application-wide behavior. Their owning modules are nevertheless
-   explicitly imported by `AppModule`.
-4. Framework root registrations stay with the narrowest owning module:
-   BullMQ with queue, Nest Schedule with schedule,
-   Terminus with health, EventEmitter with the demo-events feature, and
-   `nestjs-i18n` via `I18nCatalogModule` / `I18nModule`.
-
-这些例外只解决框架根注册问题，不授权新增隐藏依赖或新的全局业务模块。
-
-## Application composition / 应用装配
-
-`AppModule` is the only application composition root. It always composes
-configuration, TypeORM, Sentry, i18n envelope, CSRF, health, logging, and rate
-limiting.
-Optional infrastructure follows the feature that consumes it. `DemosModule`
-is included only when `NODE_ENV` is not `production`; its queue feature is
-omitted from the ordinary unit-test module graph to avoid starting workers.
-
-`src/instrument.ts` must remain the first import from `src/main.ts` so Sentry
-can initialize before Nest and application modules load.
-
-## Migration ownership / 迁移所有权
-
-Application migrations that production may execute live in `src/database/migrations/`.
-Business schema changes are owned by their business module but stored in this
-production migration directory so the data source discovers them.
-The Demo database migration is owned by its example at
-`src/examples/demo-database/migrations/`.
-
-Migration discovery is environment-aware:
-
-- `development`, `test`, and guarded `provision` discover the application and
-  Demo migration directories.
-- `production` discovers only application migrations and never discovers the
-  example-owned Demo migration. A new production database therefore does not
-  create the `demo` table.
-
-Changing discovery does not perform a rollback. If an existing production
-database ran `CreateDemoTable1760000000000` before this boundary was introduced,
-its table and TypeORM migration-history row remain. The migration class/name is
-kept unchanged so environments that opt into Demo migrations recognize the
-existing history instead of treating it as a new migration.
-
-生产数据源不会发现 Demo migration；但该规则不会自动删除旧生产库中已经存在的
-`demo` 表，也不会改写既有 TypeORM migration history。
-
-## Placement checklist / 放置检查
-
-Before adding or moving a file, ask:
-
-1. Is it order-sensitive process or HTTP setup? Put it in `bootstrap`.
-2. Is it a reusable runtime mechanism? Put it in its own top-level capability folder.
-3. Is it supported production business behavior? Keep it inside the owning
-   top-level business folder.
-4. Is it removable teaching or integration code? Keep it inside the owning
-   example.
-5. Is it pure TypeScript and genuinely shared across owners? It may belong in
-   `contracts`.
-6. Would the proposed dependency point from a capability to a business folder or example?
-   Redesign the seam instead.
-
-新增或移动文件时，应先判断所有权和依赖方向，而不是按“看起来通用”放入共享目录。
+Current guides live directly in `docs/`. Dated audits/plans and `docs/history/` preserve earlier decisions; they are historical evidence, not current placement instructions.

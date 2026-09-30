@@ -1,83 +1,27 @@
-# Security Utilities / 安全工具
+# Security / 安全
 
-This template keeps cryptographic primitives in `src/crypto/` and application examples in `src/examples/demo-crypto/`.
+机制归 `src/infra/auth`、`authorization`、`crypto`、`csrf`、`rate-limit`；账号、登录会话、管理员规则和邀请归 `src/modules/identity`。
 
-本模板将通用加密能力放在 `src/crypto/`，将应用示例放在 `src/examples/demo-crypto/`。
+## Application sessions / 应用会话
 
-## Better Auth
+当前浏览器入口为 `GET /api/session` 和 `POST /api/session/login`、`refresh`、`logout`。公开注册关闭，管理员创建账号或发一次性邀请。
 
-The production authentication entry is Better Auth 1.6 at `/api/auth/*`.
-`BetterAuthModule` owns a Better Auth instance backed by a dedicated
-`mysql2` pool, with email/password authentication and opaque cookie sessions
-enabled.
+- `gvueter_access` 为 HttpOnly、SameSite=Lax 的 HS256 JWT cookie，路径 `/api`，15 分钟有效。
+- `gvueter_refresh` 为 HttpOnly、SameSite=Lax 的随机 token cookie，路径 `/api/session`。数据库只存 SHA-256 digest；refresh 在行锁内轮换并检查当前账号。
+- 不记住登录时，会话有效 24 小时，refresh cookie 为浏览器 session cookie；记住登录时有效七天，刷新延长七天。浏览器恢复会影响 session cookie 的实际消失时间。
+- 生产 cookie 强制 Secure。每次受保护请求验证 JWT、数据库中仍存活的会话和账号状态。登出、停用账号撤销服务端会话。
+- `SessionAuthGuard` 写入受检的 `SessionUser`，`CurrentSessionUser` 提供给 controller，服务接收 userId。`IdentityAdminGuard` 再检查当前管理员权限；助手不调用身份模块的私有实现。
+- 响应只包含公开用户字段，token 不进入 JSON。会话响应使用 `Cache-Control: private, no-store`。
 
-生产认证入口为 `/api/auth/*` 下的 Better Auth 1.6。它使用独立 `mysql2` 连接池，
-启用邮箱密码认证与不透明 cookie session。
+首次管理员通过 `pnpm admin:bootstrap` 受控创建。命令不读 dotenv，也不支持 `--help`：进程环境须包含 `GNESTER_ALLOW_ADMIN_BOOTSTRAP=true`、显式数据库连接以及 `ADMIN_EMAIL`、`ADMIN_NAME`、`ADMIN_PASSWORD`。启动服务不会自动提权。生产需独立配置 JWT/CSRF/encryption/HMAC 密钥并执行受控迁移。
 
-Common endpoints / 常用端点：
-
-- `POST /api/auth/sign-up/email` (disabled; returns 404)
-- `POST /api/auth/sign-in/email`
-- `GET /api/auth/get-session`
-- `POST /api/auth/sign-out`
-
-Runtime boundary / 运行时边界：
-
-- Nest starts with `bodyParser: false`. The auth-only middleware buffers at
-  most 1 MiB of raw bytes without JSON or URL-encoded parsing, then lets Better
-  Auth replay that bounded body. Both declared-length and chunked uploads are
-  enforced; rejected streams are drained before the localized 413 is sent.
-- The private client-IP header is overwritten from Express `request.ip`, so
-  Better Auth uses the same validated `trust proxy` result as the Nest
-  throttler. Its built-in limiter follows `rateLimit.enabled` and remains
-  in-memory; multi-instance deployments need shared Better Auth rate-limit
-  storage.
-- Project `csrf-csrf` middleware skips only the exact `/api/auth` boundary.
-  Better Auth keeps its own Origin, Fetch Metadata, redirect, and CSRF checks.
-- Production cookies are forced `Secure`; every production `BETTER_AUTH_URL`
-  and trusted origin must use HTTPS and must not be a loopback origin. The
-  artifact smoke uses a non-loopback logical origin while connecting to the
-  disposable loopback server, matching a TLS-terminating reverse proxy.
-- Better Auth routes are handled before Nest controllers and therefore are not
-  described by the Nest OpenAPI document or protected by Nest guards. Protect
-  business controllers by resolving a Better Auth session through
-  `BetterAuthService`; do not assume sign-in automatically protects every Nest
-  route.
-
-Required production configuration / 生产必填配置：
-
-```text
-BETTER_AUTH_SECRET=<independent high-entropy value, at least 32 bytes>
-BETTER_AUTH_URL=https://api.example.com
-BETTER_AUTH_TRUSTED_ORIGINS=https://app.example.com
-```
-
-`BETTER_AUTH_TRUSTED_ORIGINS` is optional when enabled credentialed CORS origins
-are the same browser applications. A disabled or non-credentialed CORS origin is
-never promoted into Better Auth's trust boundary. Wildcards are rejected.
-
-Public self-service sign-up is closed. New accounts come from the guarded
-`/api/admin/users` endpoint or a one-time invitation accepted through
-`/api/invitations/accept`. An administrator must be selected and granted the
-`admin` role in an explicit deployment step, or a fresh installation can run
-the guarded one-time `pnpm admin:bootstrap` command after migration. No account
-is auto-promoted at startup.
-Invitations are not emailed by the service and are never evidence of verified
-email ownership. Management routes reload the caller's current role from
-the database and reject regular users. Disabling an account revokes its sessions.
-
-The existing JWT/Passport and authorization examples live under removable Demo
-features. Their bearer tokens are intentionally independent from Better Auth's
-cookie identity; neither credential authenticates the other system.
-
-现有 JWT/Passport 与授权能力仍属于可移除 Demo。JWT bearer token 与 Better Auth
-cookie 身份互不兼容，也不会相互认证。
+通用 `AuthModule` 保留密码哈希、JWT 信任政策和 Bearer Guard，`AuthorizationModule` 保留角色、权限和策略 Guard。它们不决定当前应用的账号或 session 业务规则。当前浏览器入口使用应用 cookie 会话。
 
 ## Password Hashing / 密码哈希
 
-Use `PasswordHashService` from `src/auth/password-hash.service.ts` for passwords.
+Use `PasswordHashService` from `src/infra/auth/password-hash.service.ts` for passwords.
 
-密码使用 `src/auth/password-hash.service.ts` 中的 `PasswordHashService`。
+密码使用 `src/infra/auth/password-hash.service.ts` 中的 `PasswordHashService`。
 
 - Passwords are never encrypted for later recovery.
 - Store only salted hashes.
@@ -120,151 +64,32 @@ Webhook 签名、回调校验、内部服务 payload 签名使用 `HmacSignature
 - Verify before parsing or acting on the payload.
 - Set `HMAC_SECRET` in production.
 
-## CSRF Protection / CSRF 防护
+## CSRF / 浏览器写入
 
-Use `CsrfService` from `src/csrf/csrf.service.ts` for browser clients
-that authenticate through cookies or sessions.
+`CsrfService` 使用 `csrf-csrf`，由 bootstrap 在请求进入 Nest controller 前注册。所有 unsafe methods（POST、PUT、PATCH、DELETE），包括登录、刷新、登出和邀请接受，需发送固定 `X-XSRF-TOKEN` header。
 
-浏览器客户端通过 cookie 或 session 自动携带凭证时，使用
-`src/csrf/csrf.service.ts` 中的 `CsrfService`。
+`GET /api/session` 即使返回 401 也设置可读的 `XSRF-TOKEN` cookie；Axios 同源写入自动携带匹配 header。独立 identifier cookie 保持 HttpOnly，不依赖已移除的 express-session。命令行客户端可先请求 `GET /api/security/csrf-token`，保留返回 cookie，再发送 `data.csrfToken`。
 
-- Implementation: `csrf-csrf`, registered globally in
-  `src/bootstrap/configure-application.ts`.
-- Token endpoint demo: `GET /api/demo-csrf/token`.
-- Unsafe methods (`POST`, `PUT`, `PATCH`, `DELETE`) must send the token in
-  the `CSRF_HEADER_NAME` header (default `x-csrf-token`). Development OpenAPI
-  uses the configured name and only declares this requirement while CSRF is
-  enabled.
-- Missing or invalid tokens return
-  `{ code: 403, message: "Invalid CSRF token", data: null, errors: null }`.
-  `message` follows `Accept-Language` (`en` / `zh`).
-- Set `CSRF_SECRET` in production when `CSRF_ENABLED=true`.
+CSRF 错误返回本地化 envelope，HTTP code 为 403。生产必须启用 CSRF 并配置独立 `CSRF_SECRET`、HTTPS 与同源 `/api` 代理；SameSite=None 必须配合 Secure。修改前端或外部客户端时保持固定 Axios cookie/header 契约。
 
-Typical flow / 典型流程：
+## Personal provider keys / 个人供应商 Key
+
+`assistant` 按账号检查 Key 所有权，以 AES-256-GCM 存储可恢复密钥并绑定账号、供应商和 Key ID 的 authenticated context。原始 Key 不进入浏览器响应、队列载荷或日志。供应商错误分类与调用协议由 provider 服务处理，个人 Key 的选择、失效和删除由配置服务处理。
+
+## Invitations / 邀请
+
+邀请 token 只展示一次，数据库保存 digest。预览和接受通过 POST body 传 token，避免进入服务端请求 URL 和 access log。已有管理员规则、账号禁用、最后管理员保护和邀请事务保留原有语义。
+
+## Rate limits / 限流
+
+`src/infra/rate-limit` 注册全局 Throttler Guard，策略来自 YAML。登录和敏感 Key 操作声明更严格的 `@Throttle()`；校验要求恰好一个名为 `short` 的策略。健康探针使用 `common/http/skip-http-throttle.decorator.ts` 跳过全部 HTTP 策略。
+
+`rateLimit.trustProxy` 必须匹配代理拓扑，才能追踪原始客户端 IP。当前存储为进程内内存，多实例部署需要共享存储才能实现跨实例预算。
+
+## Verification / 验证
 
 ```bash
-COOKIE_JAR="$(mktemp)"
-TOKEN_RESPONSE="$(curl -fsS -c "$COOKIE_JAR" http://localhost:3000/api/demo-csrf/token)"
-CSRF_TOKEN="$(printf '%s' "$TOKEN_RESPONSE" | node -pe 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).data.csrfToken')"
-
-curl -fsS -b "$COOKIE_JAR" \
-  -H 'content-type: application/json' \
-  -H "x-csrf-token: $CSRF_TOKEN" \
-  -d '{"recipient":"alice@example.com","amount":25}' \
-  http://localhost:3000/api/demo-csrf/transfer-preview
+pnpm run test -- src/infra/auth src/infra/authorization src/infra/crypto src/infra/csrf src/modules/identity
+pnpm run test:e2e
+pnpm run verify:openapi
 ```
-
-The middleware in this template protects every unsafe HTTP method while
-`CSRF_ENABLED=true`, including demo endpoints that otherwise use bearer
-authentication. Use the cookie-jar/token flow above for all documented
-`POST`/`PUT`/`PATCH`/`DELETE` examples, or explicitly disable CSRF when deploying
-a pure bearer-token API.
-
-`/api/auth/*` is the deliberate exception to this project middleware: Better
-Auth performs its own origin and CSRF checks at that raw-handler boundary. Do
-not add a broad prefix match such as `/api/authentication` to the exception.
-Because this handler runs before Nest controllers, responses produced by Better
-Auth keep its native JSON/localization contract. The project-owned bounded-body
-layer is narrower: an oversized `/api/auth/*` body returns the shared localized
-application envelope before Better Auth runs.
-
-`/api/auth/*` 在 Nest controller 之前处理，因此 Better Auth 自身生成的响应保留
-原生 JSON/本地化契约；项目自有的有界 body 层是例外，声明长度和 chunked
-传输都执行 1 MiB 上限，超限时在进入 Better Auth 前返回共享的本地化
-envelope。
-
-生产环境启用 CSRF 时必须使用 secure cookie。任何
-`CSRF_COOKIE_SAME_SITE=none` 或已启用 session 的
-`SESSION_COOKIE_SAME_SITE=none` 配置也必须同时开启对应的 secure 选项，否则
-启动校验会拒绝该配置。
-
-## Auth Guards / 鉴权守卫
-
-The template exposes two HTTP guard adapters but one JWT trust policy:
-
-| Consumer             | Adapter                                 | Canonical verification                 |
-| -------------------- | --------------------------------------- | -------------------------------------- |
-| `demo-auth`          | `JwtAuthGuard` + Passport `JwtStrategy` | `AuthTokenService` payload validation  |
-| `demo-authorization` | `AuthGuard` + `@Public()` metadata      | `AuthTokenService.verifyAccessToken()` |
-| `/demo-websocket`    | Socket.IO handshake                     | `AuthTokenService.verifyAccessToken()` |
-
-- Login uses `LocalAuthGuard` + `LocalStrategy` in `demo-auth`.
-  登录在 `demo-auth` 使用 `LocalAuthGuard` + `LocalStrategy`。
-- `demo-authorization` applies `AuthGuard` to the controller; only its
-  `@Public()` scenario catalog bypasses authentication. Role, permission and
-  policy guards run after that shared authentication boundary.
-  `demo-authorization` 在 controller 级应用 `AuthGuard`；只有标记
-  `@Public()` 的场景目录绕过鉴权，角色、权限与策略守卫均运行在该统一认证边界之后。
-- `readJwtPolicy()` centralizes HS256, secret, issuer, audience, and TTL.
-- All verification paths enforce expiry, issuer, audience, algorithm, and the
-  same identity payload: `sub` and `username` are required; `roles` and
-  `permissions` are optional, but every supplied entry must be a non-empty
-  string.
-- HTTP, Passport, and the WebSocket header fallback share one strict
-  case-insensitive Bearer extractor. Extra whitespace or token segments are
-  rejected, and token input is capped at 4096 characters before JWT parsing.
-- Local authentication always performs one scrypt verification, including for
-  unknown usernames, to avoid a missing-user fast path.
-- Session login regenerates the server-side session identifier before writing
-  authenticated state. Regeneration failures do not upgrade the old session.
-- The cookie demo reflects only `demo_preferences`; arbitrary and httpOnly
-  security cookies are never returned in JSON. CSRF token responses use
-  `Cache-Control: no-store`.
-- Cookie/session-derived GET responses use `Cache-Control: private, no-store`,
-  including the credentialed CORS resource, so shared caches cannot replay one
-  browser's state to another.
-
-## Rate Limiting / 请求限流
-
-Use `RateLimitModule` from `src/rate-limit/` for request budget
-protection. It registers `@nestjs/throttler` as a global guard and reads named
-throttler definitions from `src/config/config.yaml`.
-
-请求预算保护使用 `src/rate-limit/` 中的 `RateLimitModule`。它将
-`@nestjs/throttler` 注册为全局 guard，并从 `src/config/config.yaml` 读取命名限流策略。
-
-Default template policy / 模板默认策略：
-
-```yaml
-rateLimit:
-  enabled: true
-  trustProxy: loopback
-  errorMessage: Too many requests
-  throttlers:
-    - name: short
-      ttl: 1000
-      limit: 3
-    - name: medium
-      ttl: 10000
-      limit: 20
-    - name: long
-      ttl: 60000
-      limit: 100
-```
-
-Common scenarios / 常用场景：
-
-- Public APIs: keep the global baseline limit enabled for anonymous traffic.
-- Credential entrypoints: use `@Throttle()` on login, registration, password
-  reset, OTP, invite, and token issuance endpoints. The demo login overrides
-  the named `short` budget; startup validation therefore requires exactly one
-  `short` throttler.
-- Webhooks and callbacks: use endpoint-specific budgets based on provider
-  retry behavior.
-- Health checks: use `@SkipHttpThrottle()` for trusted infrastructure probes.
-  It skips every configured HTTP throttler without naming them.
-- Reverse proxies: keep `rateLimit.trustProxy` aligned with your ingress
-  topology so throttling tracks the original client IP instead of the proxy.
-
-Demo endpoints / 示例接口：
-
-- `GET /api/demo-rate-limit/default`: global throttler behavior.
-- `POST /api/demo-rate-limit/login`: stricter route-level override.
-- `GET /api/demo-rate-limit/health`: explicit `@SkipHttpThrottle()` bypass.
-
-The built-in throttler storage is in memory. For multiple production instances,
-use a Redis-compatible throttler storage so all instances share the same request
-budget state.
-
-内置限流存储是进程内内存。生产多实例部署时，应接入 Redis 兼容存储，让所有实例共享
-同一份请求预算状态。

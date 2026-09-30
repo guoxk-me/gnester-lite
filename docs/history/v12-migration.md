@@ -1,3 +1,5 @@
+> Historical document. Current architecture and commands are defined in ../architecture.md and ../../README.md.
+
 # NestJS 12 migration
 
 `v11` retains the verified NestJS 11 service. `master` was rebuilt from the NestJS 12 CLI scaffold, then production capabilities, examples, tests, and deployment tooling were restored in separate commits. Both branches remain active. Transfer shared fixes with reviewed cherry-picks because the build and test layouts differ.
@@ -6,7 +8,7 @@
 
 - Node.js 24 and pnpm 11.1.2 remain required.
 - NestJS 12 uses native ESM (`"type": "module"`, TypeScript `nodenext`) and the TypeScript builder. Local TypeScript imports name their emitted `.js` files.
-- Vitest 4 replaces Jest for unit, HTTP/WebSocket e2e, and guarded full-app integration. `oxlint --type-aware` replaces ESLint. The build emits `dist/src/` with YAML, locale, and CommonJS Better Auth loader assets.
+- Vitest 4 replaces Jest for unit, HTTP/WebSocket e2e, and guarded full-app integration. `oxlint --type-aware` replaces ESLint. The build emits `dist/src/` with YAML and locale assets.
 - Swagger DTO metadata is emitted into compiled classes. OpenAPI contract verification scans the compiled ESM artifact.
 
 ## Database continuity

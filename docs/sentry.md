@@ -11,20 +11,18 @@ keep local and CI runs offline.
 
 - `src/instrument.ts`: calls `Sentry.init` before Nest modules load.
   在 Nest 模块加载前调用 `Sentry.init`。
-- `src/sentry/sentry.module.ts`: registers `SentryModule` and
+- `src/infra/sentry/sentry.module.ts`: registers `SentryModule` and
   `SentryGlobalFilter`.
   注册 `SentryModule` 与 `SentryGlobalFilter`。
-- `src/sentry/with-sentry-isolation.ts`: isolates cron / queue / event
+- `src/infra/sentry/with-sentry-isolation.ts`: isolates cron / queue / event
   scopes.
   隔离定时任务、队列和事件的作用域。
-- `src/sentry/sentry-privacy.ts`: defines the deny-by-default telemetry
+- `src/infra/sentry/sentry-privacy.ts`: defines the deny-by-default telemetry
   privacy boundary.
   定义默认拒绝采集的遥测隐私边界。
-- `src/sentry/sentry-shutdown.ts`: closes pending telemetry within the
+- `src/infra/sentry/sentry-shutdown.ts`: closes pending telemetry within the
   final shutdown budget.
   在最终关停预算内关闭待发送遥测和 SDK 资源。
-- `src/examples/demo-sentry/`: status and debug endpoints.
-  状态查询与调试端点。
 
 ## Configuration / 配置
 
@@ -42,10 +40,8 @@ Notes / 说明：
   `SENTRY_DSN` 可选。为空时不初始化 Sentry。
 - `SENTRY_ENABLED=false` disables init even when a DSN is present.
   即使有 DSN，`SENTRY_ENABLED=false` 也会跳过初始化。
-- `NODE_ENV=test` and `NODE_ENV=provision` never initialize Sentry; the status
-  endpoint uses the same gate as `src/instrument.ts`.
-  `NODE_ENV=test` 与 `NODE_ENV=provision` 都不会初始化 Sentry；状态端点与
-  `src/instrument.ts` 使用同一判断条件。
+- `NODE_ENV=test` and `NODE_ENV=provision` never initialize Sentry.
+  `NODE_ENV=test` 与 `NODE_ENV=provision` 都不会初始化 Sentry。
 - Without `SENTRY_TRACES_SAMPLE_RATE`, development uses `1` and production uses
   `0.1`.
   未设置 `SENTRY_TRACES_SAMPLE_RATE` 时，开发环境为 `1`，生产环境为 `0.1`。
@@ -91,17 +87,6 @@ they usually act as control flow.
 `SentryGlobalFilter` 上报未处理异常。Nest 的 `HttpException`（含校验失败）
 默认不上报，因为它们通常用作控制流。
 
-Verify with:
-
-```http
-GET /api/demo-sentry/debug-sentry
-```
-
-When a DSN is configured, the thrown `Error` should appear in the Sentry
-project Issues list.
-
-配置 DSN 后，抛出的 `Error` 应出现在 Sentry 项目的 Issues 列表中。
-
 ## Background Jobs / 后台任务
 
 Wrap cron, queue, and event handlers with `withSentryIsolation()` so breadcrumbs
@@ -121,9 +106,7 @@ This template already does that in:
 
 本模板已在以下位置使用：
 
-- `src/schedule/schedule.service.ts`
-- `demo-queue.processor.ts`
-- `demo-events.listener.ts`
+- `src/infra/schedule/schedule.service.ts`
 
 ## Graceful Shutdown / 优雅关停
 
@@ -138,16 +121,6 @@ SIGTERM, or startup-failure exit code.
 中央关停协调器仅在 HTTP 工作 drain 且 Nest provider hooks 完成后调用
 `Sentry.close()`。调用使用剩余的 2 秒 telemetry 预算，并受统一外层期限保护。
 SDK 未初始化时正常跳过；超时或 SDK 错误只写本地日志，不改变退出码，也不阻塞退出。
-
-## WebSocket / WebSocket
-
-`APP_FILTER` registration does not apply to Nest gateways. The demo WebSocket
-exception filter therefore calls `Sentry.captureException()` for unexpected
-errors, while skipping `HttpException` / `WsException` control-flow cases.
-
-`APP_FILTER` 不会作用到 Nest gateway。因此 demo WebSocket 异常过滤器会对
-未预期错误调用 `Sentry.captureException()`，并跳过 `HttpException` /
-`WsException` 这类控制流异常。
 
 ## Source Maps / Source Maps
 
@@ -165,18 +138,10 @@ map、上传到 Sentry，并在组装镜像前删除；下面的 wizard 可用�
 npx @sentry/wizard@latest -i sourcemaps
 ```
 
-## Demo Routes / 示例路由
-
-```http
-GET /api/demo-sentry/scenarios
-GET /api/demo-sentry/status
-GET /api/demo-sentry/debug-sentry
-```
-
 ## Verify / 验证
 
 ```bash
 pnpm run lint:check
-pnpm run test -- src/sentry src/examples/demo-sentry src/examples/demo-websocket/demo-websocket-exception.filter.spec.ts
+pnpm run test -- src/infra/sentry
 pnpm run build
 ```

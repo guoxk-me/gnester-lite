@@ -1,3 +1,5 @@
+> Historical document. Current architecture and commands are defined in ../architecture.md and ../../README.md.
+
 # Project Notes / 项目备注
 
 This file gives a concise bilingual map of what each major part does and why
@@ -52,7 +54,7 @@ Capability modules live directly under `src/`. A consumer imports the module tha
 ### Security / 安全能力
 
 - `src/auth`: Issues and verifies JWTs, hashes passwords, and protects routes. / 签发与校验 JWT、处理密码哈希，并保护接口。
-- `src/better-auth`: Owns the Better Auth integration. / 负责 Better Auth 集成。
+- `src/auth`: Owns application access and refresh sessions alongside reusable JWT examples. / 负责应用双 token 会话及可复用 JWT 示例。
 - `src/authorization`: Provides role, permission, and policy guards. / 提供角色、权限和策略守卫。
 - `src/crypto`: Provides HMAC signing, secure token generation, and symmetric encryption. / 提供 HMAC 签名、安全令牌生成和对称加密。
 - `src/csrf`: Creates CSRF protection middleware and error handling. / 创建 CSRF 防护中间件和错误处理。

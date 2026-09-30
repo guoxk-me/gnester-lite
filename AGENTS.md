@@ -4,7 +4,7 @@ This file provides repository guidance to coding agents working in this project.
 
 ## Project Overview
 
-NestJS 12 ESM TypeScript service template using pnpm 11.1.2 on Node.js 24. Production-oriented examples for configuration, validation, database, auth, security, caching, queues, scheduling, HTTP clients, file uploads, SSE, WebSocket, and serialization. Requires MySQL 8 and Redis 7.
+NestJS 12 ESM TypeScript service template using pnpm 11.1.2 on Node.js 24. Reusable runtime facilities for configuration, validation, persistence, security, caching, queues, scheduling, HTTP clients and observability, with current identity and assistant business modules. Requires MySQL 8 and Redis 7.
 
 ## Dependency Versions
 
@@ -52,93 +52,37 @@ For task-specific verification, use the repository `gnester-verify` skill in
 
 ## Architecture
 
-### Layered ownership
+<!-- AI modified: the confirmed modules/infra/common boundaries replace the old flat capability and central-type layout. -->
 
-- **`src/bootstrap/`** — order-sensitive process and HTTP composition: startup,
-  shutdown, middleware, validation, OpenAPI, and the Socket.IO adapter.
-- **Top-level capability folders** — `auth/`, `authorization/`, `better-auth/`,
-  `cache/`, `crypto/`, `csrf/`, `health/`, `http-client/`, `i18n/`,
-  `logger/`, `queue/`, `rate-limit/`, `schedule/`, and `sentry/`.
-  Each owns its Nest module, providers, adapters, and focused tests.
-- **`src/<business-name>/`** — future production business capabilities. A
-  business folder owns its controllers, services, DTOs, entities, local
-  adapters, and tests. There is no `src/features/` wrapper.
-- **`src/examples/`** — removable teaching and integration examples. The
-  complete Demo catalog is excluded from the production module graph.
-- **`src/config/`** — typed YAML defaults, environment validation, and
-  TypeORM CLI configuration.
-- **`src/database/migrations/`** — production-visible application migrations.
-- **`src/contracts/`** — small, stable, framework-free TypeScript contracts.
-  Do not place NestJS DTOs or miscellaneous helpers here.
+- `src/bootstrap/`: order-sensitive startup, HTTP registration and shutdown. No business logic.
+- `src/config/`: configuration values, enums, local types and validation. No runtime adapters.
+- `src/common/`: small HTTP protocols/metadata and shared input constraints. No infrastructure or business dependencies.
+- `src/infra/`: complete non-business runtime facilities, including database/migrations, auth mechanisms, HTTP response pipeline, i18n, health, cache, queues, scheduling, cryptography, CSRF, throttling, logging and Sentry.
+- `src/modules/<business>/`: controllers, services, DTOs, local types, data access and colocated tests. Current identity and assistant modules are composed in `src/modules/application.module.ts`.
 
-Dependency direction is `bootstrap/business/examples -> capabilities -> contracts`.
-Capabilities must not import business folders, examples, or bootstrap;
-business folders and bootstrap must not import examples. Do not import another
-business folder's private implementation. See `docs/architecture.md`.
+Dependency direction: modules -> infra/common/config; infra -> common/config/other infra; common -> common only; config -> config only. Bootstrap consumes infra/common/config, and AppModule is the sole root. Circular source dependencies are forbidden. Another business's private implementation or tables must not be accessed; use its declared public service/contract and import its owning Nest module. Do not re-register another module's provider.
 
-For a change to one area, read its focused guide in `docs/` when relevant:
-`database.md` for schema or TypeORM work, `configuration.md` for configuration,
-`security.md` for security controls, and `openapi.md` for API documentation.
+Small modules stay flat; create subdirectories only for actual responsibilities. Types remain with their owner, including private types in one implementation file. Stable shared protocols may live in common. No central `src/types`, runnable Demo catalog, global type barrel, or unnecessary Repository forwarding layer. Global registration does not change ownership.
 
-Capability modules are explicit dependencies and must not use `@Global()`.
-A consumer that injects a capability provider imports its owning module in
-its own `imports` array. `AppModule` is the sole composition root.
+Capability modules are not `@Global()`. `ConfigModule.forRoot({ isGlobal: true })` is the deliberate config exception. TypeORM root is registered once in AppModule; entity owners use `forFeature` locally. APP_GUARD/FILTER/INTERCEPTOR providers stay in their owning explicitly imported infrastructure module.
 
-Production-visible application migrations belong in `src/database/migrations/`. The
-Demo database migration belongs to `src/examples/demo-database/migrations/`
-and is discovered only in development, test, and guarded provision—not in
-production. Keep its migration class/name stable so existing TypeORM history is
-not reinterpreted.
+`instrument.ts` is imported first from main. Preserve middleware ordering, language negotiation, native probe/SSE/file boundaries, graceful shutdown and same-origin browser cookie/CSRF behavior.
 
-### Configuration system
+Identity owns accounts, sessions and invitations. HTTP session/admin checks belong to identity guards; services receive checked user IDs. Assistant keeps conversations, durable generation transitions, personal-model configuration, provider protocols and scheduled catalog synchronization distinct. API and workers stay in one process by default.
 
-Double-validation design in `src/config/`:
+All application migrations are in `src/infra/database/migrations/`; source and compiled CLI/runtime discovery differ only by extension. Preserve production migration names/history and never reset a production database. Existing Demo tables/history are not dropped by source removal.
 
-- **YAML defaults** (`src/config/config.yaml`) → validated by `configuration.ts` using `class-validator` on a typed `YamlVariables` class. Used for non-secret app defaults (cache TTL, queue settings, HTTP client options, rate-limit throttlers).
-- **Environment variables** → validated by `src/config/validation.ts` using `class-validator` on `EnvironmentVariables`. Secrets, DB credentials, Redis URL, CORS settings. Production enforces JWT_SECRET, ENCRYPTION_KEY, and HMAC_SECRET; CSRF_SECRET is required when CSRF is enabled.
+Read `docs/architecture.md`, and the relevant configuration/database/security/OpenAPI guide before changing their boundary. Run `test:architecture` and `verify:architecture` after compilation when changing ownership. The checker resolves TypeScript aliases and erased type imports as well as runtime edges.
 
-Both run through NestJS `ConfigModule.forRoot({ validate, isGlobal: true })`,
-combining YAML defaults with env overrides. The global `ConfigModule` is a
-deliberate composition exception, so capabilities may inject `ConfigService`
-without repeated module imports. `TypeOrmModule.forRootAsync(...)` is likewise
-registered once in `AppModule`; repository-owning features still declare
-`TypeOrmModule.forFeature(...)` locally. Config types live in
-`src/config/config.types.ts`.
-
-Framework-wide `APP_GUARD` and `APP_FILTER` providers are allowed only inside
-their focused capability modules, which `AppModule` imports explicitly.
-
-### Bootstrap
-
-`src/instrument.ts` is imported first for optional Sentry initialization.
-`src/main.ts` creates the app, attaches nestjs-pino, delegates the
-order-sensitive runtime pipeline to
-`src/bootstrap/configure-application.ts`, and starts listening. That shared
-bootstrap configures CORS, compression, cookie-parser, express-session
-(MemoryStore, dev only), CSRF, global validation, URI versioning, API docs, and
-the Socket.IO adapter.
-
-### Test infrastructure
-
-- Nest CLI compiles with TypeScript 6 to native ESM (`module` / `moduleResolution`: `nodenext`) in `dist/src`; local imports use `.js` extensions. Swagger DTO metadata is emitted inline.
-- Vitest 4 runs unit and e2e suites; use `vitest.config.full-app.ts` only through the guarded integration runner.
-- Unit tests colocated as `*.spec.ts` in `src/`.
-- E2E tests in `test/e2e/`, integration tests in `test/integration/`, and fixtures in `test/fixtures/`.
-- `DemosModule` excludes `DemoQueueModule` in test environments.
-  `DemoQueueModule` explicitly imports `QueueModule`, which keeps BullMQ
-  lazy and manually registered in test mode.
-- TypeORM relation fields should use `Relation<T>` to avoid circular decorator metadata imports (see `docs/database.md`).
-
-### Key dependencies
-
-BullMQ (queues via `@nestjs/bullmq`), TypeORM + MySQL, Redis (`@keyv/redis` for caching, also backing BullMQ), `@nestjs/event-emitter`, `@nestjs/schedule`, `@nestjs/throttler`, `@nestjs/swagger`, `@nestjs/jwt`, `@nestjs/websockets` + Socket.IO, `@sentry/nestjs`, `class-validator` + `class-transformer` for validation.
+Unit tests are colocated; E2E tests are in `test/e2e`, guarded real-infrastructure tests in `test/integration`. Local imports use `.js` extensions with NodeNext ESM. Use `Relation<T>` for future TypeORM relations to avoid circular decorator metadata.
 
 ## Coding Style
 
 - NestJS dependency injection. Explicit public method return types. Strict typing, avoid `any`.
 - Import order: NestJS, third-party, then internal.
 - Prettier: single quotes, trailing commas. `module` / `moduleResolution`: `nodenext`.
-- Files: kebab-case (`demo-database.service.ts`), classes: PascalCase, variables/functions: camelCase.
+- Files: kebab-case (`user-management.service.ts`), classes: PascalCase, variables/functions: camelCase.
+- Application HTTP JSON field names use camelCase. Map database or third-party field names explicitly where they enter an endpoint response; do not add blanket key conversion to response middleware or require the frontend client to rewrite keys. Preserve externally defined string values and raw pass-through contracts.
 - Boolean variables start with `is`, `has`, `can`, `should`. Arrays use plural names.
 - No `console.log`; use NestJS Logger. No `I*`/`T*` prefixes on types.
 - Prefer existing dependencies and platform APIs before adding new packages.

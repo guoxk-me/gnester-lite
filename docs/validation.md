@@ -86,27 +86,18 @@ DTO instances and validation targets are never included in the response.
 
 - `src/bootstrap/http/validation.pipe.ts`: global pipe and error formatting. 全局 pipe 与错误格式。
 - `src/bootstrap/http/validation.pipe.spec.ts`: validation helper tests. 校验工具测试。
-- `src/examples/demo-database/dto/*.dto.ts`: DTO examples. DTO 示例。
-- `src/examples/demo-database/demo-database.controller.ts`: DTO and pipe usage. DTO 与 pipe 用法。
-- `docs/demo.md`: demo API examples. demo 接口示例。
+- `src/modules/identity/dto/`: session, account and invitation request DTOs.
+- `src/modules/assistant/dto/`: conversation and personal model request DTOs.
+- `src/common/validation/input-validation.constants.ts`: shared stable constraints.
 
 ## Current Patterns / 当前模式
 
-- Body DTO: `CreateDemoDto`.
-- Update DTO: `PartialType(CreateDemoDto)`.
-- Mapped types: `PickType()`, `OmitType()`, `IntersectionType()` in `demo-mapped-types.dto.ts`.
-- Query DTO: `ListDemoQueryDto` with `@Type(() => Number)`.
-- Search query DTO: `SearchDemoQueryDto` rejects blank values and enforces the
-  entity name length.
-- Nested array DTO: `BulkCreateDemoDto` with `@ValidateNested()` and `@Type()`.
-- Bounded numeric route params use DTOs with `@Type(() => Number)`, `@IsInt()`,
-  and domain-specific `@Min()` / `@Max()`; UUID examples use `ParseUUIDPipe`.
-  Boolean and array query examples use `ParseBoolPipe` and `ParseArrayPipe`.
-  Raw bulk arrays and comma-separated ID queries are additionally capped at 50
-  entries; database IDs must fit the positive signed MySQL `INT` domain.
-- Semantic text fields use `@Matches(/\S/)` when whitespace-only input is not a
-  meaningful value. Body and path representations of the same identifier reuse
-  the same length and character constraints.
+- Every accepted property has class-validator decorators.
+- Optional updates use optional validated properties rather than creating empty DTO layers.
+- Assistant model choices use `@ValidateNested()` with `@Type(() => ModelChoiceBody)`.
+- Semantic text fields reject whitespace-only input and have business-specific limits.
+- Current admin list pagination explicitly checks integer indices and a page size of 1–100 at the HTTP boundary.
+- DTOs remain runtime classes, colocated with their owning module; framework-free TypeScript contracts use local `.types.ts` files.
 
 ## How To Change / 如何修改
 

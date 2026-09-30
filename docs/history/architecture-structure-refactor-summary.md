@@ -1,3 +1,5 @@
+> Historical document. Current architecture and commands are defined in ../architecture.md and ../../README.md.
+
 # gnester-lite 目录结构重构思路总结
 
 > 历史讨论稿：下文记录了早期的 `platform/features` 分层方案。当前已采用顶层能力目录和顶层业务目录；请以 [现行架构](architecture.md) 为准。

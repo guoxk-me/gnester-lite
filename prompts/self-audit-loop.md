@@ -1,6 +1,6 @@
 # gnester-lite 完整自检自修 Loop Prompt
 
-> 此提示词最初按 v11 编写。用于当前 master 前，先以 `AGENTS.md`、`package.json` 和 CI 的 NestJS 12 / ESM / Vitest / oxlint 配置替代文中的 v11 工具链假设；历史审计数据只作为历史记录。
+> 此提示词最初按 v11 编写。用于当前 master 前，先以 `AGENTS.md`、`package.json` 和 CI 的 NestJS 12 / ESM / Vitest / oxlint 配置替代文中的 v11 工具链假设；历史审计数据只作为历史记录。2026-09-30 架构以 `docs/architecture.md` 为准：bootstrap/config/common/infra/modules，类型就近归属，身份与助手经 ApplicationModule 装配；Demo 已移除，历史教学检查仅在存在相应真实消费者时适用。
 
 > **用法（推荐）**
 >
@@ -24,7 +24,7 @@
 ## 0. 每次唤醒必须先做
 
 1. 确认工作区根目录为 `gnester-lite` 仓库根。
-2. 读取约定：`CLAUDE.md` / `AGENTS.md` / `docs/project-notes.zh-en.md`。
+2. 读取约定：`CLAUDE.md` / `AGENTS.md` / `docs/architecture.md`。
 3. 读取本提示词全文，严格按本轮流程执行。
 4. 读取（若存在）`.cursor/self-audit-state.md`；若 `stop_condition_met: true` 且用户未要求重开，则**不再修代码**，只回报「已满足停止条件」并建议停止 loop。
 5. **不要 commit / push**，除非用户另有明确指令。
@@ -44,34 +44,32 @@
 
 ### 1.1 技术栈与运行时
 
-| 项       | 基准                                                             |
-| -------- | ---------------------------------------------------------------- |
-| 框架     | NestJS 11 + TypeScript（`nodenext`）                             |
-| 运行时   | Node.js 24                                                       |
-| 包管理   | pnpm 11.1.2                                                      |
-| 依赖服务 | MySQL 8 + Redis 7                                                |
-| 构建     | Nest SWC（`nest-cli.json`：`builder: swc`，`typeCheck: true`）   |
-| 测试     | Jest + `@swc/jest`，`NODE_ENV=test`，`--experimental-vm-modules` |
-| 日志     | `nestjs-pino`（`LoggerModule` + `app.useLogger`）                |
-| 观测     | `@sentry/nestjs`（`src/instrument.ts` 最先导入）                 |
+| 项       | 基准                                                     |
+| -------- | -------------------------------------------------------- |
+| 框架     | NestJS 12 + TypeScript 6（原生 ESM / `nodenext`）        |
+| 运行时   | Node.js 24                                               |
+| 包管理   | pnpm 11.1.2                                              |
+| 依赖服务 | MySQL 8 + Redis 7                                        |
+| 构建     | Nest CLI TypeScript 构建（inline Swagger metadata）      |
+| 测试     | Vitest 4，`NODE_ENV=test`；lint 使用 oxlint 类型感知检查 |
+| 日志     | `nestjs-pino`（`LoggerModule` + `app.useLogger`）        |
+| 观测     | `@sentry/nestjs`（`src/instrument.ts` 最先导入）         |
 
 ### 1.2 架构边界
 
-- **`src/bootstrap/`**：启动、关停与有顺序要求的 HTTP 接入层；`bootstrap/http` 归属 CORS、Helmet、OpenAPI、ValidationPipe 和 Socket.IO adapter。
-- **`src/<capability>/`**：业务中立的平台能力，按 auth、cache、queue 等具体职责分别放在 `src/` 顶层目录。
-- **`src/<business-name>/`**：正式生产业务模块，自己拥有 controller、service、DTO、实体、迁移和测试。
-- **`src/examples/`**：可整体移除的教学与集成 Demo，自己拥有 controller、service、DTO、测试和示例专属规则。
-- **`src/contracts/`**：框架无关的稳定共享 TypeScript 契约，只能依赖同层契约或 `node:` 内置模块。
-- 依赖方向只能是 **`AppModule → bootstrap + capabilities + business + examples + contracts`**、**`bootstrap/business/examples → capabilities + contracts`**、**`capabilities → contracts`**；禁止 `capabilities → bootstrap/business/examples`、`business/bootstrap → examples` 和 `contracts → bootstrap/capabilities/business/examples`。
-- **`src/common/` 已退役**，不得再放置 TypeScript 实现。
-- platform 能力由消费者显式 import；自定义 platform module 禁止 `@Global()`，同时检查第三方动态根模块自身的 global 语义和重复注册风险。
-- Demo 数据库迁移位于 `src/examples/demo-database/migrations/`，只由 development/test/provision 数据源发现；production 数据源只发现 `src/database/migrations/`，不会在全新生产库创建 Demo 表。路径移动不自动删除旧生产表，迁移类名保持稳定以延续 history。
+- `src/bootstrap` 拥有启动、HTTP 接入与关停；config 只负责配置值／类型／校验。
+- `src/common` 只放小型共享协议、元数据和稳定约束；运行能力归 `src/infra/<facility>`。
+- 当前业务归 `src/modules/identity` 与 `src/modules/assistant`，通过 `ApplicationModule` 装配。类型、DTO、查询和单元测试就近归属。
+- 跨业务只访问声明的公开入口，并核对 Nest imports/exports；禁止私有类型、服务和表越界以及循环依赖（含 type-only）。
+- infra 不能导入业务或 bootstrap；common/config 不能依赖运行适配。基础设施消费者显式 import，自定义能力 module 不使用 `@Global()`。
+- 应用迁移位于 `src/infra/database/migrations`，所有环境保持相同发现规则；类名与 SQL 历史稳定。Demo 移除不操作已有表或历史。
+- 详见 `docs/architecture.md` 和架构检查脚本；日期化文档只作历史记录。
 
 ### 1.3 配置系统（双校验）
 
 - YAML 默认：`src/config/config.yaml` → `configuration.ts` / `YamlVariables`
 - Env 密钥与环境：`src/config/validation.ts` / `EnvironmentVariables`
-- 类型：`src/config/config.types.ts`
+- 类型：`src/config/application-config.types.ts`
 - 生产必须强制：`JWT_SECRET`、`ENCRYPTION_KEY`、`HMAC_SECRET`、`CSRF_SECRET` 等（不得弱化）
 
 ### 1.4 启动链路（`main.ts`）
@@ -81,7 +79,7 @@
 1. `import './instrument'`（Sentry）
 2. Nest 创建 + `bufferLogs` + pino logger
 3. CORS / compression / cookie-parser
-4. express-session（开发向；生产不得误用 MemoryStore 方案）
+4. Nest body parser（当前应用 cookie 会话由 identity 管理）
 5. CSRF
 6. 全局 `ValidationPipe`
 7. URI versioning（`/v1/...`）
@@ -216,7 +214,7 @@ CI 基线顺序：`lint:check` → `test` → `build` → `verify:architecture` 
 ## 3. 完整检测清单（按维度）
 
 > 用法：选中本轮主题后，从对应维度勾选扫描；不要每轮跑完全表。  
-> 对每个 `<capability>/*` 或 `bootstrap/*` 能力与对应 `examples/demo-*` 消费者成对检查；同时检查 `contracts/*` 的真实跨层使用。
+> 对每个 `infra/*` 或 `bootstrap/*` 能力与当前业务／HTTP 消费者成对检查；同时检查 `common/*` 的真实跨层使用。
 
 ### 3.1 项目完成度（Completeness）
 
@@ -226,10 +224,10 @@ CI 基线顺序：`lint:check` → `test` → `build` → `verify:architecture` 
 - [ ] HTTP：Swagger/OpenAPI 注解齐全；WS：AsyncAPI / 文档辅助齐全（适用处）
 - [ ] URI versioning 与真实路由一致（`/v1/...`）
 - [ ] 单元测试覆盖主路径 + 关键失败路径
-- [ ] `docs/` 有对应说明；`docs/project-notes.zh-en.md` 有条目且 `See docs/...` 正确
+- [ ] `docs/` 有对应说明；`docs/architecture.md` 有条目且 `See docs/...` 正确
 - [ ] README 安装/启动/验证命令与 `package.json` scripts 一致
 - [ ] 配置：YAML 默认与/或 env 校验完整；生产密钥强制项未弱化
-- [ ] Demo 能独立说明「如何正确使用对应 capabilities/bootstrap 能力」，而非空壳
+- [ ] 真实消费者和测试说明基础设施的使用方式，源码与产物不再包含 Demo 入口
 
 ### 3.2 Bug / 正确性 / 安全（Correctness & Security）
 

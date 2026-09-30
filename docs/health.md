@@ -8,13 +8,13 @@ deployment platforms (Kubernetes, load balancers, PaaS health checks).
 
 ## Layout / 结构
 
-- `src/health/health.module.ts`: imports `TerminusModule` and registers
+- `src/infra/health/health.module.ts`: imports `TerminusModule` and registers
   the controller.
   引入 `TerminusModule` 并注册控制器。
-- `src/health/health.controller.ts`: `GET /api/health/live` and
+- `src/infra/health/health.controller.ts`: `GET /api/health/live` and
   `GET /api/health/ready`.
   暴露 `GET /api/health/live` 与 `GET /api/health/ready`。
-- `src/health/application-readiness.service.ts`: owns the irreversible
+- `src/infra/health/application-readiness.service.ts`: owns the irreversible
   ready-to-draining transition used by graceful shutdown.
   管理优雅关停期间不可逆的 ready→draining 状态。
 - Wired from `src/app.module.ts` via `HealthModule`.
@@ -88,19 +88,14 @@ Example readiness success body (shape from `@nestjs/terminus`):
   connection; a queued acquisition remains single-flight and releases a late
   connection before another attempt can start.
 - nestjs-pino skips automatic access logs only for exact `/api/health/live` and
-  `/api/health/ready` paths (`src/logger/logger.config.ts`).
+  `/api/health/ready` paths (`src/infra/logger/logger.config.ts`).
 - Both infrastructure probes use `@SkipHttpThrottle()`, which bypasses every
   configured HTTP throttler without coupling the probe to throttler names.
-- Rate-limit demo also has `GET /api/demo-rate-limit/health` with
-  `@SkipHttpThrottle()`;
-  that is a throttling demo route, not the Terminus probe.
-  `GET /api/demo-rate-limit/health` 是限流演示（`@SkipHttpThrottle()`），不是 Terminus
-  探针。
 
 ## Verify / 验证
 
 ```bash
-pnpm run test -- src/health/health.controller.spec.ts
+pnpm run test -- src/infra/health/health.controller.spec.ts
 curl -sS http://localhost:3000/api/health/live
 curl -sS http://localhost:3000/api/health/ready
 ```

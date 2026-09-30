@@ -1,137 +1,26 @@
-# Queue
+# Queue / 队列
 
-This template uses `@nestjs/bullmq` and BullMQ for Redis-backed background jobs.
-BullMQ is the default choice because the older Bull integration is in
-maintenance mode.
+`src/infra/queue/` 提供 Redis-backed BullMQ 运行能力。`QueueModule` 拥有根注册、连接与默认参数，导出 BullMQ 和 `QueueService`。业务模块显式导入它并注册自己的队列、任务载荷和处理器。
 
-## Configuration
+## Configuration / 配置
 
-Redis is configured through `REDIS_URL`. Queue defaults live in
-`src/config/config.yaml`:
+`REDIS_URL` 提供连接，`src/config/config.yaml` 的 `queue` 配置提供启用开关、命名空间、重试、backoff 和完成/失败保留数量。命名空间包含环境，避免不同环境复用同一队列。`NODE_ENV=test` 手动注册 BullMQ，普通测试不会连接真实 Redis 或运行 worker。
 
-```yaml
-queue:
-  enabled: true
-  prefix: gnester-lite
-  defaultAttempts: 3
-  backoffDelay: 1000
-  removeOnComplete: 1000
-  removeOnFail: 5000
-```
+`QueueService` 提供启用检查、有界操作、typed enqueue、计数、暂停/恢复及可选的 pending capacity 准入。准入使用 token 保护的短 Redis 锁，将计数与发布串行化，避免多实例同时越过容量限制。业务调用方决定容量，不在基础设施中硬编码业务政策。
 
-`QueueModule` owns the BullMQ root registration and shared queue defaults.
-`NODE_ENV=test` uses manual registration, while `DemosModule` skips the demo
-queue feature so app-level tests do not start workers or require Redis.
-Ordinary producers and every `FlowProducer` parent/child node also receive the
-configured retry and `removeOnComplete` / `removeOnFail` values explicitly.
-Flow nodes do not inherit a separately registered queue's defaults, so this
-keeps completed and failed workflow jobs within the same retention budgets.
+生产者连接保留 bounded retry、command timeout 和 socket timeout；长生命周期 worker 使用单独连接和 BullMQ 所需的 blocking connection 策略。操作超时只说明后端未及时确认，发布结果可能未知。重试发布需要稳定 jobId 并核对现有任务，不能假设 exactly-once。
 
-## Common Module
+## Assistant / 助手消费者
 
-`QueueModule` exports BullMQ and `QueueService`, which centralizes
-template queue behavior:
+`src/modules/assistant/assistant-generation.service.ts` 拥有回答任务入队与持久状态更新；`assistant.processor.ts` 执行任务并逐段保存内容；`assistant-provider.service.ts` 适配供应商协议。HTTP 读取持久化回答，前端继续轮询。worker 当前与 API 运行在同一进程。
 
-- rejects job mutation when `queue.enabled` is false
-- adds jobs with typed payloads
-- returns operational counts
-- pauses and resumes queues
-- serializes distributed producer admission and rejects new work before the
-  pending backlog can exceed its configured demo boundary
+个人 Key 仍由配置服务按账号检查、解密和选择；队列载荷不携带原始 Key。取消和重启恢复保留原有状态语义。
 
-## Demo Module
-
-`DemoQueueModule` registers the `demo` queue and exposes:
-
-- `POST /api/demo-queue/email`
-- `POST /api/demo-queue/long-task`
-- `POST /api/demo-queue/subtasks`
-- `GET /api/demo-queue/status`
-- `POST /api/demo-queue/pause`
-- `POST /api/demo-queue/resume`
-
-`POST /api/demo-queue/email` creates a fast job:
-
-All queue mutations require the README CSRF cookie-jar/token flow when
-`CSRF_ENABLED=true`.
-
-```json
-{
-  "to": "test@example.com",
-  "subject": "Queue demo test",
-  "body": "Hello from the queue"
-}
-```
-
-Email addresses are limited to 254 characters. Subjects must contain
-non-whitespace text and are limited to 120 characters; optional bodies are
-limited to 2,000 characters.
-
-`POST /api/demo-queue/long-task` creates a simulated long-running job that updates
-progress across multiple steps:
-
-```json
-{
-  "taskName": "monthly-report",
-  "durationMs": 10000,
-  "steps": 5
-}
-```
-
-`POST /api/demo-queue/subtasks` creates a BullMQ flow. Child jobs run first, and the
-parent workflow job completes after all children complete:
-
-```json
-{
-  "workflowName": "onboarding",
-  "subtasks": [
-    {
-      "name": "send-welcome-email",
-      "durationMs": 2000
-    },
-    {
-      "name": "create-trial-workspace",
-      "durationMs": 3000
-    }
-  ]
-}
-```
-
-Long-task names, workflow names, and subtask names must contain non-whitespace
-text and are limited to 80 characters. A workflow accepts 1–10 subtasks.
-
-The demo queue admits at most 100 pending nodes across waiting, active, delayed,
-prioritized, paused, and waiting-children states. A workflow reserves one slot
-for its parent and one for each child. Producers use a short Redis lock around
-the authoritative pending count and enqueue/flow publication, so concurrent
-instances cannot all pass the same capacity check. The lock is token-protected,
-expires after five seconds, and is released on both success and failure.
-Capacity exhaustion or lock contention returns `503` before a job is
-published.
-
-`DemoQueueProcessor` owns a dedicated BullMQ `Worker` connection and dispatches
-typed job names in one `switch`. Producers use bounded retry/command timeouts;
-workers use the blocking-connection retry policy BullMQ requires.
-
-A producer's ioredis `commandTimeout` rejects the individual command promise
-but does not remove that command from ioredis's FIFO reply queue. The matching
-`socketTimeout` is therefore retained to destroy and reconnect a socket while a
-pending command receives no data. ioredis arms this socket timer only after
-writing a command and stops it once no command is pending, so a truly idle
-producer connection is not recycled every three seconds.
-
-A producer timeout is an availability boundary, not proof that Redis rejected
-the command. The API therefore reports that the mutation outcome may be
-unknown. Production workflows that retry queue mutations must provide a stable
-BullMQ `jobId` (or an equivalent idempotency key) and reconcile the existing
-job before retrying. This demo does not claim exactly-once delivery.
-
-## Verify
+## Verification / 验证
 
 ```bash
-pnpm run test -- src/queue/ src/examples/demo-queue/
-pnpm run test:full-app
+pnpm run test -- src/infra/queue src/modules/assistant
+pnpm run test:integration-policy
 ```
 
-`test:full-app` is destructive and requires the disposable infrastructure
-opt-in and loopback-only environment documented in the README.
+真实 MySQL/Redis 的 `test:full-app` 只对安全包装脚本允许的可丢弃基础设施执行。

@@ -78,8 +78,8 @@ Sentry initialization.
   semantics. 文件优先级与 Sentry 早期环境语义。
 - `src/config/configuration.ts`: YAML loader and validation. YAML 加载与校验。
 - `src/config/validation.ts`: env validation. 环境变量校验。
-- `src/config/database.config.ts`: MySQL TypeORM options. MySQL TypeORM 配置。
-- `src/config/typeorm.data-source.ts`: TypeORM CLI data source. TypeORM CLI 数据源。
+- `src/infra/database/database.config.ts`: MySQL TypeORM options. MySQL TypeORM 配置。
+- `src/infra/database/typeorm.data-source.ts`: TypeORM CLI data source. TypeORM CLI 数据源。
 - `src/app.module.ts`: Nest module wiring. Nest 模块接线。
 - `nest-cli.json`: copies `src/config/*.yaml` to `dist/src/config/`. 将 `src/config/*.yaml` 复制到 `dist/src/config/`。
 
@@ -140,8 +140,8 @@ The complete environment list and local-safe examples live in `.env.example`.
 The main groups are:
 
 ```text
-runtime and shutdown, MySQL, Redis, CORS, cookies, compression, sessions,
-CSRF, Better Auth, JWT, encryption/HMAC, logging, and Sentry
+runtime and shutdown, MySQL, Redis, CORS, cookies, compression, application sessions,
+CSRF, application JWT, encryption/HMAC, logging, and Sentry
 ```
 
 Notes / 说明：
@@ -158,10 +158,9 @@ Notes / 说明：
   must be bounded integers; fractional values are rejected.
 - Every non-wildcard `CORS_ORIGINS` entry must be a canonical `http://` or
   `https://` origin with no path, query, fragment, or trailing slash.
-- Session and CSRF cookie names must use valid cookie-token syntax. Active
-  session, effective CSRF token, and effective CSRF identifier cookie names
-  must be distinct; the comparison includes the production `__Host-`
-  promotion of default CSRF names.
+- CSRF cookie names use valid cookie-token syntax. The token and identifier
+  names must be distinct, including production `__Host-` promotion. Application
+  auth cookies use the fixed gvueter names; express-session settings are retired.
 - `JWT_SECRET`, `HMAC_SECRET`, and `ENCRYPTION_KEY` are required and strength
   checked in production. Placeholder, public example, low-diversity,
   short-period, or reused values are rejected. Generate every secret
@@ -169,17 +168,11 @@ Notes / 说明：
   生产环境强制要求并校验这些密钥，拒绝占位符和低多样性值。
 - `CSRF_SECRET` is required in production when `CSRF_ENABLED=true`.
   `CSRF_ENABLED=true` 且运行在生产环境时，`CSRF_SECRET` 必填。
-- `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` are required in production. The
-  secret is strength-checked and must not be reused; the URL and trusted origins
-  require HTTPS and cannot be loopback origins. Production Better Auth cookies
-  are always `Secure`.
-- `BETTER_AUTH_TRUSTED_ORIGINS` takes precedence over CORS. When omitted, CORS
-  origins are reused only if both CORS and credential sharing are enabled;
-  wildcard origins are never trusted.
-- CSRF defaults protect browser cookie/session clients and can be disabled with
-  `CSRF_ENABLED=false` for pure bearer-token APIs.
-  CSRF 默认保护浏览器 cookie/session 客户端；纯 bearer-token API 可用
-  `CSRF_ENABLED=false` 关闭。
+- Application login uses `JWT_SECRET` for short-lived access tokens and
+  `CSRF_SECRET` for browser writes. Production auth cookies are always `Secure`;
+  deploy the frontend and `/api` through one origin.
+- CSRF must remain enabled in production because application login uses cookies.
+  开发和测试可临时关闭；生产环境必须启用 CSRF。
 - `SENTRY_DSN` is optional; leave it empty to disable Sentry.
   `SENTRY_DSN` 可选；留空即关闭 Sentry。
 - Shutdown uses three bounded phases: 5 seconds for readiness propagation,

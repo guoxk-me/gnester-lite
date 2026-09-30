@@ -1,6 +1,6 @@
 # gnester-lite 一次性完整只读审计 Prompt
 
-> 此提示词最初按 v11 编写。用于当前 master 前，先以 `AGENTS.md`、`package.json` 和 CI 的 NestJS 12 / ESM / Vitest / oxlint 配置替代文中的 v11 工具链假设；历史审计数据只作为历史记录。
+> 此提示词最初按 v11 编写。用于当前 master 前，先以 `AGENTS.md`、`package.json` 和 CI 的 NestJS 12 / ESM / Vitest / oxlint 配置替代文中的 v11 工具链假设；历史审计数据只作为历史记录。2026-09-30 架构以 `docs/architecture.md` 为准：bootstrap/config/common/infra/modules，类型就近归属，身份与助手经 ApplicationModule 装配；Demo 已移除，历史教学检查仅在存在相应真实消费者时适用。
 
 > **直接调用**
 >
@@ -135,29 +135,25 @@
 
 ### 2.1 技术与运行环境
 
-- NestJS 11 + TypeScript，Node.js 24。
+- NestJS 12 + TypeScript 6，Node.js 24，原生 ESM。
 - pnpm 11.1.2；本项目使用 pnpm/Nest CLI，不使用 Vite+ 工作流。
-- Nest CLI + SWC 构建，Jest + `@swc/jest` 测试。
+- Nest CLI TypeScript 构建，Vitest 4 测试，oxlint 类型感知 lint。
 - MySQL 8 和 Redis 7 是运行时依赖。
-- TypeORM、BullMQ、Keyv Redis、Passport/JWT、Sentry、Pino、Socket.IO、OpenAPI、AsyncAPI 均属于重点审计面。
+- TypeORM、BullMQ、Keyv Redis、Passport/JWT、Sentry、Pino、Socket.IO 适配与 OpenAPI 属于重点审计面；当前未提供 AsyncAPI 教学入口。
 
 ### 2.2 架构事实
 
-- `src/bootstrap/`：应用生命周期与协议接入层，负责启动、关停和有顺序要求的 HTTP pipeline 装配；`src/bootstrap/http/` 归属 CORS、Helmet、OpenAPI、ValidationPipe 和 Socket.IO adapter 等接入代码。
-- `src/<capability>/`：业务中立的平台能力，按 auth、cache、queue 等具体职责分别放在 `src/` 顶层目录；能力模块必须由真实消费者显式导入。
-- `src/<business-name>/`：正式生产业务目录；Feature 自己拥有 controller、service、DTO、实体、迁移和测试。
-- `src/examples/`：可整体移除的教学与集成 Demo；Example 自己拥有 controller、service、DTO、测试和仅服务该示例的契约。
-- `src/contracts/`：无 NestJS/Express/TypeORM/BullMQ 等框架依赖的稳定共享 TypeScript 契约；只允许依赖同层契约或 `node:` 内置模块。
-- 预期依赖方向是 `AppModule → bootstrap + capabilities + business + examples + contracts`、`bootstrap/business/examples → capabilities + contracts`、`capabilities → contracts`；禁止 `capabilities → bootstrap/business/examples`，禁止 `business/bootstrap → examples`，禁止 `contracts → bootstrap/capabilities/business/examples`。
-- `src/common/` 是已退役目录；任何残留 TypeScript 实现都应由 `verify:architecture` 判为违规，不能继续作为共享杂物层。
-- Demo 通过 `DemosModule` 聚合，`AppModule` 不需要逐个导入全部 Demo。
-- 当前 production 模块图应排除整个 `DemosModule`；development/test/provision 的模块图不同，必须分别验证，不能由某一环境外推其他环境。
-- Demo 数据库迁移归属 `src/examples/demo-database/migrations/`：development/test/provision 数据源应发现它，production 数据源不得发现它，因此全新生产库不创建 Demo 表。该发现边界不会自动删除旧生产库已有的 Demo 表或迁移记录，迁移类名必须保持稳定以延续 TypeORM history。
-- 当前 test 模块图应排除 `DemoQueueModule`，而 `provision` 用于可丢弃基础设施上的完整应用验证；这些是待当前代码复核的刻意边界，不是自动缺陷。
-- auth、authorization、crypto、cache、queue、schedule、http-client 等 platform 能力可由 feature 或 example 按需显式导入；没有出现在 `AppModule` 不自动等于漏接入。
-- 自定义 platform 模块不得用 `@Global()` 隐藏依赖；同时必须区分 Nest 第三方动态根模块自身的 global 语义，并检查是否造成重复注册或生产泄漏。
-- cors、openapi、security、validation、websocket adapter 等能力可以通过 bootstrap 配置函数接入，不强求每项都有 `*.module.ts`。
-- AsyncAPI 当前由 `demo-websocket` example 提供 HTTP 文档端点，不得因旧 common/asyncapi 实现已退役而机械判为能力缺失。
+- `src/bootstrap/`：有顺序要求的启动、HTTP 接入与关停。
+- `src/config/`：配置值、类型、加载与校验；运行适配归 infra。
+- `src/common/`：小型共享协议、路由元数据与稳定约束，不能依赖 infra、config 或业务。
+- `src/infra/<facility>/`：完整非业务运行能力，包含数据库配置与迁移、认证机制、HTTP 响应、i18n、缓存、队列、调度等；消费者显式 import。
+- `src/modules/<business>/`：业务拥有 controller、service、DTO、私有类型、查询和测试。identity 合并账号／会话／邀请／管理，assistant 按对话、生成、个人配置、供应商协议和同步分工。
+- `AppModule` 装配基础设施与 `ApplicationModule`，后者统一装配当前业务。跨业务只访问声明的公开入口，并核对 Nest exports；私有类型和表不能越界。
+- 循环依赖包括 type-only 边；`test:architecture` 和 `verify:architecture` 应验证真实禁止的依赖。
+- 基础设施不能导入业务或 bootstrap；config 不能依赖运行适配。自定义能力模块不用 `@Global()`；ConfigModule 的全局注册是明确例外。
+- 应用迁移归 `src/infra/database/migrations/`，所有环境只发现应用历史。现有类名和 SQL 保持不变，Demo 移除不删除已有表或历史。
+- `provision` 是可丢弃基础设施的验证环境；普通 test 使用惰性／手动队列注册。检查替身与真实运行路径，不将通过替身测试等同于完成真实服务验证。
+- `docs/history` 和日期化 audits/plans 是历史依据；当前规范由 AGENTS、架构文档和代码决定。
 
 ### 2.3 启动与路由事实
 
@@ -173,15 +169,15 @@
 全局 URI versioning 与 controller 的 `VERSION_NEUTRAL` 可以并存：
 
 - 路由是否带 `/v1`，必须联合检查 `enableVersioning()`、`@Controller()`、`@Version()` 和 `VERSION_NEUTRAL`。
-- Demo 与 health 使用无版本路由可能是刻意设计，不能机械判错。
+- 当前业务与 health 使用无版本路由是刻意设计，不能机械判错。
 - 只有代码、测试、OpenAPI 和文档互相矛盾时，才形成正式 finding。
-- OpenAPI 只在 development 装配，AsyncAPI 随 Demo catalog 从 production 排除；必须分别核对“生成文档覆盖的编译 controller”“各环境真实 module graph”和文档可达性。
+- OpenAPI 只在 development 装配，Demo 与 AsyncAPI 教学入口已移除；必须分别核对“生成文档覆盖的编译 controller”“各环境真实 module graph”和文档可达性。
 
 ### 2.4 配置与测试事实
 
 - 配置采用 YAML 默认值与环境变量双层校验。
 - 环境枚举包含 development、test、provision、production；必须核对 dotenv、Sentry、模块装配、队列/调度和生产校验在四种环境中的职责。
-- test 环境可能排除 `DemoQueueModule`、启用 BullMQ `lazyConnect/manualRegistration`、跳过 Sentry 初始化、禁用计划任务；provision 则用于真实 MySQL/Redis 集成且仍不得泄漏为可部署环境。
+- test 环境启用 BullMQ `lazyConnect/manualRegistration`、跳过 Sentry 初始化、禁用计划任务；provision 则用于真实 MySQL/Redis 集成且仍不得泄漏为可部署环境。
 - 先核对这些分支的目的、隔离范围和生产泄漏风险，再判断是否为缺陷。
 - 示例账号、示例密钥和 Docker 占位值不能仅因“硬编码”自动判为漏洞；必须判断是否明确标为示例、是否可能进入生产、是否被文档正确警示。
 
@@ -279,13 +275,10 @@
 逐项列出并计数：
 
 - `src/bootstrap/**/*.ts`
-- `src/<capability>/**/*.ts`
-- `src/<business-name>/**/*.ts`
-- `src/examples/**/*.ts`
-- `src/contracts/**/*.ts`
-- `src/common/**/*.ts`（预期为空；若存在则按退役层残留审计）
-- `src/database/migrations/**/*.ts`（正式业务迁移统一由生产数据源发现）
-- `src/examples/**/migrations/**/*.ts`（即使已包含于 examples glob，仍须单独重建环境发现规则）
+- `src/infra/**/*.ts`
+- `src/modules/**/*.ts`
+- `src/common/**/*.ts`（小型协议、元数据和稳定约束）
+- `src/infra/database/migrations/**/*.ts`（应用历史和所有环境发现规则）
 - `src/config/**/*`
 - `test/**/*`
 - `docs/**/*`
@@ -341,7 +334,7 @@ Inventory 必须保留“已检查第一方文件”和“未检查第一方文�
 | 能力                   | 名称与职责                                                          |
 | capabilities/bootstrap | 平台实现或接入点                                                    |
 | demo/consumer          | 使用方；没有时说明原因                                              |
-| module wiring          | AppModule、DemosModule 或 feature import                            |
+| module wiring          | AppModule、ApplicationModule 与显式业务／基础设施 import            |
 | config                 | YAML/env/type/default/生产约束                                      |
 | unit tests             | 文件及核心覆盖                                                      |
 | e2e                    | 场景与装配深度                                                      |
@@ -419,7 +412,7 @@ pnpm run audit:prod
 `pnpm run build` 成功后必须检查 `verify:artifact` 的覆盖范围并人工只读核对实际产物，不得只相信退出码：
 
 - `dist/src/main.js` 与生产启动命令一致。
-- `dist/src/config/config.yaml`、`dist/src/config/typeorm.data-source.js` 和运行时配置导入可解析。
+- `dist/src/config/config.yaml`、`dist/src/infra/database/typeorm.data-source.js` 和运行时配置导入可解析。
 - entity 与 migration 的实际输出路径能被 TypeORM runtime/CLI glob 命中，并分别证明 production 只发现应用迁移、development/test/provision 额外发现 Feature-owned Demo migration。
 - spec、source map、生成 metadata、静态资源和 production dependencies 是否符合 Docker/部署方式。
 
@@ -525,7 +518,7 @@ Docker build/run 只有在调用者明确允许写入本地 Docker image/cache�
 
 检查：
 
-- `AppModule`、bootstrap、`DemosModule`、各 feature/platform module 的装配关系。
+- `AppModule`、`ApplicationModule`、bootstrap、各业务／基础设施 module 的装配关系。
 - imports/providers/controllers/exports 是否最小且正确。
 - 自定义 platform module 是否错误使用 `@Global()`，第三方动态根模块是否制造隐式依赖、重复注册或生产泄漏。
 - `AppModule/bootstrap → platform + features + contracts`、`features → platform + contracts`、`capabilities → contracts` 的依赖方向和潜在循环依赖。
@@ -627,7 +620,7 @@ Docker build/run 只有在调用者明确允许写入本地 Docker image/cache�
 - README 要求、Quick Start、脚本、端口、路由、健康检查和文档地址。
 - `package.json` scripts、README、AGENTS、CI 命令是否一致。
 - MySQL、Redis、env、migration 是否被首次启动流程真实覆盖。
-- `docs/project-notes.zh-en.md` 是否完整映射 bootstrap/capabilities/business/contracts，链接是否有效。
+- `docs/architecture.md` 是否完整映射 bootstrap/config/common/infra/modules，链接是否有效。
 - 每份专题文档与真实模块、DTO、配置键和运行行为。
 - 文档中 HTTP method/path/body/response/status code 是否与 controller/DTO 一致。
 - `VERSION_NEUTRAL` 与 `/v1` 示例是否正确。
@@ -641,7 +634,7 @@ Docker build/run 只有在调用者明确允许写入本地 Docker image/cache�
 - “文档有代码无”“代码有文档无”“旧路径/旧命令/死链接”。
 - 中英双语内容是否准确，是否出现机械翻译或无信息量模板句。
 
-专题文档可以替代 `docs/demo.md` 的独立章节；判断标准是能力能否被发现、理解和正确运行，而不是强求每个 Demo 重复写两份文档。
+能力完整性由真实消费者、测试和专题指南共同证明；已移除的 Demo 目录不属于当前交付范围。
 
 ### 7.7 分区 F — 配置、数据、可观测性、交付与 DX
 
@@ -814,7 +807,7 @@ Docker build/run 只有在调用者明确允许写入本地 Docker image/cache�
 13. 配置验证 helper、注释和命名是否符合仓库规则且表达真实意图。
 14. test 环境特殊分支是否意外掩盖生产装配缺陷。
 15. health、logger、Sentry、rate-limit、CSRF 和 WebSocket bootstrap 顺序是否正确。
-16. 仓库声明严格 TypeScript 时，`tsconfig`、Nest SWC type-check、独立 `tsc` 和 ESLint 是否真正形成一致门禁。
+16. 仓库声明严格 TypeScript 时，`tsconfig`、Nest TypeScript 构建、独立 `tsc` 和类型感知 oxlint 是否真正形成一致门禁。
 17. 构建后的 migration/entity/config 路径是否与 TypeORM glob、`start:prod` 和 Dockerfile 一致。
 18. 根路由 versioning、完整 `AppModule`、真实 MySQL/Redis 和生产 bootstrap 是否分别由有效断言验证，而不只是脚本存在。
 19. 已跟踪 `.env.*`、Docker 示例秘密和文档占位值是否被安全限定，审计输出本身是否避免泄密。
@@ -1102,12 +1095,11 @@ ID:
 以下条件必须全部满足，才能说“审计完成”：
 
 - [ ] 已盘点 `src/bootstrap`。
-- [ ] 已盘点 `src/<capability>`。
-- [ ] 已盘点 `src/<business-name>`。
-- [ ] 已盘点 `src/examples`。
-- [ ] 已盘点 `src/contracts`，并核对其框架无关约束。
-- [ ] 已确认退役 `src/common` 没有 TypeScript 实现残留。
-- [ ] 已盘点 production 可发现的 `src/database/migrations` 以及 Example-owned migrations，并分别重建四种环境的迁移发现集合。
+- [ ] 已盘点 `src/infra`。
+- [ ] 已盘点 `src/modules` 和公开跨模块入口。
+- [ ] 已盘点小型 `src/common`，核对依赖方向。
+- [ ] 已确认 Demo 和中心类型树退出当前源码与产物。
+- [ ] 已盘点 `src/infra/database/migrations`，核对历史稳定与所有环境发现规则。
 - [ ] 已盘点 `src/config`。
 - [ ] 已盘点 `test`。
 - [ ] 已盘点 `docs`。

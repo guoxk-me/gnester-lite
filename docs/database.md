@@ -1,191 +1,38 @@
-# Database Guide / 数据库指南
+# Database / 数据库
 
-This project uses one MySQL database through NestJS + TypeORM.
+应用使用一个 MySQL 数据库和一个 TypeORM 连接。`AppModule` 注册连接，`src/infra/database/database.config.ts` 提供运行时与 CLI 选项，`typeorm.data-source.ts` 提供迁移入口。连接值和校验属于 `src/config/`；数据库运行适配属于 `infra/database`。
 
-本项目通过 NestJS + TypeORM 使用一个 MySQL 数据库。
+## Ownership / 所有权
 
-Better Auth connects to that database through its own supported `mysql2/promise`
-pool with UTC timezone handling. TypeORM still owns schema deployment; Better
-Auth does not run schema synchronization during application startup.
+业务查询、实体和持久化类型归所属模块。`identity` 拥有账号、凭据、会话和邀请；`assistant` 拥有个人 Key、模型、偏好、会话、问题和回答。跨模块合作通过公开契约，不直接查询另一模块的私有表。
 
-## Runtime Setup / 运行时配置
+新增 TypeORM 实体放在所属模块，通过 `TypeOrmModule.forFeature(...)` 本地注册；消费者显式导入对应模块。当前业务保留原有参数化 SQL 和事务，目录调整不改变表结构。
 
-- `src/app.module.ts` registers the TypeORM connection.
-  `src/app.module.ts` 注册 TypeORM 连接。
-- `src/config/database.config.ts` builds runtime and CLI options.
-  `src/config/database.config.ts` 构建运行时和 CLI 配置。
-- The driver is always `mysql`; env does not choose the database type.
-  驱动固定为 `mysql`；环境变量不选择数据库类型。
-- Runtime entities use compiled JS globs plus `autoLoadEntities`.
-  运行时 entity 使用编译后的 JS glob，并配合 `autoLoadEntities`。
-
-Preferred env keys / 推荐环境变量：
-
-```text
-DB_HOST
-DB_PORT
-DB_USERNAME
-DB_PASSWORD
-DB_DATABASE
-DB_SYNCHRONIZE
-DB_AUTO_LOAD_ENTITIES
-DB_RETRY_ATTEMPTS
-DB_RETRY_DELAY
-```
-
-## Feature Modules / 功能模块
-
-Demo database feature / Demo 数据库功能：
-
-- Entity: `src/examples/demo-database/entities/demo.entity.ts`
-- Module: `src/examples/demo-database/demo-database.module.ts`
-- Repository registration: `TypeOrmModule.forFeature([Demo])`
-- Injection: `@InjectRepository(Demo)`
-
-When adding an entity, put it under the owning feature module and register it with `forFeature()`.
-
-新增 entity 时，放到所属 feature module 下，并通过 `forFeature()` 注册。
-
-## Decorator Circular Imports / 装饰器循环依赖
-
-This template compiles with TypeScript to native ESM. Relation property types that point at another entity can still trigger circular imports while decorator metadata is evaluated.
-
-本模板使用 TypeScript 编译为原生 ESM。实体关系字段若直接引用另一个实体类型，装饰器元数据求值时仍可能触发循环导入。
-
-Prefer TypeORM's `Relation<T>` wrapper on relation fields:
-
-关系字段优先使用 TypeORM 的 `Relation<T>` 包装：
-
-```ts
-import { Entity, OneToOne, Relation } from 'typeorm';
-
-@Entity()
-export class User {
-  @OneToOne(() => Profile, (profile) => profile.user)
-  profile: Relation<Profile>;
-}
-```
-
-For circular constructor injection, wrap the injected type the same way (or use a local `WrapperType<T> = T`) together with `forwardRef()`.
-
-构造函数循环注入时，同样包装注入类型（或本地定义 `WrapperType<T> = T`），并配合 `forwardRef()`。
+原生 ESM 的实体关系字段使用 `Relation<T>`，避免直接关系类型在装饰器元数据求值时触发循环导入。模块依赖仍须单向；不要用 `forwardRef()` 掩盖业务边界问题。
 
 ## Migrations / 迁移
 
-Place application migrations that production may execute in `src/database/migrations/`.
-Feature-only Demo schema belongs to
-`src/examples/demo-database/migrations/` instead.
-
-生产环境可执行的应用迁移放在 `src/database/migrations/`；仅服务 Demo 的 schema 迁移放在
-`src/examples/demo-database/migrations/`。
+应用迁移集中在 `src/infra/database/migrations/`，所有环境只发现应用迁移。源码 CLI 和编译后 CLI 遵循同一规则，编译入口为 `dist/src/infra/database/typeorm.data-source.js`。
 
 ```bash
-pnpm migration:create src/database/migrations/CreateExample
-pnpm migration:generate src/database/migrations/CreateExample
+pnpm migration:create src/infra/database/migrations/AddApplicationChange
+pnpm migration:generate src/infra/database/migrations/AddApplicationChange
 pnpm migration:run
 pnpm migration:revert
 
-# After pnpm run build, operate on the exact production artifact:
+# Controlled production deployment, after build:
 pnpm migration:run:prod
 pnpm migration:revert:prod
-pnpm run verify:migrations
 ```
 
-Migration discovery is deliberately environment-specific:
+保留已部署迁移的类名、name、SQL 和时间戳。`CreateBetterAuthTables1785801600000` 是历史名称，当前应用认证继续使用其中的 `user`、`account`、`session` 表。`verification` 是历史兼容表；`AddApplicationRefreshSessions1788105600000` 添加记住登录状态字段。后续 schema 变更新增迁移，不修改已执行历史。
 
-| Environment | Application migrations | Demo database migration |
-| ----------- | ---------------------- | ----------------------- |
-| development | discovered             | discovered              |
-| test        | discovered             | discovered              |
-| provision   | discovered             | discovered              |
-| production  | discovered             | not discovered          |
+Demo 迁移已退出发现列表；本次目录整理不会删除现有 Demo 表或迁移历史，也不会对已有数据库执行操作。
 
-The same rule applies to source TypeORM CLI execution and compiled data-source
-execution. `provision` is the guarded disposable-infrastructure environment used
-by migration verification. Because production never discovers the feature-owned
-Demo migration, a fresh production database does not create the `demo` table.
+生产强制关闭 `DB_SYNCHRONIZE`。连接创建要求显式的五个 `DB_*` 字段，不回退到 localhost/root/空密码。运行时与 CLI 使用同一环境文件优先级，进程环境优先。Docker Compose 的一次性 `migrate` 服务成功后才启动应用。
 
-源码 TypeORM CLI 与编译后数据源遵循同一规则。`development`、`test` 和受安全门
-保护的 `provision` 会发现 Demo migration；`production` 不会发现，因此全新生产库
-不会创建 `demo` 表。
+## Verification / 验证
 
-This discovery change is not a rollback. If a production database already ran
-`CreateDemoTable1760000000000`, its `demo` table and TypeORM migration-history
-row remain. No automatic drop is attempted. The migration class/name stays
-`CreateDemoTable1760000000000` so environments that include Demo migrations can
-recognize existing history.
+`verify:artifact` 检查编译数据源和迁移文件。`verify:migrations` 执行 up/down/up，因此只能指向明确可丢弃的基础设施：需要 `GNESTER_ALLOW_DESTRUCTIVE_INTEGRATION=true`、显式 loopback MySQL/Redis、合法端口、用户名密码以及以 `_test`、`-test`、`_ci`、`-ci` 结尾的数据库名。包装脚本不加载 dotenv。完整规则见 `scripts/run-destructive-integration.mjs`。
 
-该发现规则不会自动回滚历史。已经执行过 `CreateDemoTable1760000000000` 的生产库会
-保留 `demo` 表和迁移历史；如需清理，必须另行设计并审核显式生产迁移或运维步骤。
-
-Do not rely on `synchronize` for production changes. Use migrations.
-
-生产变更不要依赖 `synchronize`，请使用 migration。
-
-`CreateBetterAuthTables1785801600000` is production-visible and creates the
-Better Auth 1.6 core schema:
-
-| Table          | Ownership                                    |
-| -------------- | -------------------------------------------- |
-| `user`         | Account identity and profile                 |
-| `session`      | Opaque server-side sessions                  |
-| `account`      | Credential password and future provider data |
-| `verification` | Verification and reset token records         |
-
-The dependency is pinned to Better Auth 1.6.25 because this migration matches
-that generated schema. When Better Auth or its plugins are upgraded,
-regenerate/diff the official schema and add a new application migration; do not
-edit a migration that may already have run.
-
-The production scripts run TypeORM with
-`NODE_ENV=production` and `dist/src/config/typeorm.data-source.js`. Both source and
-compiled data sources load the same project env-file precedence while preserving
-parent-process values. Production data-source construction requires all five
-`DB_*` connection fields and never falls back to localhost/root/blank/test.
-`pnpm run verify:artifact` ensures the compiled data source and migrations
-exist. Docker Compose runs the one-shot `migrate` service after MySQL becomes
-healthy and starts `app` only after that service succeeds.
-
-> `verify:migrations` intentionally performs an up/down/up round trip. It
-> refuses to run unless the opt-in flag, loopback database/Redis hosts,
-> bounded integer port, username/password, and a disposable
-> `_test`/`-test`/`_ci`/`-ci` database name are all explicit in the parent
-> process. The wrapper does not load dotenv files. Never point it at shared or
-> production infrastructure.
-
-## How To Change / 如何修改
-
-- Database defaults: `src/config/database.config.ts`
-  数据库默认值。
-- Env validation: `src/config/validation.ts`
-  环境变量校验。
-- CLI data source: `src/config/typeorm.data-source.ts`
-  CLI 数据源。
-- Production-visible migrations: `src/database/migrations/*`
-  生产环境可发现的迁移。
-- Demo module/entity/migration/tests: `src/examples/demo-database/*`
-  Demo 模块、实体、迁移和测试。
-
-Common changes / 常见修改：
-
-- Add an application table: create an entity, register it in the owning module,
-  and add its production migration to `src/database/migrations/`.
-  新增应用表：创建 entity，在所属模块注册，并将生产迁移放到 `src/database/migrations/`。
-- Add Demo-only schema: keep its migration inside the owning Demo example and
-  verify the non-production discovery boundary.
-  新增仅 Demo 使用的 schema：迁移保留在所属 Demo Example 内，并验证非生产发现边界。
-- Change connection values: update `.env.*`; do not add another data source.
-  修改连接值：更新 `.env.*`；不要新增数据源。
-
-## Verify / 验证
-
-```bash
-pnpm run format
-pnpm run lint
-pnpm run test
-pnpm run build
-```
-
-If startup fails with `Unable to connect to the database`, read the nested error first.
-
-如果启动失败并出现 `Unable to connect to the database`，先查看内层错误。
+启动出现 `Unable to connect to the database` 时，先查看内层连接错误。

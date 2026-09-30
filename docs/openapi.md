@@ -22,8 +22,8 @@ Key files:
   `403` response to every `POST`, `PUT`, `PATCH`, and `DELETE` operation.
 - `src/bootstrap/configure-application.ts`: invokes setup after URI versioning.
 - `scripts/verify-openapi-document.mjs`: verifies the compiled document’s
-  authentication, serialization, streaming, multipart, cookie/session header,
-  and configurable CSRF contracts.
+  route coverage, DTO metadata, response envelopes, cookie security, language
+  headers, native health probes and CSRF contracts.
 
 ## Endpoints / 端点
 
@@ -32,13 +32,20 @@ http://localhost:3000/docs
 http://localhost:3000/docs-json
 ```
 
-Bearer authentication is registered globally for the UI. Guarded auth and
-authorization routes explicitly declare bearer security plus `401`/`403`
-responses; login declares validation, authentication, and rate-limit failures.
-DTO schemas are generated from TypeScript and class-validator metadata.
-The unsafe-operation CSRF contract follows `CSRF_ENABLED` and
-`CSRF_HEADER_NAME`: disabled protection adds no CSRF requirement, while enabled
-protection uses the configured header name (default `x-csrf-token`).
+Application sessions declare `application-session` cookie security and 401;
+admin operations also declare 403. Refresh declares the separate
+`application-refresh` cookie scheme. The reusable Bearer scheme remains
+available for future consumers. DTO classes belong to their business module and
+compile with inline Swagger metadata. When CSRF is enabled, every unsafe
+operation declares the fixed `X-XSRF-TOKEN` header and 403. Disabled protection
+adds no CSRF requirement. Demo routes are excluded.
+
+Application JSON response fields use camelCase. When a database query or an
+external service uses another naming convention, construct the application
+response with explicit field names at that boundary (for example,
+`user_id` → `userId`). Do not recursively rename response keys in the HTTP
+envelope or the browser client: identifiers, dictionary keys, and externally
+defined string values must keep their meaning.
 
 Compodoc (`pnpm run compodoc`) describes module and class structure; it does not
 replace the HTTP contract.
