@@ -20,7 +20,7 @@ import type { App } from 'supertest/types.js';
 
 import { createValidationPipe } from '../../src/bootstrap/http/validation.pipe.js';
 import type { ApiEnvelope } from '../../src/common/http/api-envelope.types.js';
-import { HttpResponseModule as I18nModule } from '../../src/infra/http/http-response.module.js';
+import { HttpResponseModule } from '../../src/infra/http/http-response.module.js';
 import { SkipApiEnvelope } from '../../src/common/http/skip-api-envelope.decorator.js';
 
 const probeFailure = {
@@ -86,7 +86,7 @@ describe('localized HTTP contract (e2e)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [I18nModule],
+      imports: [HttpResponseModule],
       controllers: [I18nFixtureController],
       providers: [NativeProbeFailureGuard],
     }).compile();
