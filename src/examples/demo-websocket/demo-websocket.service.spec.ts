@@ -1,6 +1,6 @@
 import type { Mocked } from 'vitest';
 import { UnauthorizedException } from '@nestjs/common';
-import { AuthTokenService } from '../../auth/auth-token.service.js';
+import { AuthTokenService } from '../../infra/auth/auth-token.service.js';
 import { DEMO_WEBSOCKET_EVENTS } from './demo-websocket.constants.js';
 import { DemoWebsocketService } from './demo-websocket.service.js';
 

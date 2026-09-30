@@ -17,12 +17,11 @@ import {
   Matches,
   Max,
   Min,
-  MinLength,
   validateSync,
 } from 'class-validator';
 import {
   csrfIdentifierCookieName,
-  csrfTokenCookieName,
+  DEFAULT_CSRF_TOKEN_COOKIE_NAME,
 } from './cookie-name.js';
 import { Environment } from './config-enums.js';
 import { assertCanonicalCorsOrigins } from './cors-origin.js';
@@ -208,37 +207,6 @@ class EnvironmentVariables {
   @IsBoolean()
   @Transform(environmentBooleanTransform)
   @IsOptional()
-  SESSION_ENABLED: boolean = true;
-
-  @IsString()
-  @IsOptional()
-  SESSION_SECRET?: string;
-
-  @IsString()
-  @IsOptional()
-  @Matches(COOKIE_NAME_PATTERN)
-  SESSION_COOKIE_NAME: string = 'gnester.sid';
-
-  @IsInt()
-  @Transform(nonBlankEnvironmentNumber)
-  @IsOptional()
-  @Min(1000)
-  @Max(31_536_000_000)
-  SESSION_COOKIE_MAX_AGE: number = 86_400_000;
-
-  @IsBoolean()
-  @Transform(environmentBooleanTransform)
-  @IsOptional()
-  SESSION_COOKIE_SECURE?: boolean;
-
-  @IsString()
-  @IsIn(['lax', 'strict', 'none'])
-  @IsOptional()
-  SESSION_COOKIE_SAME_SITE: 'lax' | 'strict' | 'none' = 'lax';
-
-  @IsBoolean()
-  @Transform(environmentBooleanTransform)
-  @IsOptional()
   CSRF_ENABLED: boolean = true;
 
   @IsString()
@@ -248,7 +216,9 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   @Matches(COOKIE_NAME_PATTERN)
-  CSRF_COOKIE_NAME: string = 'gnester.csrf-token';
+  // AI modified: reject obsolete custom names instead of silently breaking browser writes.
+  @IsIn(['XSRF-TOKEN'])
+  CSRF_COOKIE_NAME: string = 'XSRF-TOKEN';
 
   @IsString()
   @IsOptional()
@@ -268,20 +238,9 @@ class EnvironmentVariables {
   @IsString()
   @Matches(/^[A-Za-z0-9-]+$/)
   @IsOptional()
-  CSRF_HEADER_NAME: string = 'x-csrf-token';
-
-  @IsString()
-  @MinLength(32)
-  @IsOptional()
-  BETTER_AUTH_SECRET?: string;
-
-  @IsString()
-  @IsOptional()
-  BETTER_AUTH_URL?: string;
-
-  @IsString()
-  @IsOptional()
-  BETTER_AUTH_TRUSTED_ORIGINS?: string;
+  // AI modified: the request header must match Axios's fixed XSRF name.
+  @IsIn(['X-XSRF-TOKEN'])
+  CSRF_HEADER_NAME: string = 'X-XSRF-TOKEN';
 
   @IsString()
   @IsOptional()
@@ -357,9 +316,18 @@ export function validate(
 
   validateProductionInfrastructure(validatedConfig);
   validateCorsConfig(validatedConfig);
-  validateBetterAuthConfig(validatedConfig);
   validateCookieSecurity(validatedConfig);
   validateLoggerConfig(validatedConfig);
+
+  // AI modified: production cookie authentication requires write-side CSRF protection.
+  if (
+    validatedConfig.NODE_ENV === Environment.Production &&
+    !validatedConfig.CSRF_ENABLED
+  ) {
+    throw new Error(
+      'CSRF_ENABLED must be true for production cookie authentication.',
+    );
+  }
 
   if (
     validatedConfig.NODE_ENV === Environment.Production &&
@@ -392,31 +360,12 @@ export function validate(
     );
   }
 
-  if (
-    validatedConfig.NODE_ENV === Environment.Production &&
-    !validatedConfig.BETTER_AUTH_SECRET
-  ) {
-    throw new Error('BETTER_AUTH_SECRET is required in production.');
-  }
-
-  if (
-    validatedConfig.NODE_ENV === Environment.Production &&
-    !validatedConfig.BETTER_AUTH_URL
-  ) {
-    throw new Error('BETTER_AUTH_URL is required in production.');
-  }
-
   validateJwtClaims(validatedConfig);
 
   if (validatedConfig.NODE_ENV === Environment.Production) {
     // AI modified: fail startup before weak or checked-in placeholder secrets reach crypto consumers.
     validateProductionSecret('JWT_SECRET', validatedConfig.JWT_SECRET);
     validateProductionSecret('HMAC_SECRET', validatedConfig.HMAC_SECRET);
-    validateProductionSecret(
-      'BETTER_AUTH_SECRET',
-      validatedConfig.BETTER_AUTH_SECRET,
-    );
-
     if (validatedConfig.CSRF_ENABLED) {
       validateProductionSecret('CSRF_SECRET', validatedConfig.CSRF_SECRET);
     }
@@ -462,7 +411,6 @@ function validateProductionInfrastructure(config: EnvironmentVariables): void {
 function validateCookieSecurity(config: EnvironmentVariables): void {
   const isProduction = config.NODE_ENV === Environment.Production;
   const isCsrfCookieSecure = config.CSRF_COOKIE_SECURE ?? isProduction;
-  const isSessionCookieSecure = config.SESSION_COOKIE_SECURE ?? false;
 
   if (isProduction && config.CSRF_ENABLED && !isCsrfCookieSecure) {
     throw new Error(
@@ -476,36 +424,18 @@ function validateCookieSecurity(config: EnvironmentVariables): void {
     );
   }
 
-  if (
-    config.SESSION_ENABLED &&
-    config.SESSION_COOKIE_SAME_SITE === 'none' &&
-    !isSessionCookieSecure
-  ) {
-    throw new Error(
-      'SESSION_COOKIE_SECURE must be true when SESSION_COOKIE_SAME_SITE is none.',
-    );
-  }
-
-  const activeCookieNames = [
-    ...(config.SESSION_ENABLED
-      ? [['SESSION_COOKIE_NAME', config.SESSION_COOKIE_NAME] as const]
-      : []),
-    ...(config.CSRF_ENABLED
-      ? [
-          [
-            'CSRF_COOKIE_NAME',
-            csrfTokenCookieName(config.CSRF_COOKIE_NAME, config.NODE_ENV),
-          ] as const,
-          [
-            'CSRF_IDENTIFIER_COOKIE_NAME',
-            csrfIdentifierCookieName(
-              config.CSRF_IDENTIFIER_COOKIE_NAME,
-              config.NODE_ENV,
-            ),
-          ] as const,
-        ]
-      : []),
-  ];
+  const activeCookieNames = config.CSRF_ENABLED
+    ? [
+        ['CSRF_COOKIE_NAME', DEFAULT_CSRF_TOKEN_COOKIE_NAME] as const,
+        [
+          'CSRF_IDENTIFIER_COOKIE_NAME',
+          csrfIdentifierCookieName(
+            config.CSRF_IDENTIFIER_COOKIE_NAME,
+            config.NODE_ENV,
+          ),
+        ] as const,
+      ]
+    : [];
   const names = new Set<string>();
 
   for (const [name, value] of activeCookieNames) {
@@ -594,7 +524,7 @@ function jwtTtlSeconds(ttl: string): number {
 }
 
 function validateProductionSecret(
-  name: 'JWT_SECRET' | 'HMAC_SECRET' | 'CSRF_SECRET' | 'BETTER_AUTH_SECRET',
+  name: 'JWT_SECRET' | 'HMAC_SECRET' | 'CSRF_SECRET',
   secret: string | undefined,
 ): void {
   if (!secret || Buffer.byteLength(secret, 'utf8') < 32) {
@@ -658,10 +588,6 @@ function validateProductionSecretSeparation(
   const secretMaterials = [
     ['JWT_SECRET', Buffer.from(config.JWT_SECRET ?? '', 'utf8')],
     ['HMAC_SECRET', Buffer.from(config.HMAC_SECRET ?? '', 'utf8')],
-    [
-      'BETTER_AUTH_SECRET',
-      Buffer.from(config.BETTER_AUTH_SECRET ?? '', 'utf8'),
-    ],
     ...(config.CSRF_ENABLED
       ? [
           [
@@ -753,72 +679,6 @@ function validateCorsConfig(config: EnvironmentVariables): void {
       throw new Error(`${name} entries must be valid HTTP header names.`);
     }
   }
-}
-
-function validateBetterAuthConfig(config: EnvironmentVariables): void {
-  if (config.BETTER_AUTH_URL) {
-    let parsedURL: URL;
-
-    try {
-      parsedURL = new URL(config.BETTER_AUTH_URL);
-    } catch {
-      throw new Error('BETTER_AUTH_URL must be a canonical HTTP(S) origin.');
-    }
-
-    if (
-      !['http:', 'https:'].includes(parsedURL.protocol) ||
-      parsedURL.origin !== config.BETTER_AUTH_URL
-    ) {
-      throw new Error('BETTER_AUTH_URL must be a canonical HTTP(S) origin.');
-    }
-
-    if (
-      config.NODE_ENV === Environment.Production &&
-      (parsedURL.protocol !== 'https:' ||
-        isLoopbackBetterAuthHostname(parsedURL.hostname))
-    ) {
-      throw new Error(
-        'BETTER_AUTH_URL must use a non-loopback HTTPS origin in production.',
-      );
-    }
-  }
-
-  const trustedOrigins = commaSeparatedEntries(
-    config.BETTER_AUTH_TRUSTED_ORIGINS,
-  );
-
-  if (trustedOrigins.includes('*')) {
-    throw new Error(
-      'BETTER_AUTH_TRUSTED_ORIGINS must not contain a wildcard origin.',
-    );
-  }
-
-  assertCanonicalCorsOrigins(trustedOrigins);
-
-  if (config.NODE_ENV === Environment.Production) {
-    for (const origin of trustedOrigins) {
-      const parsedOrigin = new URL(origin);
-
-      if (
-        parsedOrigin.protocol !== 'https:' ||
-        isLoopbackBetterAuthHostname(parsedOrigin.hostname)
-      ) {
-        throw new Error(
-          'BETTER_AUTH_TRUSTED_ORIGINS must use non-loopback HTTPS origins in production.',
-        );
-      }
-    }
-  }
-}
-
-function isLoopbackBetterAuthHostname(hostname: string): boolean {
-  const unbracketedHostname = hostname.replace(/^\[(.*)]$/, '$1');
-
-  return (
-    /(?:^|\.)localhost$/.test(unbracketedHostname) ||
-    unbracketedHostname === '::1' ||
-    /^127(?:\.\d{1,3}){3}$/.test(unbracketedHostname)
-  );
 }
 
 function commaSeparatedEntries(value: string | undefined): string[] {

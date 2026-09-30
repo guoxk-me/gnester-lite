@@ -26,7 +26,7 @@ import {
 } from 'class-validator';
 import type { Request, Response } from 'express';
 
-import { CsrfService } from '../csrf/csrf.service.js';
+import { CsrfService } from '../infra/csrf/csrf.service.js';
 import { UserManagementService } from './user-management.service.js';
 
 class CreateUserBody {

@@ -69,7 +69,6 @@ describe('template delivery contracts', () => {
 
   it('does not ship active reusable secrets or production credentials', () => {
     for (const variableName of [
-      'BETTER_AUTH_SECRET',
       'JWT_SECRET',
       'CSRF_SECRET',
       'ENCRYPTION_KEY',
@@ -100,16 +99,5 @@ describe('template delivery contracts', () => {
         introspectComments: true,
       },
     });
-  });
-
-  it.each([
-    'src/examples/demo-cache/dto/update-demo-cache.dto.ts',
-    'src/examples/demo-database/dto/demo-mapped-types.dto.ts',
-    'src/examples/demo-database/dto/update-demo.dto.ts',
-  ])('uses Swagger-aware mapped types in %s', (relativePath) => {
-    const source = readFileSync(join(projectRoot, relativePath), 'utf8');
-
-    expect(source).toContain("from '@nestjs/swagger'");
-    expect(source).not.toContain("from '@nestjs/mapped-types'");
   });
 });

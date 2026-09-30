@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 
-import { AuthModule } from '../../auth/auth.module.js';
+import { AuthModule } from '../../infra/auth/auth.module.js';
 import { DemoAuthController } from './demo-auth.controller.js';
 import { DemoAuthService } from './demo-auth.service.js';
 import { LocalAuthGuard } from './local-auth.guard.js';

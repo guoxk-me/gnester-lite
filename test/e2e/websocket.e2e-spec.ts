@@ -4,9 +4,9 @@ import { ConfigModule } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { io, type Socket as ClientSocket } from 'socket.io-client';
 
-import { AuthTokenService } from '../../src/auth/auth-token.service.js';
-import { AuthModule } from '../../src/auth/auth.module.js';
-import { RateLimitModule } from '../../src/rate-limit/rate-limit.module.js';
+import { AuthTokenService } from '../../src/infra/auth/auth-token.service.js';
+import { AuthModule } from '../../src/infra/auth/auth.module.js';
+import { RateLimitModule } from '../../src/infra/rate-limit/rate-limit.module.js';
 import { SocketIoAdapter } from '../../src/bootstrap/http/socket-io.adapter.js';
 import { DemoWebsocketModule } from '../../src/examples/demo-websocket/demo-websocket.module.js';
 

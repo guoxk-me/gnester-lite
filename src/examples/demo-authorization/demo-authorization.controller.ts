@@ -12,16 +12,16 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
-import { AuthGuard } from '../../auth/auth.guard.js';
-import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
-import { Public } from '../../auth/decorators/public.decorator.js';
-import type { JwtAuthenticatedUser } from '../../auth/types/jwt-authenticated-user.type.js';
-import { CheckPolicies } from '../../authorization/decorators/check-policies.decorator.js';
-import { RequirePermissions } from '../../authorization/decorators/permissions.decorator.js';
-import { Roles } from '../../authorization/decorators/roles.decorator.js';
-import { PermissionsGuard } from '../../authorization/guards/permissions.guard.js';
-import { PoliciesGuard } from '../../authorization/guards/policies.guard.js';
-import { RolesGuard } from '../../authorization/guards/roles.guard.js';
+import { AuthGuard } from '../../infra/auth/auth.guard.js';
+import { CurrentUser } from '../../infra/auth/decorators/current-user.decorator.js';
+import { Public } from '../../infra/auth/decorators/public.decorator.js';
+import type { JwtAuthenticatedUser } from '../../infra/auth/jwt-user.types.js';
+import { CheckPolicies } from '../../infra/authorization/decorators/check-policies.decorator.js';
+import { RequirePermissions } from '../../infra/authorization/decorators/permissions.decorator.js';
+import { Roles } from '../../infra/authorization/decorators/roles.decorator.js';
+import { PermissionsGuard } from '../../infra/authorization/guards/permissions.guard.js';
+import { PoliciesGuard } from '../../infra/authorization/guards/policies.guard.js';
+import { RolesGuard } from '../../infra/authorization/guards/roles.guard.js';
 import { DemoAuthorizationService } from './demo-authorization.service.js';
 import { DemoAdminReportDto } from './dto/demo-admin-report.dto.js';
 import { DemoAuditLogEntryDto } from './dto/demo-audit-log-entry.dto.js';

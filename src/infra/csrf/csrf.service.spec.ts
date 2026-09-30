@@ -1,0 +1,231 @@
+import { ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+import type { Mocked } from 'vitest';
+import type { NextFunction, Request, Response } from 'express';
+
+import { Environment } from '../../config/config-enums.js';
+import {
+  CSRF_LOCAL_DEVELOPMENT_SECRET,
+  CsrfService,
+  createCsrfOptions,
+} from './csrf.service.js';
+
+describe('createCsrfOptions', () => {
+  let configService: ConfigService<Record<string, unknown>>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    configService = new ConfigService<Record<string, unknown>>({});
+  });
+
+  it('uses the fixed Axios XSRF header as the request token contract', () => {
+    configService = new ConfigService<Record<string, unknown>>({
+      CSRF_HEADER_NAME: 'X-XSRF-TOKEN',
+    });
+    const options = createCsrfOptions(configService, Environment.Development);
+
+    expect(
+      options.getCsrfTokenFromRequest?.({
+        headers: {
+          'x-xsrf-token': 'request-token',
+        },
+      } as unknown as Request),
+    ).toBe('request-token');
+  });
+
+  it('binds tokens to the independent identifier cookie', () => {
+    const options = createCsrfOptions(configService, Environment.Development);
+
+    expect(
+      options.getSessionIdentifier({
+        cookies: {
+          'gnester.csrf-id': 'csrf-id',
+        },
+      } as unknown as Request),
+    ).toBe('csrf-id');
+    expect(options.getSessionIdentifier({} as Request)).toBe('');
+  });
+
+  it('uses a local-only fallback secret outside production', () => {
+    const options = createCsrfOptions(configService, Environment.Test);
+
+    expect(options.getSecret()).toBe(CSRF_LOCAL_DEVELOPMENT_SECRET);
+  });
+
+  it('uses secure host-prefixed cookies in production', () => {
+    const options = createCsrfOptions(configService, Environment.Production);
+
+    expect(options.cookieName).toBe('XSRF-TOKEN');
+    expect(options.cookieOptions).toMatchObject({
+      httpOnly: false,
+      path: '/',
+      secure: true,
+      sameSite: 'lax',
+    });
+  });
+});
+
+describe('CsrfService', () => {
+  let configService: ConfigService<Record<string, unknown>>;
+  let service: CsrfService;
+  const i18n = {
+    t: vi.fn(
+      (_key: string, options?: { defaultValue?: string; lang?: string }) =>
+        options?.defaultValue ?? 'Invalid CSRF token',
+    ),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    configService = new ConfigService<Record<string, unknown>>({});
+    service = new CsrfService(configService, i18n as never);
+  });
+
+  it('reports CSRF protection as enabled by default', () => {
+    expect(service.isEnabled()).toBe(true);
+  });
+
+  it('sets a stable identifier cookie before generating a response token', () => {
+    const request = {
+      cookies: {},
+      headers: {},
+    } as Request;
+    const response = {
+      cookie: vi.fn(),
+    } as unknown as Mocked<Pick<Response, 'cookie'>>;
+
+    const token = service.createToken(request, response as unknown as Response);
+
+    expect(typeof token).toBe('string');
+    expect(response.cookie).toHaveBeenCalledWith(
+      'gnester.csrf-id',
+      expect.any(String),
+      expect.objectContaining({
+        httpOnly: true,
+        path: '/',
+        sameSite: 'lax',
+      }),
+    );
+  });
+
+  it('does not issue tokens when CSRF protection is disabled', () => {
+    configService = new ConfigService<Record<string, unknown>>({
+      CSRF_ENABLED: false,
+    });
+    service = new CsrfService(configService, i18n as never);
+
+    expect(() => service.createToken({} as Request, {} as Response)).toThrow(
+      ServiceUnavailableException,
+    );
+  });
+
+  // AI modified: retired native auth routes receive the same write protection as every API route.
+  it.each(['/api/auth', '/api/auth/sign-in/email'])(
+    'protects %s requests with application CSRF',
+    (path) => {
+      const next: NextFunction = vi.fn();
+
+      service.createProtectionMiddleware()(
+        {
+          path,
+          method: 'POST',
+          headers: {},
+          cookies: {},
+        } as unknown as Request,
+        {} as Response,
+        next,
+      );
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({ code: 'CSRF_TOKEN_INVALID' }),
+      );
+    },
+  );
+
+  it('does not exempt a path that only shares the Better Auth prefix', () => {
+    const next: NextFunction = vi.fn();
+
+    service.createProtectionMiddleware()(
+      {
+        path: '/api/auth-malicious',
+        method: 'POST',
+        headers: {},
+        cookies: {},
+      } as unknown as Request,
+      {} as Response,
+      next,
+    );
+
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'CSRF_TOKEN_INVALID' }),
+    );
+  });
+
+  it('formats invalid CSRF token errors without leaking implementation details', () => {
+    const response = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+      setHeader: vi.fn(),
+      vary: vi.fn(),
+    } as unknown as Mocked<
+      Pick<Response, 'json' | 'setHeader' | 'status' | 'vary'>
+    >;
+    const next: NextFunction = vi.fn();
+    const error = {
+      code: 'CSRF_TOKEN_INVALID',
+      statusCode: 403,
+      message: 'Invalid CSRF token',
+    };
+
+    service.createErrorHandler()(
+      error,
+      {} as Request,
+      response as unknown as Response,
+      next,
+    );
+
+    expect(response.status).toHaveBeenCalledWith(403);
+    expect(response.vary).toHaveBeenCalledWith('Accept-Language');
+    expect(response.setHeader).toHaveBeenCalledWith('Content-Language', 'en');
+    expect(response.json).toHaveBeenCalledWith({
+      code: 403,
+      message: 'Invalid CSRF token',
+      data: null,
+      errors: null,
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('uses the shared quality-aware language negotiation for CSRF errors', () => {
+    const response = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+      setHeader: vi.fn(),
+      vary: vi.fn(),
+    } as unknown as Mocked<
+      Pick<Response, 'json' | 'setHeader' | 'status' | 'vary'>
+    >;
+    const error = {
+      code: 'CSRF_TOKEN_INVALID',
+    };
+
+    service.createErrorHandler()(
+      error,
+      {
+        headers: {
+          'accept-language': 'zh-CN;q=1,en;q=0.8',
+        },
+      } as Request,
+      response as unknown as Response,
+      vi.fn(),
+    );
+
+    expect(i18n.t).toHaveBeenCalledWith(
+      'errors.CSRF_TOKEN_INVALID',
+      expect.objectContaining({ lang: 'zh' }),
+    );
+    expect(response.vary).toHaveBeenCalledWith('Accept-Language');
+    expect(response.setHeader).toHaveBeenCalledWith('Content-Language', 'zh');
+  });
+});

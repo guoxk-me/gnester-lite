@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { HmacSignatureService } from '../../crypto/hmac-signature.service.js';
-import { SecureTokenService } from '../../crypto/secure-token.service.js';
-import { SymmetricEncryptionService } from '../../crypto/symmetric-encryption.service.js';
+import { HmacSignatureService } from '../../infra/crypto/hmac-signature.service.js';
+import { SecureTokenService } from '../../infra/crypto/secure-token.service.js';
+import { SymmetricEncryptionService } from '../../infra/crypto/symmetric-encryption.service.js';
 import { DemoCryptoScenarioDto } from './dto/demo-crypto-scenario.dto.js';
 import { DemoEncryptedSecretDto } from './dto/demo-encrypted-secret.dto.js';
 import { DemoOneTimeTokenDto } from './dto/demo-one-time-token.dto.js';

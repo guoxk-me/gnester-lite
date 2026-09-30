@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import type { JwtAuthenticatedUser } from '../../auth/types/jwt-authenticated-user.type.js';
+import type { JwtAuthenticatedUser } from '../../infra/auth/jwt-user.types.js';
 import { DemoAdminReportDto } from './dto/demo-admin-report.dto.js';
 import { DemoAuditLogEntryDto } from './dto/demo-audit-log-entry.dto.js';
 import { DemoAuthorizationScenarioDto } from './dto/demo-authorization-scenario.dto.js';

@@ -10,7 +10,7 @@ import {
 import { ApiResponse } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 
-import { CsrfService } from '../../csrf/csrf.service.js';
+import { CsrfService } from '../../infra/csrf/csrf.service.js';
 import { CreateDemoCsrfTransferDto } from './dto/create-demo-csrf-transfer.dto.js';
 import { CsrfTokenDto } from './dto/csrf-token.dto.js';
 import { DemoCsrfOverviewDto } from './dto/demo-csrf-overview.dto.js';

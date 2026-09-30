@@ -17,8 +17,7 @@ const productionEnv = {
   DB_DATABASE: 'application',
   REDIS_URL: 'rediss://redis.internal:6379',
   CORS_ORIGINS: 'https://app.example.com',
-  BETTER_AUTH_SECRET: randomBytes(48).toString('base64url'),
-  BETTER_AUTH_URL: 'https://api.example.com',
+  CSRF_SECRET: randomBytes(48).toString('base64url'),
 };
 
 describe('crypto environment validation', () => {
@@ -67,7 +66,6 @@ describe('crypto environment validation', () => {
         JWT_SECRET: randomBytes(48).toString('base64url'),
         ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
         HMAC_SECRET: randomBytes(48).toString('base64url'),
-        CSRF_ENABLED: 'false',
       }),
     ).toThrow(
       'ENCRYPTION_KEY must be a non-placeholder 32-byte base64url value in production.',
@@ -98,7 +96,6 @@ describe('crypto environment validation', () => {
         JWT_SECRET: randomBytes(48).toString('base64url'),
         ENCRYPTION_KEY: alternateEncoding,
         HMAC_SECRET: randomBytes(48).toString('base64url'),
-        CSRF_ENABLED: 'false',
       }),
     ).toThrow(
       'ENCRYPTION_KEY must be a non-placeholder 32-byte base64url value in production.',

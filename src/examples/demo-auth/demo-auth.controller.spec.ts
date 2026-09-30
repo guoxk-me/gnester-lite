@@ -1,7 +1,7 @@
 import type { Mocked } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { JwtAuthGuard } from '../../infra/auth/guards/jwt-auth.guard.js';
 import { LocalAuthGuard } from './local-auth.guard.js';
 import { DemoAuthController } from './demo-auth.controller.js';
 import { DemoAuthService } from './demo-auth.service.js';

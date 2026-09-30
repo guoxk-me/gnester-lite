@@ -1,6 +1,6 @@
 import type { Mocked } from 'vitest';
-import { AuthTokenService } from '../../auth/auth-token.service.js';
-import { PasswordHashService } from '../../auth/password-hash.service.js';
+import { AuthTokenService } from '../../infra/auth/auth-token.service.js';
+import { PasswordHashService } from '../../infra/auth/password-hash.service.js';
 import { DemoAuthService } from './demo-auth.service.js';
 
 describe('DemoAuthService', () => {

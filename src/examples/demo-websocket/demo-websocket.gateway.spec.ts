@@ -2,7 +2,7 @@ import type { Mock, Mocked } from 'vitest';
 import { UnauthorizedException } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import type { Server } from 'socket.io';
-import { MAX_BEARER_TOKEN_LENGTH } from '../../auth/bearer-token.js';
+import { MAX_BEARER_TOKEN_LENGTH } from '../../infra/auth/bearer-token.js';
 import {
   DemoWebsocketGateway,
   type DemoWebsocketSocket,

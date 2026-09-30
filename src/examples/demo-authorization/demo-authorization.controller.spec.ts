@@ -2,11 +2,11 @@ import type { Mocked } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 
-import { AuthGuard } from '../../auth/auth.guard.js';
-import { IS_PUBLIC_KEY } from '../../auth/decorators/public.decorator.js';
-import { PermissionsGuard } from '../../authorization/guards/permissions.guard.js';
-import { PoliciesGuard } from '../../authorization/guards/policies.guard.js';
-import { RolesGuard } from '../../authorization/guards/roles.guard.js';
+import { AuthGuard } from '../../infra/auth/auth.guard.js';
+import { IS_PUBLIC_KEY } from '../../infra/auth/decorators/public.decorator.js';
+import { PermissionsGuard } from '../../infra/authorization/guards/permissions.guard.js';
+import { PoliciesGuard } from '../../infra/authorization/guards/policies.guard.js';
+import { RolesGuard } from '../../infra/authorization/guards/roles.guard.js';
 import { DemoAuthorizationController } from './demo-authorization.controller.js';
 import { DemoAuthorizationService } from './demo-authorization.service.js';
 

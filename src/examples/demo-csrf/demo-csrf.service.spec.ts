@@ -1,7 +1,7 @@
 import type { Mocked } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { CsrfService } from '../../csrf/csrf.service.js';
+import { CsrfService } from '../../infra/csrf/csrf.service.js';
 import { DemoCsrfService } from './demo-csrf.service.js';
 
 describe('DemoCsrfService', () => {

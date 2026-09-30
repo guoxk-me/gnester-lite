@@ -8,7 +8,7 @@ import { DataSource } from 'typeorm';
 
 import { BetterAuthService } from '../../src/better-auth/better-auth.service.js';
 import { configureApplication } from '../../src/bootstrap/configure-application.js';
-import { CsrfModule } from '../../src/csrf/csrf.module.js';
+import { CsrfModule } from '../../src/infra/csrf/csrf.module.js';
 import {
   AdminInvitationsController,
   AdminUsersController,

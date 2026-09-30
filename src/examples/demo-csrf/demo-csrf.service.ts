@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { CsrfService } from '../../csrf/csrf.service.js';
+import { CsrfService } from '../../infra/csrf/csrf.service.js';
 import { CreateDemoCsrfTransferDto } from './dto/create-demo-csrf-transfer.dto.js';
 import { DemoCsrfOverviewDto } from './dto/demo-csrf-overview.dto.js';
 import { DemoCsrfTransferPreviewDto } from './dto/demo-csrf-transfer-preview.dto.js';

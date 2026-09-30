@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { AuthTokenService } from '../../auth/auth-token.service.js';
-import { PasswordHashService } from '../../auth/password-hash.service.js';
-import type { JwtAuthenticatedUser } from '../../auth/types/jwt-authenticated-user.type.js';
+import { AuthTokenService } from '../../infra/auth/auth-token.service.js';
+import { PasswordHashService } from '../../infra/auth/password-hash.service.js';
+import type { JwtAuthenticatedUser } from '../../infra/auth/jwt-user.types.js';
 import { AccessTokenDto } from './dto/access-token.dto.js';
 import { DemoAuthProfileDto } from './dto/demo-auth-profile.dto.js';
 import { DemoAuthScenarioDto } from './dto/demo-auth-scenario.dto.js';

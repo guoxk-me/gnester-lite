@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { BetterAuthModule } from '../better-auth/better-auth.module.js';
-import { CsrfModule } from '../csrf/csrf.module.js';
+import { CsrfModule } from '../infra/csrf/csrf.module.js';
 import {
   AdminInvitationsController,
   AdminUsersController,

@@ -20,8 +20,6 @@ function createProductionEnv(
     DB_DATABASE: 'application',
     REDIS_URL: 'rediss://redis.internal:6379',
     CORS_ORIGINS: 'https://app.example.com',
-    BETTER_AUTH_SECRET: randomBytes(48).toString('base64url'),
-    BETTER_AUTH_URL: 'https://api.example.com',
     JWT_SECRET: randomBytes(48).toString('base64url'),
     CSRF_SECRET: randomBytes(48).toString('base64url'),
     ENCRYPTION_KEY: randomBytes(32).toString('base64url'),
@@ -127,48 +125,13 @@ describe('environment validation', () => {
     ).toThrow();
   });
 
-  it('defaults session support to enabled with secure cookie defaults', () => {
-    const config = validate(baseEnv);
-
-    expect(config.SESSION_ENABLED).toBe(true);
-    expect(config.SESSION_COOKIE_NAME).toBe('gnester.sid');
-    expect(config.SESSION_COOKIE_MAX_AGE).toBe(86_400_000);
-    expect(config.SESSION_COOKIE_SAME_SITE).toBe('lax');
-  });
-
-  it('coerces explicit session settings from environment strings', () => {
-    const config = validate({
-      ...baseEnv,
-      SESSION_ENABLED: 'false',
-      SESSION_COOKIE_NAME: 'custom.sid',
-      SESSION_COOKIE_MAX_AGE: '3600000',
-      SESSION_COOKIE_SECURE: 'true',
-      SESSION_COOKIE_SAME_SITE: 'strict',
-    });
-
-    expect(config.SESSION_ENABLED).toBe(false);
-    expect(config.SESSION_COOKIE_NAME).toBe('custom.sid');
-    expect(config.SESSION_COOKIE_MAX_AGE).toBe(3_600_000);
-    expect(config.SESSION_COOKIE_SECURE).toBe(true);
-    expect(config.SESSION_COOKIE_SAME_SITE).toBe('strict');
-  });
-
-  it('rejects unsupported same-site session cookie policies', () => {
-    expect(() =>
-      validate({
-        ...baseEnv,
-        SESSION_COOKIE_SAME_SITE: 'cross-site',
-      }),
-    ).toThrow();
-  });
-
   it('defaults CSRF protection to enabled with browser-safe token settings', () => {
     const config = validate(baseEnv);
 
     expect(config.CSRF_ENABLED).toBe(true);
-    expect(config.CSRF_COOKIE_NAME).toBe('gnester.csrf-token');
+    expect(config.CSRF_COOKIE_NAME).toBe('XSRF-TOKEN');
     expect(config.CSRF_IDENTIFIER_COOKIE_NAME).toBe('gnester.csrf-id');
-    expect(config.CSRF_HEADER_NAME).toBe('x-csrf-token');
+    expect(config.CSRF_HEADER_NAME).toBe('X-XSRF-TOKEN');
     expect(config.CSRF_COOKIE_SAME_SITE).toBe('lax');
   });
 
@@ -176,19 +139,19 @@ describe('environment validation', () => {
     const config = validate({
       ...baseEnv,
       CSRF_ENABLED: 'false',
-      CSRF_COOKIE_NAME: 'custom.csrf-token',
+      CSRF_COOKIE_NAME: 'XSRF-TOKEN',
       CSRF_IDENTIFIER_COOKIE_NAME: 'custom.csrf-id',
       CSRF_COOKIE_SECURE: 'true',
       CSRF_COOKIE_SAME_SITE: 'strict',
-      CSRF_HEADER_NAME: 'x-xsrf-token',
+      CSRF_HEADER_NAME: 'X-XSRF-TOKEN',
     });
 
     expect(config.CSRF_ENABLED).toBe(false);
-    expect(config.CSRF_COOKIE_NAME).toBe('custom.csrf-token');
+    expect(config.CSRF_COOKIE_NAME).toBe('XSRF-TOKEN');
     expect(config.CSRF_IDENTIFIER_COOKIE_NAME).toBe('custom.csrf-id');
     expect(config.CSRF_COOKIE_SECURE).toBe(true);
     expect(config.CSRF_COOKIE_SAME_SITE).toBe('strict');
-    expect(config.CSRF_HEADER_NAME).toBe('x-xsrf-token');
+    expect(config.CSRF_HEADER_NAME).toBe('X-XSRF-TOKEN');
   });
 
   it('requires a CSRF secret when CSRF is enabled in production', () => {
@@ -200,71 +163,9 @@ describe('environment validation', () => {
     ).toThrow('CSRF_SECRET is required in production when CSRF is enabled.');
   });
 
-  it('allows production without a CSRF secret when CSRF is disabled', () => {
-    const config = validate({
-      ...productionEnv,
-      CSRF_ENABLED: 'false',
-    });
-
-    expect(config.CSRF_ENABLED).toBe(false);
-  });
-
-  it('requires Better Auth deployment identity in production', () => {
-    expect(() =>
-      validate({
-        ...productionEnv,
-        BETTER_AUTH_SECRET: undefined,
-      }),
-    ).toThrow('BETTER_AUTH_SECRET is required in production.');
-    expect(() =>
-      validate({
-        ...productionEnv,
-        BETTER_AUTH_URL: undefined,
-      }),
-    ).toThrow('BETTER_AUTH_URL is required in production.');
-  });
-
-  it('rejects unsafe Better Auth URL and trusted-origin policies', () => {
-    expect(() =>
-      validate({
-        ...baseEnv,
-        BETTER_AUTH_URL: 'https://api.example.com/auth',
-      }),
-    ).toThrow('BETTER_AUTH_URL must be a canonical HTTP(S) origin.');
-    expect(() =>
-      validate({
-        ...baseEnv,
-        BETTER_AUTH_TRUSTED_ORIGINS: '*',
-      }),
-    ).toThrow(
-      'BETTER_AUTH_TRUSTED_ORIGINS must not contain a wildcard origin.',
-    );
-    expect(() =>
-      validate({
-        ...productionEnv,
-        BETTER_AUTH_URL: 'http://api.example.com',
-      }),
-    ).toThrow(
-      'BETTER_AUTH_URL must use a non-loopback HTTPS origin in production.',
-    );
-    expect(() =>
-      validate({
-        ...productionEnv,
-        BETTER_AUTH_TRUSTED_ORIGINS: 'http://app.example.com',
-      }),
-    ).toThrow(
-      'BETTER_AUTH_TRUSTED_ORIGINS must use non-loopback HTTPS origins in production.',
-    );
-  });
-
-  it('rejects production loopback origins even over HTTPS', () => {
-    expect(() =>
-      validate({
-        ...productionEnv,
-        BETTER_AUTH_URL: 'https://127.0.0.1:3000',
-      }),
-    ).toThrow(
-      'BETTER_AUTH_URL must use a non-loopback HTTPS origin in production.',
+  it('requires CSRF for production cookie authentication', () => {
+    expect(() => validate({ ...productionEnv, CSRF_ENABLED: 'false' })).toThrow(
+      'CSRF_ENABLED must be true for production cookie authentication.',
     );
   });
 
@@ -303,7 +204,6 @@ describe('environment validation', () => {
   it('rejects empty JWT claims and excessive production token lifetimes', () => {
     const strongProductionEnv = {
       ...productionEnv,
-      CSRF_ENABLED: 'false',
     };
 
     expect(() =>
@@ -409,39 +309,6 @@ describe('environment validation', () => {
     expect(config.SENTRY_ENABLED).toBe(false);
   });
 
-  it('rejects cookie settings that browsers cannot enforce safely', () => {
-    expect(() =>
-      validate({
-        ...productionEnv,
-        CSRF_ENABLED: 'true',
-        CSRF_COOKIE_SECURE: 'false',
-      }),
-    ).toThrow(
-      'CSRF_COOKIE_SECURE must be true when CSRF is enabled in production.',
-    );
-
-    expect(() =>
-      validate({
-        ...baseEnv,
-        CSRF_COOKIE_SAME_SITE: 'none',
-        CSRF_COOKIE_SECURE: 'false',
-      }),
-    ).toThrow(
-      'CSRF_COOKIE_SECURE must be true when CSRF_COOKIE_SAME_SITE is none.',
-    );
-
-    expect(() =>
-      validate({
-        ...baseEnv,
-        SESSION_ENABLED: 'true',
-        SESSION_COOKIE_SAME_SITE: 'none',
-        SESSION_COOKIE_SECURE: 'false',
-      }),
-    ).toThrow(
-      'SESSION_COOKIE_SECURE must be true when SESSION_COOKIE_SAME_SITE is none.',
-    );
-  });
-
   it('rejects invalid Sentry sample rates', () => {
     expect(() =>
       validate({
@@ -492,60 +359,10 @@ describe('environment validation', () => {
     ).toThrow();
   });
 
-  it.each([
-    'PORT',
-    'DB_PORT',
-    'DB_RETRY_ATTEMPTS',
-    'DB_RETRY_DELAY',
-    'CORS_MAX_AGE',
-    'CORS_OPTIONS_SUCCESS_STATUS',
-    'COMPRESSION_LEVEL',
-    'SESSION_COOKIE_MAX_AGE',
-  ])('rejects a blank numeric %s instead of coercing it to zero', (name) => {
-    expect(() =>
-      validate({
-        ...baseEnv,
-        [name]: '   ',
-      }),
-    ).toThrow();
-  });
-
   it('requires JSON logging in production', () => {
     expect(() =>
       validate(createProductionEnv({ LOGGER_JSON: 'false' })),
     ).toThrow('LOGGER_JSON must be true in production.');
-  });
-
-  it('rejects invalid or colliding cookie names', () => {
-    expect(() =>
-      validate({
-        ...baseEnv,
-        SESSION_COOKIE_NAME: 'invalid cookie',
-      }),
-    ).toThrow();
-    expect(() =>
-      validate({
-        ...baseEnv,
-        CSRF_COOKIE_NAME: 'shared-cookie',
-        CSRF_IDENTIFIER_COOKIE_NAME: 'shared-cookie',
-      }),
-    ).toThrow('CSRF_IDENTIFIER_COOKIE_NAME must use a distinct cookie name.');
-    expect(() =>
-      validate(
-        createProductionEnv({
-          SESSION_ENABLED: 'true',
-          SESSION_COOKIE_NAME: '__Host-gnester.csrf-token',
-        }),
-      ),
-    ).toThrow('CSRF_COOKIE_NAME must use a distinct cookie name.');
-    expect(() =>
-      validate(
-        createProductionEnv({
-          SESSION_ENABLED: 'true',
-          SESSION_COOKIE_NAME: '__Host-gnester.csrf-id',
-        }),
-      ),
-    ).toThrow('CSRF_IDENTIFIER_COOKIE_NAME must use a distinct cookie name.');
   });
 
   it.each([

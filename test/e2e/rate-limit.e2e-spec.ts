@@ -4,8 +4,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
 import { configureApplication } from '../../src/bootstrap/configure-application.js';
-import { CsrfModule } from '../../src/csrf/csrf.module.js';
-import { RateLimitModule } from '../../src/rate-limit/rate-limit.module.js';
+import { CsrfModule } from '../../src/infra/csrf/csrf.module.js';
+import { RateLimitModule } from '../../src/infra/rate-limit/rate-limit.module.js';
 import { DemoRateLimitModule } from '../../src/examples/demo-rate-limit/demo-rate-limit.module.js';
 import { betterAuthTestProvider } from '../fixtures/better-auth.stub.js';
 

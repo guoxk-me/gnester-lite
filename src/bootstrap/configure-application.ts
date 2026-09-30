@@ -12,7 +12,7 @@ import { type RateLimitConfig } from '../config/application-config.types.js';
 import { BetterAuthService } from '../better-auth/better-auth.service.js';
 import { createBetterAuthRequestMiddleware } from './http/better-auth.middleware.js';
 import { createCorsOptions } from './http/cors.config.js';
-import { CsrfService } from '../csrf/csrf.service.js';
+import { CsrfService } from '../infra/csrf/csrf.service.js';
 import { createHelmetOptions } from './http/helmet-options.js';
 import { setupOpenApi } from './http/openapi.config.js';
 import { SocketIoAdapter } from './http/socket-io.adapter.js';

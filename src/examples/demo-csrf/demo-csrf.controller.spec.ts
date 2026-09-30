@@ -4,7 +4,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import type { Request, Response } from 'express';
 
-import { CsrfService } from '../../csrf/csrf.service.js';
+import { CsrfService } from '../../infra/csrf/csrf.service.js';
 import { DemoCsrfController } from './demo-csrf.controller.js';
 import { DemoCsrfService } from './demo-csrf.service.js';
 import {

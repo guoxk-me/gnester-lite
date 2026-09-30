@@ -4,7 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
 import { configureApplication } from '../../src/bootstrap/configure-application.js';
-import { CsrfModule } from '../../src/csrf/csrf.module.js';
+import { CsrfModule } from '../../src/infra/csrf/csrf.module.js';
 import { DemoCsrfModule } from '../../src/examples/demo-csrf/demo-csrf.module.js';
 import { betterAuthTestProvider } from '../fixtures/better-auth.stub.js';
 

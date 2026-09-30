@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 
-import { AuthModule } from '../../auth/auth.module.js';
+import { AuthModule } from '../../infra/auth/auth.module.js';
 import { DemoWebsocketAuthenticatedGuard } from './demo-websocket-authenticated.guard.js';
 import { DemoWebsocketAsyncApiController } from './demo-websocket-asyncapi.controller.js';
 import { DemoWebsocketAsyncApiService } from './demo-websocket-asyncapi.service.js';

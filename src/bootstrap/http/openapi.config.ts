@@ -7,7 +7,7 @@ import {
 
 import { Environment } from '../../config/config-enums.js';
 import { SKIP_API_ENVELOPE_OPENAPI_EXTENSION } from '../../common/http/http-metadata.js';
-import { CsrfService } from '../../csrf/csrf.service.js';
+import { CsrfService } from '../../infra/csrf/csrf.service.js';
 
 type OpenApiPluginMetadataFactory = Parameters<
   typeof SwaggerModule.loadPluginMetadata
