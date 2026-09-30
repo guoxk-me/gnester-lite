@@ -20,7 +20,7 @@ import type { App } from 'supertest/types.js';
 
 import { createValidationPipe } from '../../src/bootstrap/http/validation.pipe.js';
 import type { ApiEnvelope } from '../../src/common/http/api-envelope.types.js';
-import { I18nModule } from '../../src/i18n/i18n.module.js';
+import { HttpResponseModule as I18nModule } from '../../src/infra/http/http-response.module.js';
 import { SkipApiEnvelope } from '../../src/common/http/skip-api-envelope.decorator.js';
 
 const probeFailure = {

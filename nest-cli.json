@@ -23,7 +23,7 @@
         "outDir": "./dist"
       },
       {
-        "include": "i18n/locales/**/*",
+        "include": "infra/i18n/locales/**/*",
         "outDir": "./dist"
       }
     ]

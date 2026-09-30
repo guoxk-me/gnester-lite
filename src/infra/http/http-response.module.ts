@@ -6,7 +6,7 @@ import {
   ApiEnvelopeInterceptor,
 } from './api-envelope.interceptor.js';
 import { ApiExceptionFilter } from './api-exception.filter.js';
-import { I18nCatalogModule } from './i18n-catalog.module.js';
+import { I18nCatalogModule } from '../i18n/i18n-catalog.module.js';
 
 // AI modified: application-wide envelope + nestjs-i18n catalog composed for AppModule.
 @Module({
@@ -27,4 +27,4 @@ import { I18nCatalogModule } from './i18n-catalog.module.js';
   ],
   exports: [I18nCatalogModule],
 })
-export class I18nModule {}
+export class HttpResponseModule {}

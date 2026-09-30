@@ -1,14 +1,16 @@
+import { Readable } from 'node:stream';
+
 import { CallHandler, ExecutionContext, StreamableFile } from '@nestjs/common';
 import { SSE_METADATA } from '@nestjs/common/constants';
 import { Reflector } from '@nestjs/core';
+
 import { firstValueFrom, of } from 'rxjs';
-import { Readable } from 'node:stream';
 
 import {
   ApiEnvelopeBoundaryGuard,
   ApiEnvelopeInterceptor,
 } from './api-envelope.interceptor.js';
-import { SKIP_API_ENVELOPE_KEY } from '../common/http/http-metadata.js';
+import { SKIP_API_ENVELOPE_KEY } from '../../common/http/http-metadata.js';
 
 describe('ApiEnvelopeInterceptor', () => {
   const reflector = {

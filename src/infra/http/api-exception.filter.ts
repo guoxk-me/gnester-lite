@@ -7,30 +7,25 @@ import {
   Logger,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
+
 import * as Sentry from '@sentry/nestjs';
 import type { Request, Response } from 'express';
 import { I18nService } from 'nestjs-i18n';
 
-import {
-  type ApiEnvelope,
-  type ApiValidationErrorDetail,
-} from '../common/http/api-envelope.types.js';
-import { I18N_FALLBACK_LANGUAGE } from './i18n.constants.js';
-import { SKIP_API_ENVELOPE_KEY } from '../common/http/http-metadata.js';
+import { I18N_FALLBACK_LANGUAGE } from '../i18n/i18n.constants.js';
+import type {
+  ApiEnvelope,
+  ApiValidationErrorDetail,
+} from '../../common/http/api-envelope.types.js';
+import type {
+  ExceptionTranslationOptions,
+  ExceptionTranslator,
+} from './exception-translation.types.js';
+import { SKIP_API_ENVELOPE_KEY } from '../../common/http/http-metadata.js';
 import {
   httpStatusMessageKey,
   resolveSupportedLanguage,
-} from './i18n.translate.js';
-
-interface ExceptionTranslationOptions {
-  readonly args?: Record<string, unknown>;
-  readonly defaultValue: string;
-}
-
-type ExceptionTranslator = (
-  key: string,
-  options: ExceptionTranslationOptions,
-) => string;
+} from '../i18n/i18n.translate.js';
 
 function isRecord(candidate: unknown): candidate is Record<string, unknown> {
   return (

@@ -8,7 +8,7 @@ import { AppController } from '../../src/app.controller.js';
 import { AppService } from '../../src/app.service.js';
 import type { ApiEnvelope } from '../../src/common/http/api-envelope.types.js';
 import { JWT_LOCAL_DEVELOPMENT_SECRET } from '../../src/auth/jwt-policy.js';
-import { I18nModule } from '../../src/i18n/i18n.module.js';
+import { HttpResponseModule as I18nModule } from '../../src/infra/http/http-response.module.js';
 import { DemoAuthModule } from '../../src/examples/demo-auth/demo-auth.module.js';
 import { DemoAuthorizationModule } from '../../src/examples/demo-authorization/demo-authorization.module.js';
 

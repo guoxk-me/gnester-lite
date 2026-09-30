@@ -7,6 +7,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import type { ValidationError } from '@nestjs/common';
+
 import { Type } from 'class-transformer';
 import {
   IsEnum,
@@ -79,8 +80,8 @@ const localizedBodyMetadata: ArgumentMetadata = {
 function readLocaleMessages(fileName: string): Record<string, string> {
   return JSON.parse(
     readFileSync(
-      // AI modified: locale fixtures now live in the top-level i18n capability.
-      join(__dirname, '../../i18n/locales/zh', fileName),
+      // AI modified: locale fixtures follow their infrastructure owner.
+      join(__dirname, '../../infra/i18n/locales/zh', fileName),
       'utf8',
     ),
   ) as Record<string, string>;

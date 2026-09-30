@@ -1,36 +1,21 @@
 import { Injectable, type ExecutionContext } from '@nestjs/common';
+
 import { I18nContext, type I18nResolver } from 'nestjs-i18n';
 
+import type { SupportedLanguage } from './language.types.js';
+import type {
+  LanguagePreference,
+  SupportedLanguagePreference,
+  LanguageRequest,
+  LanguageClient,
+  ValidationConstraint,
+  ValidationMessageKey,
+  HttpStatusMessageKey,
+} from './translation.types.js';
 import {
   I18N_FALLBACK_LANGUAGE,
   I18N_SUPPORTED_LANGUAGES,
-  type SupportedLanguage,
 } from './i18n.constants.js';
-
-interface LanguagePreference {
-  readonly range: string;
-  readonly quality: number;
-  readonly position: number;
-}
-
-interface SupportedLanguagePreference {
-  readonly language: SupportedLanguage;
-  readonly quality: number;
-  readonly position: number;
-}
-
-interface LanguageRequest {
-  readonly headers?: Record<string, string | readonly string[] | undefined>;
-  readonly raw?: {
-    readonly headers?: Record<string, string | readonly string[] | undefined>;
-  };
-}
-
-interface LanguageClient extends LanguageRequest {
-  readonly handshake?: LanguageRequest;
-  readonly request?: LanguageRequest;
-  readonly upgradeReq?: LanguageRequest;
-}
 
 // AI modified: catalog-backed validation keys stay explicit so unknown constraints safely use class-validator text.
 export const VALIDATION_CONSTRAINTS = [
@@ -57,10 +42,6 @@ export const VALIDATION_CONSTRAINTS = [
   'nestedValidation',
   'whitelistValidation',
 ] as const;
-
-export type ValidationConstraint = (typeof VALIDATION_CONSTRAINTS)[number];
-export type ValidationMessageKey = `validation.${ValidationConstraint}`;
-export type HttpStatusMessageKey = `http.${number}`;
 
 // AI modified: apply RFC-style q weights before mapping regional ranges onto supported base languages.
 function languageQuality(

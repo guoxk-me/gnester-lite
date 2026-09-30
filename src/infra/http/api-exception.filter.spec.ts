@@ -7,11 +7,12 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
+
 import * as Sentry from '@sentry/nestjs';
 import { I18nService } from 'nestjs-i18n';
 
 import { ApiExceptionFilter } from './api-exception.filter.js';
-import { SKIP_API_ENVELOPE_KEY } from '../common/http/http-metadata.js';
+import { SKIP_API_ENVELOPE_KEY } from '../../common/http/http-metadata.js';
 
 vi.mock('@sentry/nestjs', () => ({
   captureException: vi.fn(),

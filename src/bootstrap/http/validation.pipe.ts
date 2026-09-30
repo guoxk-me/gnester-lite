@@ -6,16 +6,12 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 
+import type { ValidationConstraint } from '../../infra/i18n/translation.types.js';
+import type { ValidationErrorDetail } from './validation.types.js';
 import {
   translateKey,
-  type ValidationConstraint,
   validationMessageKey,
-} from '../../i18n/i18n.translate.js';
-
-export interface ValidationErrorDetail {
-  readonly field: string;
-  readonly reason: string;
-}
+} from '../../infra/i18n/i18n.translate.js';
 
 const constraintValuePatterns: Partial<Record<ValidationConstraint, RegExp>> = {
   arrayMaxSize: /must contain no more than (.+) elements$/,

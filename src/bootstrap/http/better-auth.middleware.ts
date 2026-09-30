@@ -6,7 +6,7 @@ import {
   isBetterAuthRequestPath,
 } from '../../config/better-auth.config.js';
 import type { BetterAuthRequestHandler } from '../../better-auth/better-auth.service.js';
-import { resolveSupportedLanguage } from '../../i18n/i18n.translate.js';
+import { resolveSupportedLanguage } from '../../infra/i18n/i18n.translate.js';
 
 export const BETTER_AUTH_REQUEST_BODY_LIMIT_BYTES = 1_048_576;
 

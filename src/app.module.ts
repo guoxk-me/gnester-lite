@@ -13,7 +13,7 @@ import { CsrfModule } from './csrf/csrf.module.js';
 import { HealthModule } from './health/health.module.js';
 import { LoggerModule } from './logger/logger.module.js';
 import { RateLimitModule } from './rate-limit/rate-limit.module.js';
-import { I18nModule } from './i18n/i18n.module.js';
+import { HttpResponseModule as I18nModule } from './infra/http/http-response.module.js';
 import { SentryModule } from './sentry/sentry.module.js';
 import { UserManagementModule } from './user-management/user-management.module.js';
 import { DemosModule } from './examples/demos.module.js';

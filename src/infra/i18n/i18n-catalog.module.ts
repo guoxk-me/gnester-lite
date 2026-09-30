@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 
 import { Module } from '@nestjs/common';
+
 import { I18nModule } from 'nestjs-i18n';
 
 import { I18N_FALLBACK_LANGUAGE } from './i18n.constants.js';
