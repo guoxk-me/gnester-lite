@@ -256,9 +256,10 @@ export class AssistantConfigurationService {
           'UPDATE `assistant_preferences` SET `defaultProvider` = ?, `defaultModel` = ? WHERE `userId` = ? AND `defaultModel` IS NULL',
           [provider, validationModel.id, userId],
         );
+        // AI modified: default repair belongs to the same durable change as the Key and its audit event.
+        await this.repairDefault(userId, runner);
       },
     );
-    await this.repairDefault(userId);
     return this.getConfiguration(userId);
   }
 
@@ -304,9 +305,9 @@ export class AssistantConfigurationService {
               [position, id],
             );
         }
+        await this.repairDefault(userId, runner);
       },
     );
-    await this.repairDefault(userId);
     return this.getConfiguration(userId);
   }
 

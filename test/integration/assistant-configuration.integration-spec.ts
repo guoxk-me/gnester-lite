@@ -368,6 +368,50 @@ describe('personal configuration transactions and revocation', () => {
       .expect(401);
   });
 
+  it('rolls back Key and default changes when their success audit cannot be persisted', async () => {
+    // AI modified: inject the persistence fault after default repair, while MySQL still owns the real transaction.
+    await configuration.savePreferences(ownerId, openai, [deepseek]);
+    const before = await configuration.getConfiguration(ownerId);
+    const openaiKey = before.keys.find((key) => key.provider === 'openai')!;
+    const createTransaction = database.createQueryRunner.bind(database);
+    const restoreQueries: Array<() => void> = [];
+    const transaction = vi
+      .spyOn(database, 'createQueryRunner')
+      .mockImplementation((mode) => {
+        const runner = createTransaction(mode);
+        const executeQuery = runner.query.bind(runner);
+        const auditInsert = vi
+          .spyOn(runner, 'query')
+          .mockImplementation(async (...arguments_) => {
+            if (
+              runner.isTransactionActive &&
+              arguments_[0].startsWith(
+                'INSERT INTO `assistant_configuration_audit`',
+              )
+            ) {
+              throw new Error('Simulated audit storage failure');
+            }
+            return executeQuery(...arguments_);
+          });
+        restoreQueries.push(() => auditInsert.mockRestore());
+        return runner;
+      });
+    try {
+      await expect(
+        configuration.updateKey(ownerId, openaiKey.id, { isEnabled: false }),
+      ).rejects.toThrow('Simulated audit storage failure');
+      const after = await configuration.getConfiguration(ownerId);
+      expect(after.keys.find((key) => key.id === openaiKey.id)?.isEnabled).toBe(
+        true,
+      );
+      expect(after.defaultModel).toEqual(openai);
+      expect(after.backupModels).toEqual([deepseek]);
+    } finally {
+      for (const restoreQuery of restoreQueries) restoreQuery();
+      transaction.mockRestore();
+    }
+  });
+
   it('records a rejected candidate without storing the Key or replacing a working connection', async () => {
     const before = await configuration.getConfiguration(ownerId);
     providers.verifyTextGeneration.mockRejectedValueOnce(
