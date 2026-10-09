@@ -1,4 +1,4 @@
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -517,6 +517,16 @@ try {
   console.log(
     `Verified ${documentedOperationIds.size} application and infrastructure OpenAPI operations.`,
   );
+  // AI modified: export only a document that passed the same infrastructure-free contract checks.
+  if (process.argv[2] === '--output') {
+    if (!process.argv[3]) throw new Error('Supply an OpenAPI output path.');
+    // AI modified: exported frontend contracts use the runtime's Axios CSRF header rather than this gate's synthetic header.
+    applyCsrfOpenApiContract(document, {
+      getHeaderName: () => 'X-XSRF-TOKEN',
+      isEnabled: () => true,
+    });
+    await writeFile(process.argv[3], `${JSON.stringify(document, null, 2)}\n`);
+  }
 } finally {
   await app.close();
 }
