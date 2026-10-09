@@ -1,6 +1,7 @@
 import type { DataSource } from 'typeorm';
 
 import type { SymmetricEncryptionService } from '../../infra/crypto/symmetric-encryption.service.js';
+import { AssistantCancellation } from './assistant-generation.service.js';
 import { AssistantConfigurationService } from './assistant-configuration.service.js';
 import {
   AssistantProviderService,
@@ -24,6 +25,7 @@ describe('personal assistant models', () => {
       { query } as unknown as DataSource,
       { decryptString: vi.fn() } as unknown as SymmetricEncryptionService,
       new AssistantProviderService(),
+      new AssistantCancellation(),
     );
     await expect(
       service.generationKey(
@@ -88,6 +90,7 @@ describe('personal assistant models', () => {
       { query } as unknown as DataSource,
       { decryptString } as unknown as SymmetricEncryptionService,
       new AssistantProviderService(),
+      new AssistantCancellation(),
     );
     await expect(
       service.nextGenerationKey(

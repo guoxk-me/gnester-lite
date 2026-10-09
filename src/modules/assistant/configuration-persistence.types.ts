@@ -31,3 +31,26 @@ export interface PreferenceRow {
   openaiConsentVersion: string | null;
   updatedAt: Date;
 }
+
+// AI modified: keep persistent model controls independent of per-Key catalog rows.
+export interface ModelPreferenceRow {
+  provider: AssistantProvider;
+  modelId: string;
+  isEnabled: number;
+}
+
+export interface ConfigurationAuditEvent {
+  userId: string;
+  action:
+    | 'key_created'
+    | 'key_replaced'
+    | 'key_updated'
+    | 'key_deleted'
+    | 'key_revoked'
+    | 'model_updated'
+    | 'preferences_updated'
+    | 'openai_consent';
+  targetId: string;
+  outcome: 'success' | 'denied' | 'failed';
+  errorCode: string | null;
+}

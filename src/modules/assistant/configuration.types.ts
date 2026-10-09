@@ -12,6 +12,8 @@ export interface AssistantKeyView {
 }
 
 export interface AssistantModelView extends AssistantModelChoice {
+  // AI modified: distinguish the owner's switch from provider and credential availability.
+  isEnabled: boolean;
   isAvailable: boolean;
   reason:
     | 'unavailable'

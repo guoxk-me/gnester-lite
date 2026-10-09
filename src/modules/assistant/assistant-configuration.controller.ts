@@ -1,4 +1,9 @@
-import { ApiCookieAuth, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import {
+  ApiCookieAuth,
+  ApiUnauthorizedResponse,
+  ApiOkResponse,
+  ApiCreatedResponse,
+} from '@nestjs/swagger';
 import {
   Body,
   Controller,
@@ -18,12 +23,14 @@ import {
   UpdateKeyBody,
   SavePreferencesBody,
   SelectModelBody,
+  UpdateModelBody,
 } from './dto/configuration.dto.js';
 import { SessionAuthGuard } from '../identity/session-auth.guard.js';
 import { CurrentSessionUser } from '../identity/current-session-user.decorator.js';
 import type { SessionUser } from '../identity/session.types.js';
 import { AssistantConfigurationService } from './assistant-configuration.service.js';
 import { AssistantService } from './assistant.service.js';
+import { AssistantConfigurationResponse } from './dto/configuration-response.dto.js';
 import type { AssistantConfigurationView } from './configuration.types.js';
 import type { ConversationView } from './conversation.types.js';
 
@@ -42,6 +49,7 @@ export class AssistantConfigurationController {
   ) {}
 
   @Get('configuration')
+  @ApiOkResponse({ type: AssistantConfigurationResponse })
   async getConfiguration(
     @CurrentSessionUser() user: SessionUser,
   ): Promise<AssistantConfigurationView> {
@@ -49,6 +57,7 @@ export class AssistantConfigurationController {
   }
 
   @Post('keys')
+  @ApiCreatedResponse({ type: AssistantConfigurationResponse })
   @Throttle({ short: { limit: 5, ttl: 60_000 } })
   async addKey(
     @CurrentSessionUser() user: SessionUser,
@@ -63,6 +72,7 @@ export class AssistantConfigurationController {
   }
 
   @Put('keys/:keyId')
+  @ApiOkResponse({ type: AssistantConfigurationResponse })
   @Throttle({ short: { limit: 5, ttl: 60_000 } })
   async replaceKey(
     @CurrentSessionUser() user: SessionUser,
@@ -79,6 +89,7 @@ export class AssistantConfigurationController {
   }
 
   @Patch('keys/:keyId')
+  @ApiOkResponse({ type: AssistantConfigurationResponse })
   async updateKey(
     @CurrentSessionUser() user: SessionUser,
     @Param('keyId') keyId: string,
@@ -88,6 +99,7 @@ export class AssistantConfigurationController {
   }
 
   @Delete('keys/:keyId')
+  @ApiOkResponse({ type: AssistantConfigurationResponse })
   async deleteKey(
     @CurrentSessionUser() user: SessionUser,
     @Param('keyId') keyId: string,
@@ -95,7 +107,27 @@ export class AssistantConfigurationController {
     return this.configuration.deleteKey(user.id, keyId);
   }
 
+  // AI modified: model preferences and emergency revocation pass the same session and account boundary as other configuration writes.
+  @Patch('models')
+  @ApiOkResponse({ type: AssistantConfigurationResponse })
+  async updateModel(
+    @CurrentSessionUser() user: SessionUser,
+    @Body() body: UpdateModelBody,
+  ): Promise<AssistantConfigurationView> {
+    return this.configuration.updateModel(user.id, body);
+  }
+
+  @Post('keys/:keyId/revoke')
+  @ApiCreatedResponse({ type: AssistantConfigurationResponse })
+  async revokeKey(
+    @CurrentSessionUser() user: SessionUser,
+    @Param('keyId') keyId: string,
+  ): Promise<AssistantConfigurationView> {
+    return this.configuration.revokeKey(user.id, keyId);
+  }
+
   @Post('keys/:keyId/refresh-models')
+  @ApiCreatedResponse({ type: AssistantConfigurationResponse })
   @Throttle({ short: { limit: 10, ttl: 60_000 } })
   async refreshModels(
     @CurrentSessionUser() user: SessionUser,
@@ -113,6 +145,7 @@ export class AssistantConfigurationController {
   }
 
   @Put('preferences')
+  @ApiOkResponse({ type: AssistantConfigurationResponse })
   async savePreferences(
     @CurrentSessionUser() user: SessionUser,
     @Body() body: SavePreferencesBody,

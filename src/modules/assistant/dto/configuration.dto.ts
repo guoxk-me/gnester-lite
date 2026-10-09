@@ -42,6 +42,13 @@ export class SavePreferencesBody {
   backupModels!: ModelChoiceBody[];
 }
 
+// AI modified: a model switch and its replacement defaults are validated as one account-owned change.
+export class UpdateModelBody extends SavePreferencesBody {
+  @IsIn(['deepseek', 'openai']) provider!: 'deepseek' | 'openai';
+  @IsString() @Length(1, 100) modelId!: string;
+  @IsBoolean() isEnabled!: boolean;
+}
+
 export class SelectModelBody extends ModelChoiceBody {
   @IsOptional() @IsBoolean() crossProviderConfirmed?: boolean;
 }

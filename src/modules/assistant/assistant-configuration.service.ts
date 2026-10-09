@@ -4,11 +4,13 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  HttpException,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 
-import { DataSource } from 'typeorm';
+import { DataSource, type QueryRunner } from 'typeorm';
 
 import {
   AssistantProviderService,
@@ -19,6 +21,8 @@ import type {
   KeyRow,
   KeyModelRow,
   PreferenceRow,
+  ModelPreferenceRow,
+  ConfigurationAuditEvent,
 } from './configuration-persistence.types.js';
 import type { CatalogModel } from './provider-protocol.types.js';
 import type {
@@ -26,6 +30,7 @@ import type {
   AssistantConfigurationView,
 } from './configuration.types.js';
 import { SymmetricEncryptionService } from '../../infra/crypto/symmetric-encryption.service.js';
+import { AssistantCancellation } from './assistant-generation.service.js';
 
 const OPENAI_CONSENT_VERSION = '2026-09-29';
 
@@ -35,14 +40,16 @@ function isAssistantProvider(provider: string): provider is AssistantProvider {
 
 @Injectable()
 export class AssistantConfigurationService {
+  private readonly logger = new Logger(AssistantConfigurationService.name);
   constructor(
     private readonly database: DataSource,
     private readonly encryption: SymmetricEncryptionService,
     private readonly providers: AssistantProviderService,
+    private readonly cancellation: AssistantCancellation,
   ) {}
 
   async getConfiguration(userId: string): Promise<AssistantConfigurationView> {
-    const [keys, keyModels, preference] = await Promise.all([
+    const [keys, keyModels, preference, modelPreferences] = await Promise.all([
       this.database.query<KeyRow[]>(
         'SELECT * FROM `assistant_key` WHERE `userId` = ? AND `isPendingDeletion` = 0 ORDER BY `provider`, `position`, `createdAt`',
         [userId],
@@ -58,7 +65,16 @@ export class AssistantConfigurationService {
         [userId],
       ),
       this.readPreference(userId),
+      this.database.query<ModelPreferenceRow[]>(
+        'SELECT `provider`, `modelId`, `isEnabled` FROM `assistant_model_preference` WHERE `userId` = ?',
+        [userId],
+      ),
     ]);
+    const disabledModels = new Set(
+      modelPreferences
+        .filter((model) => !model.isEnabled)
+        .map((model) => `${model.provider}:${model.modelId}`),
+    );
     const models = new Map<string, AssistantModelView>();
     const lastSyncedByKey = new Map<string, number>();
     for (const model of keyModels) {
@@ -71,6 +87,7 @@ export class AssistantConfigurationService {
       );
       const identity = `${model.provider}:${model.modelId}`;
       const isAvailable =
+        !disabledModels.has(identity) &&
         Boolean(model.isEnabled) &&
         !model.lastErrorCode &&
         Boolean(model.isTextCompatible) &&
@@ -79,9 +96,11 @@ export class AssistantConfigurationService {
       models.set(identity, {
         provider: model.provider,
         modelId: model.modelId,
+        isEnabled: !disabledModels.has(identity),
         isAvailable: Boolean(existing?.isAvailable || isAvailable),
-        reason:
-          existing?.isAvailable || isAvailable
+        reason: disabledModels.has(identity)
+          ? 'disabled'
+          : existing?.isAvailable || isAvailable
             ? null
             : !model.isTextCompatible
               ? 'pending_compatibility'
@@ -151,37 +170,49 @@ export class AssistantConfigurationService {
       throw new BadRequestException('Key name and API Key are required');
     }
     const existingKey = existingKeyId
-      ? await this.ownedKey(userId, existingKeyId)
+      ? await this.ownedKey(userId, existingKeyId, 'key_replaced')
       : null;
     if (existingKey && existingKey.provider !== provider) {
       throw new BadRequestException('Provider cannot be changed');
     }
     // AI modified: a candidate never replaces a working secret until both official checks pass.
-    const catalog = await this.providers.readCatalog(provider, cleanKey);
-    const compatibleModels = catalog.filter((model) =>
-      isTextModel(provider, model),
-    );
-    if (!compatibleModels.length) {
-      throw new BadRequestException(
-        'No compatible text model is available for this Key',
-      );
-    }
-    const preferredIds =
-      provider === 'deepseek'
-        ? ['deepseek-flash', 'deepseek-chat', 'deepseek-reasoner']
-        : ['gpt-4o-mini', 'gpt-4.1-mini', 'gpt-5-mini'];
-    const validationModel =
-      preferredIds
-        .map((id) => compatibleModels.find((model) => model.id === id))
-        .find((model) => model !== undefined) ?? compatibleModels[0]!;
+    let catalog: CatalogModel[];
+    let validationModel: CatalogModel;
     try {
-      await this.providers.verifyTextGeneration(
-        provider,
-        validationModel.id,
-        cleanKey,
+      catalog = await this.providers.readCatalog(provider, cleanKey);
+      const compatibleModels = catalog.filter((model) =>
+        isTextModel(provider, model),
       );
-    } catch {
-      throw new BadRequestException('API Key validation failed');
+      if (!compatibleModels.length) {
+        throw new BadRequestException(
+          'No compatible text model is available for this Key',
+        );
+      }
+      const preferredIds =
+        provider === 'deepseek'
+          ? ['deepseek-flash', 'deepseek-chat', 'deepseek-reasoner']
+          : ['gpt-4o-mini', 'gpt-4.1-mini', 'gpt-5-mini'];
+      validationModel =
+        preferredIds
+          .map((id) => compatibleModels.find((model) => model.id === id))
+          .find((model) => model !== undefined) ?? compatibleModels[0]!;
+      try {
+        await this.providers.verifyTextGeneration(
+          provider,
+          validationModel.id,
+          cleanKey,
+        );
+      } catch {
+        throw new BadRequestException('API Key validation failed');
+      }
+    } catch (error) {
+      await this.recordFailedChange(
+        userId,
+        existingKeyId ? 'key_replaced' : 'key_created',
+        `${provider}:${existingKeyId ?? 'new'}`,
+        error,
+      );
+      throw error;
     }
 
     const keyId = existingKeyId ?? randomUUID();
@@ -189,48 +220,44 @@ export class AssistantConfigurationService {
       cleanKey,
       `${userId}:${provider}:${keyId}`,
     );
-    const runner = this.database.createQueryRunner();
-    await runner.connect();
-    try {
-      await runner.startTransaction();
-      if (existingKey) {
+    await this.changeConfiguration(
+      userId,
+      existingKeyId ? 'key_replaced' : 'key_created',
+      `${provider}:${keyId}`,
+      async (runner) => {
+        if (existingKey) {
+          await runner.query(
+            'UPDATE `assistant_key` SET `name` = ?, `encryptedKey` = ?, `isEnabled` = 1, `lastErrorCode` = NULL WHERE `id` = ? AND `userId` = ?',
+            [cleanName, encryptedKey, keyId, userId],
+          );
+        } else {
+          const positions = (await runner.query(
+            'SELECT COALESCE(MAX(`position`), -1) AS `position` FROM `assistant_key` WHERE `userId` = ? AND `provider` = ?',
+            [userId, provider],
+          )) as { position: number }[];
+          await runner.query(
+            'INSERT INTO `assistant_key` (`id`, `userId`, `provider`, `name`, `encryptedKey`, `position`) VALUES (?, ?, ?, ?, ?, ?)',
+            [
+              keyId,
+              userId,
+              provider,
+              cleanName,
+              encryptedKey,
+              Number(positions[0]?.position ?? -1) + 1,
+            ],
+          );
+        }
+        await this.writeCatalog(runner, keyId, provider, catalog);
         await runner.query(
-          'UPDATE `assistant_key` SET `name` = ?, `encryptedKey` = ?, `isEnabled` = 1, `lastErrorCode` = NULL WHERE `id` = ? AND `userId` = ?',
-          [cleanName, encryptedKey, keyId, userId],
+          'INSERT IGNORE INTO `assistant_preferences` (`userId`, `backupModels`) VALUES (?, ?)',
+          [userId, '[]'],
         );
-      } else {
-        const positions = (await runner.query(
-          'SELECT COALESCE(MAX(`position`), -1) AS `position` FROM `assistant_key` WHERE `userId` = ? AND `provider` = ?',
-          [userId, provider],
-        )) as { position: number }[];
         await runner.query(
-          'INSERT INTO `assistant_key` (`id`, `userId`, `provider`, `name`, `encryptedKey`, `position`) VALUES (?, ?, ?, ?, ?, ?)',
-          [
-            keyId,
-            userId,
-            provider,
-            cleanName,
-            encryptedKey,
-            Number(positions[0]?.position ?? -1) + 1,
-          ],
+          'UPDATE `assistant_preferences` SET `defaultProvider` = ?, `defaultModel` = ? WHERE `userId` = ? AND `defaultModel` IS NULL',
+          [provider, validationModel.id, userId],
         );
-      }
-      await this.writeCatalog(runner, keyId, provider, catalog);
-      await runner.query(
-        'INSERT IGNORE INTO `assistant_preferences` (`userId`, `backupModels`) VALUES (?, ?)',
-        [userId, '[]'],
-      );
-      await runner.query(
-        'UPDATE `assistant_preferences` SET `defaultProvider` = ?, `defaultModel` = ? WHERE `userId` = ? AND `defaultModel` IS NULL',
-        [provider, validationModel.id, userId],
-      );
-      await runner.commitTransaction();
-    } catch (error) {
-      if (runner.isTransactionActive) await runner.rollbackTransaction();
-      throw error;
-    } finally {
-      await runner.release();
-    }
+      },
+    );
     await this.repairDefault(userId);
     return this.getConfiguration(userId);
   }
@@ -240,49 +267,45 @@ export class AssistantConfigurationService {
     keyId: string,
     changes: { name?: string; isEnabled?: boolean; position?: number },
   ): Promise<AssistantConfigurationView> {
-    const owned = await this.ownedKey(userId, keyId);
+    const owned = await this.ownedKey(userId, keyId, 'key_updated');
     if (changes.name !== undefined && !changes.name.trim()) {
       throw new BadRequestException('Key name is required');
     }
-    const runner = this.database.createQueryRunner();
-    await runner.connect();
-    try {
-      await runner.startTransaction();
-      await runner.query(
-        'UPDATE `assistant_key` SET `name` = COALESCE(?, `name`), `isEnabled` = COALESCE(?, `isEnabled`) WHERE `id` = ? AND `userId` = ?',
-        [
-          changes.name?.trim() ?? null,
-          changes.isEnabled === undefined ? null : Number(changes.isEnabled),
-          keyId,
-          userId,
-        ],
-      );
-      if (changes.position !== undefined) {
-        const siblings = (await runner.query(
-          'SELECT `id` FROM `assistant_key` WHERE `userId` = ? AND `provider` = ? AND `isPendingDeletion` = 0 ORDER BY `position`, `createdAt` FOR UPDATE',
-          [userId, owned.provider],
-        )) as { id: string }[];
-        const orderedIds = siblings
-          .map((sibling) => sibling.id)
-          .filter((id) => id !== keyId);
-        orderedIds.splice(
-          Math.min(changes.position, orderedIds.length),
-          0,
-          keyId,
+    await this.changeConfiguration(
+      userId,
+      'key_updated',
+      `${owned.provider}:${keyId}`,
+      async (runner) => {
+        await runner.query(
+          'UPDATE `assistant_key` SET `name` = COALESCE(?, `name`), `isEnabled` = COALESCE(?, `isEnabled`) WHERE `id` = ? AND `userId` = ?',
+          [
+            changes.name?.trim() ?? null,
+            changes.isEnabled === undefined ? null : Number(changes.isEnabled),
+            keyId,
+            userId,
+          ],
         );
-        for (const [position, id] of orderedIds.entries())
-          await runner.query(
-            'UPDATE `assistant_key` SET `position` = ? WHERE `id` = ?',
-            [position, id],
+        if (changes.position !== undefined) {
+          const siblings = (await runner.query(
+            'SELECT `id` FROM `assistant_key` WHERE `userId` = ? AND `provider` = ? AND `isPendingDeletion` = 0 ORDER BY `position`, `createdAt` FOR UPDATE',
+            [userId, owned.provider],
+          )) as { id: string }[];
+          const orderedIds = siblings
+            .map((sibling) => sibling.id)
+            .filter((id) => id !== keyId);
+          orderedIds.splice(
+            Math.min(changes.position, orderedIds.length),
+            0,
+            keyId,
           );
-      }
-      await runner.commitTransaction();
-    } catch (error) {
-      if (runner.isTransactionActive) await runner.rollbackTransaction();
-      throw error;
-    } finally {
-      await runner.release();
-    }
+          for (const [position, id] of orderedIds.entries())
+            await runner.query(
+              'UPDATE `assistant_key` SET `position` = ? WHERE `id` = ?',
+              [position, id],
+            );
+        }
+      },
+    );
     await this.repairDefault(userId);
     return this.getConfiguration(userId);
   }
@@ -291,13 +314,20 @@ export class AssistantConfigurationService {
     userId: string,
     keyId: string,
   ): Promise<AssistantConfigurationView> {
-    await this.ownedKey(userId, keyId);
+    const key = await this.ownedKey(userId, keyId, 'key_deleted');
     // AI modified: in-flight answers may finish, but queued and new work cannot reuse a removed Key.
-    await this.database.query(
-      'UPDATE `assistant_key` SET `isEnabled` = 0, `isPendingDeletion` = 1 WHERE `id` = ? AND `userId` = ?',
-      [keyId, userId],
+    await this.changeConfiguration(
+      userId,
+      'key_deleted',
+      `${key.provider}:${keyId}`,
+      async (runner) => {
+        await runner.query(
+          'UPDATE `assistant_key` SET `isEnabled` = 0, `isPendingDeletion` = 1 WHERE `id` = ? AND `userId` = ?',
+          [keyId, userId],
+        );
+        await this.repairDefault(userId, runner);
+      },
     );
-    await this.repairDefault(userId);
     await this.finishKeyDeletion(keyId);
     return this.getConfiguration(userId);
   }
@@ -320,9 +350,35 @@ export class AssistantConfigurationService {
     defaultModel: AssistantModelChoice | null,
     backupModels: AssistantModelChoice[],
   ): Promise<AssistantConfigurationView> {
+    await this.changeConfiguration(
+      userId,
+      'preferences_updated',
+      userId,
+      async (runner) => {
+        await this.requireValidPreferences(
+          userId,
+          defaultModel,
+          backupModels,
+          runner,
+        );
+        await this.writePreferences(runner, userId, defaultModel, backupModels);
+      },
+    );
+    return this.getConfiguration(userId);
+  }
+
+  private async requireValidPreferences(
+    userId: string,
+    defaultModel: AssistantModelChoice | null,
+    backupModels: AssistantModelChoice[],
+    executor: DataSource | QueryRunner,
+  ): Promise<void> {
     if (backupModels.length > 12)
       throw new BadRequestException('Too many backup models');
-    if (defaultModel && !(await this.isModelAvailable(userId, defaultModel))) {
+    if (
+      defaultModel &&
+      !(await this.isModelAvailable(userId, defaultModel, executor))
+    ) {
       throw new BadRequestException('Default model is unavailable');
     }
     const identities = new Set<string>();
@@ -336,14 +392,25 @@ export class AssistantConfigurationService {
         throw new BadRequestException('Backup models must be distinct');
       }
       identities.add(identity);
-      if (!(await this.isModelAvailable(userId, model))) {
+      if (!(await this.isModelAvailable(userId, model, executor))) {
         throw new BadRequestException('Backup model is unavailable');
       }
     }
-    if (!defaultModel && (await this.getAvailableModels(userId)).length) {
+    if (
+      !defaultModel &&
+      (await this.getAvailableModels(userId, executor)).length
+    ) {
       throw new BadRequestException('A default model is required');
     }
-    await this.database.query(
+  }
+
+  private async writePreferences(
+    executor: DataSource | QueryRunner,
+    userId: string,
+    defaultModel: AssistantModelChoice | null,
+    backupModels: AssistantModelChoice[],
+  ): Promise<void> {
+    await executor.query(
       'INSERT INTO `assistant_preferences` (`userId`, `defaultProvider`, `defaultModel`, `backupModels`, `modelNotice`) VALUES (?, ?, ?, ?, NULL) ON DUPLICATE KEY UPDATE `defaultProvider` = VALUES(`defaultProvider`), `defaultModel` = VALUES(`defaultModel`), `backupModels` = VALUES(`backupModels`), `modelNotice` = NULL',
       [
         userId,
@@ -352,14 +419,114 @@ export class AssistantConfigurationService {
         JSON.stringify(backupModels),
       ],
     );
-    return this.getConfiguration(userId);
   }
 
   async consentToOpenAi(userId: string): Promise<void> {
-    await this.database.query(
-      'INSERT INTO `assistant_preferences` (`userId`, `backupModels`, `openaiConsentVersion`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `openaiConsentVersion` = VALUES(`openaiConsentVersion`)',
-      [userId, '[]', OPENAI_CONSENT_VERSION],
+    await this.changeConfiguration(
+      userId,
+      'openai_consent',
+      userId,
+      async (runner) => {
+        await runner.query(
+          'INSERT INTO `assistant_preferences` (`userId`, `backupModels`, `openaiConsentVersion`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `openaiConsentVersion` = VALUES(`openaiConsentVersion`)',
+          [userId, '[]', OPENAI_CONSENT_VERSION],
+        );
+      },
     );
+  }
+
+  // AI modified: stopping a model and replacing its defaults is one durable account-owned operation.
+  async updateModel(
+    userId: string,
+    changes: AssistantModelChoice & {
+      isEnabled: boolean;
+      defaultModel?: AssistantModelChoice | null;
+      backupModels: AssistantModelChoice[];
+    },
+  ): Promise<AssistantConfigurationView> {
+    await this.changeConfiguration(
+      userId,
+      'model_updated',
+      `${changes.provider}:${changes.modelId}`,
+      async (runner) => {
+        const catalog = (await runner.query(
+          'SELECT km.`modelId` FROM `assistant_key_model` km INNER JOIN `assistant_key` k ON k.`id` = km.`keyId` WHERE k.`userId` = ? AND k.`provider` = ? AND km.`modelId` = ? AND k.`isPendingDeletion` = 0 LIMIT 1',
+          [userId, changes.provider, changes.modelId],
+        )) as unknown as { modelId: string }[];
+        if (!catalog.length) throw new NotFoundException();
+        await runner.query(
+          'INSERT INTO `assistant_model_preference` (`userId`, `provider`, `modelId`, `isEnabled`) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE `isEnabled` = VALUES(`isEnabled`), `updatedAt` = CURRENT_TIMESTAMP(3)',
+          [
+            userId,
+            changes.provider,
+            changes.modelId,
+            Number(changes.isEnabled),
+          ],
+        );
+        const defaultModel = changes.defaultModel ?? null;
+        await this.requireValidPreferences(
+          userId,
+          defaultModel,
+          changes.backupModels,
+          runner,
+        );
+        await this.writePreferences(
+          runner,
+          userId,
+          defaultModel,
+          changes.backupModels,
+        );
+        if (!changes.isEnabled)
+          await runner.query(
+            'UPDATE `assistant_answer` SET `status` = ?, `errorCode` = ?, `updatedAt` = CURRENT_TIMESTAMP(3) WHERE `userId` = ? AND `provider` = ? AND `model` = ? AND `status` = ?',
+            [
+              'stopped',
+              'model_disabled',
+              userId,
+              changes.provider,
+              changes.modelId,
+              'queued',
+            ],
+          );
+      },
+    );
+    return this.getConfiguration(userId);
+  }
+
+  // AI modified: revocation shares the account lock with publication and worker admission, so a removed Key cannot fall back and resend.
+  async revokeKey(
+    userId: string,
+    keyId: string,
+  ): Promise<AssistantConfigurationView> {
+    const owned = await this.ownedKey(userId, keyId, 'key_revoked');
+    const stoppedAnswers = await this.changeConfiguration(
+      userId,
+      'key_revoked',
+      `${owned.provider}:${keyId}`,
+      async (runner) => {
+        const keys = (await runner.query(
+          'SELECT * FROM `assistant_key` WHERE `id` = ? AND `userId` = ? FOR UPDATE',
+          [keyId, userId],
+        )) as unknown as KeyRow[];
+        if (!keys[0]) throw new NotFoundException();
+        const answers = (await runner.query(
+          'SELECT `id` FROM `assistant_answer` WHERE `userId` = ? AND `keyId` = ? AND `status` IN (?, ?) FOR UPDATE',
+          [userId, keyId, 'queued', 'generating'],
+        )) as unknown as { id: string }[];
+        await runner.query(
+          'UPDATE `assistant_answer` SET `status` = ?, `errorCode` = ?, `updatedAt` = CURRENT_TIMESTAMP(3) WHERE `userId` = ? AND `keyId` = ? AND `status` IN (?, ?)',
+          ['stopped', 'key_revoked', userId, keyId, 'queued', 'generating'],
+        );
+        await runner.query(
+          'DELETE FROM `assistant_key` WHERE `id` = ? AND `userId` = ?',
+          [keyId, userId],
+        );
+        await this.repairDefault(userId, runner);
+        return answers;
+      },
+    );
+    for (const answer of stoppedAnswers) this.cancellation.cancel(answer.id);
+    return this.getConfiguration(userId);
   }
 
   async requireOpenAiConsent(
@@ -398,8 +565,9 @@ export class AssistantConfigurationService {
   async isModelAvailable(
     userId: string,
     model: AssistantModelChoice,
+    executor: DataSource | QueryRunner = this.database,
   ): Promise<boolean> {
-    return (await this.availableKey(userId, model)) !== null;
+    return (await this.availableKey(userId, model, executor)) !== null;
   }
 
   async generationKey(
@@ -407,7 +575,7 @@ export class AssistantConfigurationService {
     model: AssistantModelChoice,
     preferredKeyId: string | null,
   ): Promise<{ id: string; apiKey: string } | null> {
-    const keys = await this.availableKeys(userId, model);
+    const keys = await this.availableKeys(userId, model, this.database, true);
     const key =
       keys.find(
         (candidate) =>
@@ -428,7 +596,7 @@ export class AssistantConfigurationService {
     model: AssistantModelChoice,
     currentKeyId: string,
   ): Promise<{ id: string; apiKey: string } | null> {
-    const keys = await this.availableKeys(userId, model);
+    const keys = await this.availableKeys(userId, model, this.database, true);
     const index = keys.findIndex((key) => key.id === currentKeyId);
     const key = keys
       .slice(index + 1)
@@ -549,11 +717,12 @@ export class AssistantConfigurationService {
 
   private async getAvailableModels(
     userId: string,
+    executor: DataSource | QueryRunner = this.database,
   ): Promise<AssistantModelChoice[]> {
-    const rows = await this.database.query<
+    const rows = await executor.query<
       { provider: AssistantProvider; modelId: string }[]
     >(
-      'SELECT DISTINCT k.`provider`, km.`modelId` FROM `assistant_key_model` km INNER JOIN `assistant_key` k ON k.`id` = km.`keyId` WHERE k.`userId` = ? AND k.`isEnabled` = 1 AND k.`isPendingDeletion` = 0 AND k.`lastErrorCode` IS NULL AND km.`isTextCompatible` = 1 AND km.`missingCount` < 2',
+      'SELECT DISTINCT k.`provider`, km.`modelId` FROM `assistant_key_model` km INNER JOIN `assistant_key` k ON k.`id` = km.`keyId` LEFT JOIN `assistant_model_preference` p ON p.`userId` = k.`userId` AND p.`provider` = k.`provider` AND p.`modelId` = km.`modelId` WHERE k.`userId` = ? AND COALESCE(p.`isEnabled`, 1) = 1 AND k.`isEnabled` = 1 AND k.`isPendingDeletion` = 0 AND k.`lastErrorCode` IS NULL AND km.`isTextCompatible` = 1 AND km.`missingCount` < 2',
       [userId],
     );
     return rows;
@@ -562,9 +731,11 @@ export class AssistantConfigurationService {
   private async availableKeys(
     userId: string,
     model: AssistantModelChoice,
+    executor: DataSource | QueryRunner = this.database,
+    isAlreadyGenerating = false,
   ): Promise<KeyRow[]> {
-    return this.database.query<KeyRow[]>(
-      'SELECT k.* FROM `assistant_key` k INNER JOIN `assistant_key_model` km ON km.`keyId` = k.`id` WHERE k.`userId` = ? AND k.`provider` = ? AND k.`isEnabled` = 1 AND k.`isPendingDeletion` = 0 AND km.`modelId` = ? AND km.`isTextCompatible` = 1 AND km.`missingCount` < 2 ORDER BY k.`position`, k.`createdAt`',
+    return executor.query<KeyRow[]>(
+      `SELECT k.* FROM \`assistant_key\` k INNER JOIN \`assistant_key_model\` km ON km.\`keyId\` = k.\`id\` LEFT JOIN \`assistant_model_preference\` p ON p.\`userId\` = k.\`userId\` AND p.\`provider\` = k.\`provider\` AND p.\`modelId\` = km.\`modelId\` WHERE k.\`userId\` = ? AND k.\`provider\` = ? AND k.\`isEnabled\` = 1 AND k.\`isPendingDeletion\` = 0 AND km.\`modelId\` = ? AND km.\`isTextCompatible\` = 1 AND km.\`missingCount\` < 2 ${isAlreadyGenerating ? '' : 'AND COALESCE(p.`isEnabled`, 1) = 1'} ORDER BY k.\`position\`, k.\`createdAt\``,
       [userId, model.provider, model.modelId],
     );
   }
@@ -572,25 +743,38 @@ export class AssistantConfigurationService {
   private async availableKey(
     userId: string,
     model: AssistantModelChoice,
+    executor: DataSource | QueryRunner = this.database,
   ): Promise<KeyRow | null> {
     return (
-      (await this.availableKeys(userId, model)).find(
+      (await this.availableKeys(userId, model, executor)).find(
         (key) => !key.lastErrorCode,
       ) ?? null
     );
   }
 
-  private async ownedKey(userId: string, keyId: string): Promise<KeyRow> {
+  private async ownedKey(
+    userId: string,
+    keyId: string,
+    action?: ConfigurationAuditEvent['action'],
+  ): Promise<KeyRow> {
     const keys = await this.database.query<KeyRow[]>(
       'SELECT * FROM `assistant_key` WHERE `id` = ? AND `userId` = ? AND `isPendingDeletion` = 0 LIMIT 1',
       [keyId, userId],
     );
-    if (!keys[0]) throw new NotFoundException();
+    if (!keys[0]) {
+      const error = new NotFoundException();
+      // AI modified: rejected reads must not be mislabeled as configuration writes.
+      if (action) await this.recordFailedChange(userId, action, keyId, error);
+      throw error;
+    }
     return keys[0];
   }
 
-  private async readPreference(userId: string): Promise<PreferenceRow | null> {
-    const rows = await this.database.query<PreferenceRow[]>(
+  private async readPreference(
+    userId: string,
+    executor: DataSource | QueryRunner = this.database,
+  ): Promise<PreferenceRow | null> {
+    const rows = await executor.query<PreferenceRow[]>(
       'SELECT * FROM `assistant_preferences` WHERE `userId` = ? LIMIT 1',
       [userId],
     );
@@ -614,25 +798,32 @@ export class AssistantConfigurationService {
     }
   }
 
-  private async repairDefault(userId: string): Promise<void> {
-    const preference = await this.readPreference(userId);
+  private async repairDefault(
+    userId: string,
+    executor: DataSource | QueryRunner = this.database,
+  ): Promise<void> {
+    const preference = await this.readPreference(userId, executor);
     if (!preference?.defaultProvider || !preference.defaultModel) return;
     if (
-      await this.isModelAvailable(userId, {
-        provider: preference.defaultProvider,
-        modelId: preference.defaultModel,
-      })
+      await this.isModelAvailable(
+        userId,
+        {
+          provider: preference.defaultProvider,
+          modelId: preference.defaultModel,
+        },
+        executor,
+      )
     )
       return;
     const backup = this.readBackupModels(preference.backupModels);
     let replacement: AssistantModelChoice | null = null;
     for (const model of backup) {
-      if (await this.isModelAvailable(userId, model)) {
+      if (await this.isModelAvailable(userId, model, executor)) {
         replacement = model;
         break;
       }
     }
-    await this.database.query(
+    await executor.query(
       'UPDATE `assistant_preferences` SET `defaultProvider` = ?, `defaultModel` = ?, `backupModels` = ?, `modelNotice` = ? WHERE `userId` = ?',
       [
         replacement?.provider ?? null,
@@ -655,6 +846,97 @@ export class AssistantConfigurationService {
         userId,
       ],
     );
+  }
+  // AI modified: all configuration writes serialize with answer admission and persist their safe success event atomically.
+  private async changeConfiguration<T>(
+    userId: string,
+    action: ConfigurationAuditEvent['action'],
+    targetId: string,
+    operation: (runner: QueryRunner) => Promise<T>,
+  ): Promise<T> {
+    const runner = this.database.createQueryRunner();
+    await runner.connect();
+    try {
+      await runner.startTransaction();
+      await runner.query('SELECT `id` FROM `user` WHERE `id` = ? FOR UPDATE', [
+        userId,
+      ]);
+      const response = await operation(runner);
+      await this.recordAudit(runner, {
+        userId,
+        action,
+        targetId,
+        outcome: 'success',
+        errorCode: null,
+      });
+      await runner.commitTransaction();
+      return response;
+    } catch (error) {
+      if (runner.isTransactionActive) await runner.rollbackTransaction();
+      await this.recordFailedChange(userId, action, targetId, error);
+      throw error;
+    } finally {
+      await runner.release();
+    }
+  }
+
+  private async recordAudit(
+    executor: DataSource | QueryRunner,
+    event: ConfigurationAuditEvent,
+  ): Promise<void> {
+    const separator = event.targetId.indexOf(':');
+    const provider = event.targetId.slice(0, separator);
+    const modelId =
+      event.action === 'model_updated'
+        ? event.targetId.slice(separator + 1)
+        : null;
+    await executor.query(
+      'INSERT INTO `assistant_configuration_audit` (`id`, `userId`, `action`, `targetId`, `provider`, `modelId`, `outcome`, `errorCode`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        randomUUID(),
+        event.userId,
+        event.action,
+        event.targetId,
+        isAssistantProvider(provider) ? provider : null,
+        modelId,
+        event.outcome,
+        event.errorCode,
+      ],
+    );
+  }
+
+  private async recordFailedChange(
+    userId: string,
+    action: ConfigurationAuditEvent['action'],
+    targetId: string,
+    error: unknown,
+  ): Promise<void> {
+    const status = error instanceof HttpException ? error.getStatus() : 500;
+    try {
+      await this.recordAudit(this.database, {
+        userId,
+        action,
+        targetId,
+        outcome: [403, 404].includes(status) ? 'denied' : 'failed',
+        errorCode: `HTTP_${status}`,
+      });
+    } catch {
+      // AI modified: audit failures cannot expose credential-bearing SQL errors or turn a rolled-back change into success.
+      this.logger.error(
+        'Failed to persist an assistant configuration failure event',
+      );
+    }
+  }
+
+  async requireSelectedKey(
+    runner: QueryRunner,
+    userId: string,
+    model: AssistantModelChoice,
+    keyId: string,
+  ): Promise<void> {
+    const keys = await this.availableKeys(userId, model, runner);
+    if (!keys.some((key) => key.id === keyId && !key.lastErrorCode))
+      throw new ConflictException('model_unavailable');
   }
   // AI modified: decrypt only account-owned credentials before invoking the provider protocol.
   async keyBalance(
