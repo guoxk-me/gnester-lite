@@ -63,11 +63,29 @@ export class AssistantGenerationService {
       await this.failAnswer(answerId, 'model_unavailable');
       return null;
     }
-    await this.database.query(
-      'UPDATE `assistant_answer` SET `status` = ?, `updatedAt` = CURRENT_TIMESTAMP(3) WHERE `id` = ? AND `status` = ?',
-      ['generating', answerId, 'queued'],
-    );
-    if (!(await this.isGenerating(answerId))) return null;
+    // AI modified: queued work is admitted under the same owner lock as model switches and Key revocation.
+    const runner = this.database.createQueryRunner();
+    await runner.connect();
+    try {
+      await runner.startTransaction();
+      await runner.query('SELECT `id` FROM `user` WHERE `id` = ? FOR UPDATE', [
+        answer.userId,
+      ]);
+      await runner.query(
+        'UPDATE `assistant_answer` a INNER JOIN `assistant_key` k ON k.`id` = a.`keyId` AND k.`userId` = a.`userId` LEFT JOIN `assistant_model_preference` p ON p.`userId` = a.`userId` AND p.`provider` = a.`provider` AND p.`modelId` = a.`model` SET a.`status` = ?, a.`updatedAt` = CURRENT_TIMESTAMP(3) WHERE a.`id` = ? AND a.`status` = ? AND k.`isEnabled` = 1 AND k.`isPendingDeletion` = 0 AND COALESCE(p.`isEnabled`, 1) = 1',
+        ['generating', answerId, 'queued'],
+      );
+      await runner.commitTransaction();
+    } catch (error) {
+      if (runner.isTransactionActive) await runner.rollbackTransaction();
+      throw error;
+    } finally {
+      await runner.release();
+    }
+    if (!(await this.isGenerating(answerId))) {
+      await this.failAnswer(answerId, 'model_unavailable');
+      return null;
+    }
     const previousMessages = JSON.parse(
       answer.contextSnapshot,
     ) as AssistantModelMessage[];
@@ -83,11 +101,31 @@ export class AssistantGenerationService {
     };
   }
 
-  async useAnswerKey(answerId: string, keyId: string): Promise<void> {
-    await this.database.query(
-      'UPDATE `assistant_answer` SET `keyId` = ? WHERE `id` = ? AND `status` = ?',
-      [keyId, answerId, 'generating'],
-    );
+  async useAnswerKey(answerId: string, keyId: string): Promise<boolean> {
+    const answers = await this.database.query<
+      Pick<AssistantAnswerRow, 'userId'>[]
+    >('SELECT `userId` FROM `assistant_answer` WHERE `id` = ?', [answerId]);
+    if (!answers[0]) return false;
+    const runner = this.database.createQueryRunner();
+    await runner.connect();
+    try {
+      await runner.startTransaction();
+      await runner.query('SELECT `id` FROM `user` WHERE `id` = ? FOR UPDATE', [
+        answers[0].userId,
+      ]);
+      // AI modified: an emergency-revoked or stopped answer cannot reserve a backup and send again.
+      const update = (await runner.query(
+        'UPDATE `assistant_answer` a INNER JOIN `assistant_key` k ON k.`userId` = a.`userId` AND k.`id` = ? SET a.`keyId` = ? WHERE a.`id` = ? AND a.`status` = ? AND k.`isEnabled` = 1 AND k.`isPendingDeletion` = 0 AND k.`provider` = a.`provider`',
+        [keyId, keyId, answerId, 'generating'],
+      )) as unknown as { affectedRows: number };
+      await runner.commitTransaction();
+      return update.affectedRows === 1;
+    } catch (error) {
+      if (runner.isTransactionActive) await runner.rollbackTransaction();
+      throw error;
+    } finally {
+      await runner.release();
+    }
   }
 
   async isGenerating(answerId: string): Promise<boolean> {

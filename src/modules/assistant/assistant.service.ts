@@ -159,6 +159,16 @@ export class AssistantService {
     const answerId = randomUUID();
     try {
       await runner.startTransaction();
+      // AI modified: revocation and publication share the account lock and recheck the selected Key before inserting work.
+      await runner.query('SELECT `id` FROM `user` WHERE `id` = ? FOR UPDATE', [
+        userId,
+      ]);
+      await this.configuration.requireSelectedKey(
+        runner,
+        userId,
+        selection.model,
+        selection.keyId,
+      );
       if (createdConversationId) {
         await this.ownedConversation(runner, userId, createdConversationId);
       } else {
@@ -238,6 +248,9 @@ export class AssistantService {
     const answerId = randomUUID();
     try {
       await runner.startTransaction();
+      await runner.query('SELECT `id` FROM `user` WHERE `id` = ? FOR UPDATE', [
+        userId,
+      ]);
       const turns = (await runner.query(
         'SELECT t.*, c.`userId` FROM `assistant_turn` t INNER JOIN `assistant_conversation` c ON c.`id` = t.`conversationId` WHERE t.`id` = ? LIMIT 1',
         [turnId],
@@ -256,6 +269,12 @@ export class AssistantService {
         conversation.provider && conversation.model
           ? { provider: conversation.provider, modelId: conversation.model }
           : undefined,
+      );
+      await this.configuration.requireSelectedKey(
+        runner,
+        userId,
+        selection.model,
+        selection.keyId,
       );
       const latestTurns = (await runner.query(
         'SELECT `id` FROM `assistant_turn` WHERE `conversationId` = ? ORDER BY `createdAt` DESC, `id` DESC LIMIT 1',

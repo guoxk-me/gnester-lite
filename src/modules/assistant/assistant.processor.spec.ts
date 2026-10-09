@@ -52,6 +52,8 @@ describe('assistant worker composition', () => {
   let processor: AssistantProcessor;
   beforeEach(() => {
     vi.resetAllMocks();
+    generation.useAnswerKey.mockResolvedValue(true);
+    generation.isGenerating.mockResolvedValue(true);
     worker.consume = undefined;
     config['queue.enabled'] = true;
     cancellation = new AssistantCancellation();
@@ -87,9 +89,9 @@ describe('assistant worker composition', () => {
       apiKey: 'fixture-key',
     });
     vi.mocked(streamText).mockReturnValue({
-      textStream: (async function* () {
-        yield 'Hello';
-        yield ' world';
+      fullStream: (async function* () {
+        yield { type: 'text-delta', text: 'Hello' };
+        yield { type: 'text-delta', text: ' world' };
       })(),
     } as unknown as ReturnType<typeof streamText>);
     await processor.onModuleInit();
@@ -140,5 +142,58 @@ describe('assistant worker composition', () => {
     );
     expect(streamText).not.toHaveBeenCalled();
     await processor.onModuleDestroy();
+  });
+
+  it('does not send or switch to a backup after the selected answer was revoked', async () => {
+    generation.startAnswer.mockResolvedValue({
+      userId: 'owner',
+      provider: 'deepseek',
+      model: 'deepseek-chat',
+      keyId: 'removed-key',
+      messages: [],
+    });
+    configuration.generationKey.mockResolvedValue({
+      id: 'backup-key',
+      apiKey: 'fixture-key',
+    });
+    generation.useAnswerKey.mockResolvedValue(false);
+    await processor.onModuleInit();
+    if (!worker.consume) throw new Error('Worker callback was not registered');
+    await worker.consume({
+      data: { answerId: 'answer' },
+    } as Job<AssistantGenerationJob>);
+    expect(streamText).not.toHaveBeenCalled();
+    expect(providers.languageModel).not.toHaveBeenCalled();
+    expect(generation.completeAnswer).not.toHaveBeenCalled();
+  });
+
+  it('marks an SDK error event as failed instead of completing an empty answer', async () => {
+    generation.startAnswer.mockResolvedValue({
+      userId: 'owner',
+      provider: 'openai',
+      model: 'gpt-4o',
+      keyId: 'owner-key',
+      messages: [],
+    });
+    configuration.generationKey.mockResolvedValue({
+      id: 'owner-key',
+      apiKey: 'fixture-key',
+    });
+    Object.assign(providers, {
+      credentialFailure: vi.fn().mockReturnValue(null),
+      isMissingModelFailure: vi.fn().mockReturnValue(false),
+    });
+    vi.mocked(streamText).mockReturnValue({
+      fullStream: (async function* () {
+        yield { type: 'error', error: new Error('Fixture upstream failure') };
+      })(),
+    } as unknown as ReturnType<typeof streamText>);
+    await processor.onModuleInit();
+    if (!worker.consume) throw new Error('Worker callback was not registered');
+    await worker.consume({
+      data: { answerId: 'answer' },
+    } as Job<AssistantGenerationJob>);
+    expect(generation.failAnswer).toHaveBeenCalledWith('answer', 'model_error');
+    expect(generation.completeAnswer).not.toHaveBeenCalled();
   });
 });

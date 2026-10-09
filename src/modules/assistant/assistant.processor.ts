@@ -90,7 +90,13 @@ export class AssistantProcessor implements OnModuleInit, OnModuleDestroy {
       while (key) {
         keyId = key.id;
         attemptedKeyIds.add(key.id);
-        await this.generation.useAnswerKey(answerId, key.id);
+        // AI modified: cancellation can arrive while credential selection awaits; never start a request after revocation.
+        if (
+          !(await this.generation.useAnswerKey(answerId, key.id)) ||
+          controller.signal.aborted ||
+          !(await this.generation.isGenerating(answerId))
+        )
+          return;
         try {
           const response = streamText({
             model: this.providers.languageModel(
@@ -108,9 +114,15 @@ export class AssistantProcessor implements OnModuleInit, OnModuleDestroy {
                   : { deepseek: { thinking: { type: 'disabled' } } }
                 : { openai: { store: false } },
             abortSignal: controller.signal,
+            // AI modified: the full stream handles failures; the SDK's default callback may log credential-bearing errors.
+            onError: () => undefined,
           });
-          for await (const delta of response.textStream) {
-            content += delta;
+          // AI modified: textStream drops error events in this SDK, so an upstream failure must be read explicitly.
+          for await (const part of response.fullStream) {
+            if (part.type === 'error') throw part.error;
+            if (part.type === 'abort') return;
+            if (part.type !== 'text-delta') continue;
+            content += part.text;
             if (Date.now() - lastCheckpoint >= 250) {
               await this.generation.appendAnswer(answerId, content);
               lastCheckpoint = Date.now();
@@ -120,6 +132,7 @@ export class AssistantProcessor implements OnModuleInit, OnModuleDestroy {
               }
             }
           }
+          if (controller.signal.aborted) return;
           await this.generation.completeAnswer(answerId, content);
           return;
         } catch (error) {

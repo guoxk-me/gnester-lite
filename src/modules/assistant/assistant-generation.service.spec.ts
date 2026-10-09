@@ -1,6 +1,6 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import type { Queue } from 'bullmq';
-import type { DataSource } from 'typeorm';
+import type { DataSource, QueryRunner } from 'typeorm';
 import type { QueueService } from '../../infra/queue/queue.service.js';
 import {
   AssistantCancellation,
@@ -11,11 +11,21 @@ import type { AssistantGenerationJob } from './generation.types.js';
 // AI modified: extracted generation ownership preserves cancellation, queue failure and durable transition behavior.
 describe('assistant generation lifecycle', () => {
   const query = vi.fn();
+  const runnerQuery = vi.fn();
+  const runner = {
+    query: runnerQuery,
+    connect: vi.fn(),
+    startTransaction: vi.fn(),
+    commitTransaction: vi.fn(),
+    rollbackTransaction: vi.fn(),
+    release: vi.fn(),
+    isTransactionActive: true,
+  } as unknown as QueryRunner;
   const add = vi.fn();
   const isEnabled = vi.fn();
   const queue = {} as Queue<AssistantGenerationJob>;
   const service = new AssistantGenerationService(
-    { query } as unknown as DataSource,
+    { query, createQueryRunner: () => runner } as unknown as DataSource,
     { add, isEnabled } as unknown as QueueService,
     queue,
   );
@@ -23,6 +33,7 @@ describe('assistant generation lifecycle', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     query.mockResolvedValue([]);
+    runnerQuery.mockResolvedValue([]);
     add.mockResolvedValue({});
     isEnabled.mockReturnValue(true);
   });
@@ -32,7 +43,6 @@ describe('assistant generation lifecycle', () => {
     query.mockResolvedValueOnce([{ status: 'completed' }]);
     expect(await service.startAnswer('completed')).toBeNull();
     query.mockResolvedValueOnce([{ status: 'queued', provider: 'deepseek' }]);
-    query.mockResolvedValueOnce([]);
     query.mockResolvedValueOnce([{ status: 'stopped' }]);
     expect(await service.startAnswer('stopped')).toBeNull();
   });
@@ -51,7 +61,6 @@ describe('assistant generation lifecycle', () => {
         ]),
       },
     ]);
-    query.mockResolvedValueOnce([]);
     query.mockResolvedValueOnce([{ status: 'generating' }]);
     await expect(service.startAnswer('answer')).resolves.toEqual({
       messages: [
@@ -99,11 +108,9 @@ describe('assistant generation lifecycle', () => {
   });
 
   it('keeps partial content durable and selects only completed answers', async () => {
-    await service.useAnswerKey('answer', 'key');
     await service.appendAnswer('answer', 'Partial');
     await service.completeAnswer('answer', 'Complete');
     expect(query.mock.calls.map((call) => call[1])).toEqual([
-      ['key', 'answer', 'generating'],
       ['Partial', 'answer', 'generating'],
       ['Complete', 'completed', 'answer', 'generating'],
       ['answer', 'completed'],

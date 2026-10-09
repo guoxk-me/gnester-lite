@@ -25,7 +25,10 @@ describe('AssistantService', () => {
     commitTransaction,
     rollbackTransaction,
     release: vi.fn().mockResolvedValue(undefined),
-    query: runnerQuery,
+    query: (sql: string, parameters?: unknown[]) =>
+      sql === 'SELECT `id` FROM `user` WHERE `id` = ? FOR UPDATE'
+        ? Promise.resolve([])
+        : runnerQuery(sql, parameters),
     isTransactionActive: true,
   } as unknown as QueryRunner;
   const database = {
@@ -38,6 +41,7 @@ describe('AssistantService', () => {
   });
   const configuration = {
     chooseModel,
+    requireSelectedKey: vi.fn().mockResolvedValue(undefined),
   } as unknown as AssistantConfigurationService;
   const queueService = {
     isEnabled: () => true,
